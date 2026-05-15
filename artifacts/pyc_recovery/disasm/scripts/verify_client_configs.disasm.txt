@@ -1,0 +1,718 @@
+verify_client_configs.cpython-39.pyc (Python 3.9)
+[Code]
+    File Name: scripts/verify_client_configs.py
+    Object Name: <module>
+    Arg Count: 0
+    Pos Only Arg Count: 0
+    KW Only Arg Count: 0
+    Locals: 0
+    Stack Size: 4
+    Flags: 0x01000040 (CO_NOFREE | CO_FUTURE_ANNOTATIONS)
+    [Names]
+        '__future__'
+        'annotations'
+        'argparse'
+        'json'
+        'os'
+        'pathlib'
+        'Path'
+        'common'
+        'expand'
+        '_read_json'
+        '_resolve_target_keys'
+        'main'
+        '__name__'
+        'SystemExit'
+    [Var Names]
+    [Free Vars]
+    [Cell Vars]
+    [Constants]
+        0
+        (
+            'annotations'
+        )
+        None
+        (
+            'Path'
+        )
+        (
+            'expand'
+        )
+        'Path'
+        'dict'
+        (
+            'path'
+            'return'
+        )
+        [Code]
+            File Name: scripts/verify_client_configs.py
+            Object Name: _read_json
+            Arg Count: 1
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 1
+            Stack Size: 8
+            Flags: 0x01000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE | CO_FUTURE_ANNOTATIONS)
+            [Names]
+                'exists'
+                'json'
+                'loads'
+                'read_text'
+                'Exception'
+            [Var Names]
+                'path'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                'utf-8'
+                (
+                    'encoding'
+                )
+            [Disassembly]
+                0       LOAD_FAST                       0: path
+                2       LOAD_METHOD                     0: exists
+                4       CALL_METHOD                     0
+                6       POP_JUMP_IF_TRUE                12
+                8       BUILD_MAP                       0
+                10      RETURN_VALUE                    
+                12      SETUP_FINALLY                   20 (to 34)
+                14      LOAD_GLOBAL                     1: json
+                16      LOAD_METHOD                     2: loads
+                18      LOAD_FAST                       0: path
+                20      LOAD_ATTR                       3: read_text
+                22      LOAD_CONST                      1: 'utf-8'
+                24      LOAD_CONST                      2: ('encoding',)
+                26      CALL_FUNCTION_KW                1
+                28      CALL_METHOD                     1
+                30      POP_BLOCK                       
+                32      RETURN_VALUE                    
+                34      DUP_TOP                         
+                36      LOAD_GLOBAL                     4: Exception
+                38      JUMP_IF_NOT_EXC_MATCH           54
+                40      POP_TOP                         
+                42      POP_TOP                         
+                44      POP_TOP                         
+                46      BUILD_MAP                       0
+                48      ROT_FOUR                        
+                50      POP_EXCEPT                      
+                52      RETURN_VALUE                    
+                54      RERAISE                         
+                56      LOAD_CONST                      0: None
+                58      RETURN_VALUE                    
+        '_read_json'
+        ''
+        'str'
+        'list[str]'
+        (
+            'cli_targets'
+            'return'
+        )
+        [Code]
+            File Name: scripts/verify_client_configs.py
+            Object Name: _resolve_target_keys
+            Arg Count: 1
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 5
+            Stack Size: 4
+            Flags: 0x01000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE | CO_FUTURE_ANNOTATIONS)
+            [Names]
+                'strip'
+                'split'
+                'os'
+                'environ'
+                'get'
+                'expand'
+                '_read_json'
+                'isinstance'
+                'list'
+            [Var Names]
+                'cli_targets'
+                'raw'
+                'report_path'
+                'report'
+                'keys'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                [Code]
+                    File Name: scripts/verify_client_configs.py
+                    Object Name: <listcomp>
+                    Arg Count: 1
+                    Pos Only Arg Count: 0
+                    KW Only Arg Count: 0
+                    Locals: 2
+                    Stack Size: 4
+                    Flags: 0x01000053 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NESTED | CO_NOFREE | CO_FUTURE_ANNOTATIONS)
+                    [Names]
+                        'strip'
+                    [Var Names]
+                        '.0'
+                        'x'
+                    [Free Vars]
+                    [Cell Vars]
+                    [Constants]
+                    [Disassembly]
+                        0       BUILD_LIST                      0
+                        2       LOAD_FAST                       0: .0
+                        4       FOR_ITER                        20 (to 26)
+                        6       STORE_FAST                      1: x
+                        8       LOAD_FAST                       1: x
+                        10      LOAD_METHOD                     0: strip
+                        12      CALL_METHOD                     0
+                        14      POP_JUMP_IF_FALSE               4
+                        16      LOAD_FAST                       1: x
+                        18      LOAD_METHOD                     0: strip
+                        20      CALL_METHOD                     0
+                        22      LIST_APPEND                     2
+                        24      JUMP_ABSOLUTE                   4
+                        26      RETURN_VALUE                    
+                '_resolve_target_keys.<locals>.<listcomp>'
+                ','
+                'OCMA_TARGET_KEYS'
+                ''
+                [Code]
+                    File Name: scripts/verify_client_configs.py
+                    Object Name: <listcomp>
+                    Arg Count: 1
+                    Pos Only Arg Count: 0
+                    KW Only Arg Count: 0
+                    Locals: 2
+                    Stack Size: 4
+                    Flags: 0x01000053 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NESTED | CO_NOFREE | CO_FUTURE_ANNOTATIONS)
+                    [Names]
+                        'strip'
+                    [Var Names]
+                        '.0'
+                        'x'
+                    [Free Vars]
+                    [Cell Vars]
+                    [Constants]
+                    [Disassembly]
+                        0       BUILD_LIST                      0
+                        2       LOAD_FAST                       0: .0
+                        4       FOR_ITER                        20 (to 26)
+                        6       STORE_FAST                      1: x
+                        8       LOAD_FAST                       1: x
+                        10      LOAD_METHOD                     0: strip
+                        12      CALL_METHOD                     0
+                        14      POP_JUMP_IF_FALSE               4
+                        16      LOAD_FAST                       1: x
+                        18      LOAD_METHOD                     0: strip
+                        20      CALL_METHOD                     0
+                        22      LIST_APPEND                     2
+                        24      JUMP_ABSOLUTE                   4
+                        26      RETURN_VALUE                    
+                '~/openclaw-memory-auto/runtime/connect_report.json'
+                'target_keys'
+                [Code]
+                    File Name: scripts/verify_client_configs.py
+                    Object Name: <listcomp>
+                    Arg Count: 1
+                    Pos Only Arg Count: 0
+                    KW Only Arg Count: 0
+                    Locals: 2
+                    Stack Size: 4
+                    Flags: 0x01000053 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NESTED | CO_NOFREE | CO_FUTURE_ANNOTATIONS)
+                    [Names]
+                        'str'
+                        'strip'
+                    [Var Names]
+                        '.0'
+                        'x'
+                    [Free Vars]
+                    [Cell Vars]
+                    [Constants]
+                    [Disassembly]
+                        0       BUILD_LIST                      0
+                        2       LOAD_FAST                       0: .0
+                        4       FOR_ITER                        28 (to 34)
+                        6       STORE_FAST                      1: x
+                        8       LOAD_GLOBAL                     0: str
+                        10      LOAD_FAST                       1: x
+                        12      CALL_FUNCTION                   1
+                        14      LOAD_METHOD                     1: strip
+                        16      CALL_METHOD                     0
+                        18      POP_JUMP_IF_FALSE               4
+                        20      LOAD_GLOBAL                     0: str
+                        22      LOAD_FAST                       1: x
+                        24      CALL_FUNCTION                   1
+                        26      LOAD_METHOD                     1: strip
+                        28      CALL_METHOD                     0
+                        30      LIST_APPEND                     2
+                        32      JUMP_ABSOLUTE                   4
+                        34      RETURN_VALUE                    
+            [Disassembly]
+                0       LOAD_FAST                       0: cli_targets
+                2       LOAD_METHOD                     0: strip
+                4       CALL_METHOD                     0
+                6       POP_JUMP_IF_FALSE               28
+                8       LOAD_CONST                      1: <CODE> <listcomp>
+                10      LOAD_CONST                      2: '_resolve_target_keys.<locals>.<listcomp>'
+                12      MAKE_FUNCTION                   0
+                14      LOAD_FAST                       0: cli_targets
+                16      LOAD_METHOD                     1: split
+                18      LOAD_CONST                      3: ','
+                20      CALL_METHOD                     1
+                22      GET_ITER                        
+                24      CALL_FUNCTION                   1
+                26      RETURN_VALUE                    
+                28      LOAD_GLOBAL                     2: os
+                30      LOAD_ATTR                       3: environ
+                32      LOAD_METHOD                     4: get
+                34      LOAD_CONST                      4: 'OCMA_TARGET_KEYS'
+                36      LOAD_CONST                      5: ''
+                38      CALL_METHOD                     2
+                40      LOAD_METHOD                     0: strip
+                42      CALL_METHOD                     0
+                44      STORE_FAST                      1: raw
+                46      LOAD_FAST                       1: raw
+                48      POP_JUMP_IF_FALSE               70
+                50      LOAD_CONST                      6: <CODE> <listcomp>
+                52      LOAD_CONST                      2: '_resolve_target_keys.<locals>.<listcomp>'
+                54      MAKE_FUNCTION                   0
+                56      LOAD_FAST                       1: raw
+                58      LOAD_METHOD                     1: split
+                60      LOAD_CONST                      3: ','
+                62      CALL_METHOD                     1
+                64      GET_ITER                        
+                66      CALL_FUNCTION                   1
+                68      RETURN_VALUE                    
+                70      LOAD_GLOBAL                     5: expand
+                72      LOAD_CONST                      7: '~/openclaw-memory-auto/runtime/connect_report.json'
+                74      CALL_FUNCTION                   1
+                76      STORE_FAST                      2: report_path
+                78      LOAD_GLOBAL                     6: _read_json
+                80      LOAD_FAST                       2: report_path
+                82      CALL_FUNCTION                   1
+                84      STORE_FAST                      3: report
+                86      LOAD_FAST                       3: report
+                88      LOAD_METHOD                     4: get
+                90      LOAD_CONST                      8: 'target_keys'
+                92      BUILD_LIST                      0
+                94      CALL_METHOD                     2
+                96      STORE_FAST                      4: keys
+                98      LOAD_GLOBAL                     7: isinstance
+                100     LOAD_FAST                       4: keys
+                102     LOAD_GLOBAL                     8: list
+                104     CALL_FUNCTION                   2
+                106     POP_JUMP_IF_FALSE               126
+                108     LOAD_FAST                       4: keys
+                110     POP_JUMP_IF_FALSE               126
+                112     LOAD_CONST                      9: <CODE> <listcomp>
+                114     LOAD_CONST                      2: '_resolve_target_keys.<locals>.<listcomp>'
+                116     MAKE_FUNCTION                   0
+                118     LOAD_FAST                       4: keys
+                120     GET_ITER                        
+                122     CALL_FUNCTION                   1
+                124     RETURN_VALUE                    
+                126     BUILD_LIST                      0
+                128     RETURN_VALUE                    
+        '_resolve_target_keys'
+        'int'
+        (
+            'return'
+        )
+        [Code]
+            File Name: scripts/verify_client_configs.py
+            Object Name: main
+            Arg Count: 0
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 15
+            Stack Size: 6
+            Flags: 0x01000003 (CO_OPTIMIZED | CO_NEWLOCALS | CO_FUTURE_ANNOTATIONS)
+            [Names]
+                'argparse'
+                'ArgumentParser'
+                'add_argument'
+                'parse_args'
+                'expand'
+                '_resolve_target_keys'
+                'targets'
+                'items'
+                '_read_json'
+                'isinstance'
+                'dict'
+                'get'
+                'str'
+                'list'
+                'bool'
+                'len'
+                'exists'
+                'print'
+                'json'
+                'dumps'
+            [Var Names]
+                'parser'
+                'args'
+                'all_targets'
+                'targets'
+                'ok_all'
+                'report'
+                'key'
+                'path'
+                'client_name'
+                'obj'
+                'server'
+                'client_ok'
+                'cmd'
+                'env'
+                'out'
+            [Free Vars]
+            [Cell Vars]
+                'keys'
+            [Constants]
+                None
+                'Verify MCP client configs.'
+                (
+                    'description'
+                )
+                '--targets'
+                ''
+                'Comma-separated targets: claude_desktop,cursor,windsurf'
+                (
+                    'default'
+                    'help'
+                )
+                '~/Library/Application Support/Claude/claude_desktop_config.json'
+                'Claude Desktop'
+                '~/.cursor/mcp.json'
+                'Cursor'
+                '~/.windsurf/mcp.json'
+                'Windsurf'
+                (
+                    'claude_desktop'
+                    'cursor'
+                    'windsurf'
+                )
+                [Code]
+                    File Name: scripts/verify_client_configs.py
+                    Object Name: <dictcomp>
+                    Arg Count: 1
+                    Pos Only Arg Count: 0
+                    KW Only Arg Count: 0
+                    Locals: 3
+                    Stack Size: 4
+                    Flags: 0x01000013 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NESTED | CO_FUTURE_ANNOTATIONS)
+                    [Names]
+                    [Var Names]
+                        '.0'
+                        'k'
+                        'v'
+                    [Free Vars]
+                        'keys'
+                    [Cell Vars]
+                    [Constants]
+                    [Disassembly]
+                        0       BUILD_MAP                       0
+                        2       LOAD_FAST                       0: .0
+                        4       FOR_ITER                        22 (to 28)
+                        6       UNPACK_SEQUENCE                 2
+                        8       STORE_FAST                      1: k
+                        10      STORE_FAST                      2: v
+                        12      LOAD_FAST                       1: k
+                        14      LOAD_DEREF                      0: keys
+                        16      CONTAINS_OP                     0 (in)
+                        18      POP_JUMP_IF_FALSE               4
+                        20      LOAD_FAST                       1: k
+                        22      LOAD_FAST                       2: v
+                        24      MAP_ADD                         2
+                        26      JUMP_ABSOLUTE                   4
+                        28      RETURN_VALUE                    
+                'main.<locals>.<dictcomp>'
+                True
+                'mcpServers'
+                'openclaw-memory'
+                'command'
+                'args'
+                'env'
+                1
+                'OPENCLAW_MCP_CLIENT'
+                (
+                    'ok'
+                    'path'
+                    'exists'
+                    'client'
+                )
+                '请重启 Claude Desktop/Cursor/Windsurf 以加载新配置'
+                (
+                    'ok'
+                    'report'
+                    'next_step'
+                )
+                False
+                2
+                (
+                    'ensure_ascii'
+                    'indent'
+                )
+                0
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: argparse
+                2       LOAD_ATTR                       1: ArgumentParser
+                4       LOAD_CONST                      1: 'Verify MCP client configs.'
+                6       LOAD_CONST                      2: ('description',)
+                8       CALL_FUNCTION_KW                1
+                10      STORE_FAST                      0: parser
+                12      LOAD_FAST                       0: parser
+                14      LOAD_ATTR                       2: add_argument
+                16      LOAD_CONST                      3: '--targets'
+                18      LOAD_CONST                      4: ''
+                20      LOAD_CONST                      5: 'Comma-separated targets: claude_desktop,cursor,windsurf'
+                22      LOAD_CONST                      6: ('default', 'help')
+                24      CALL_FUNCTION_KW                3
+                26      POP_TOP                         
+                28      LOAD_FAST                       0: parser
+                30      LOAD_METHOD                     3: parse_args
+                32      CALL_METHOD                     0
+                34      STORE_FAST                      1: args
+                36      LOAD_GLOBAL                     4: expand
+                38      LOAD_CONST                      7: '~/Library/Application Support/Claude/claude_desktop_config.json'
+                40      CALL_FUNCTION                   1
+                42      LOAD_CONST                      8: 'Claude Desktop'
+                44      BUILD_TUPLE                     2
+                46      LOAD_GLOBAL                     4: expand
+                48      LOAD_CONST                      9: '~/.cursor/mcp.json'
+                50      CALL_FUNCTION                   1
+                52      LOAD_CONST                      10: 'Cursor'
+                54      BUILD_TUPLE                     2
+                56      LOAD_GLOBAL                     4: expand
+                58      LOAD_CONST                      11: '~/.windsurf/mcp.json'
+                60      CALL_FUNCTION                   1
+                62      LOAD_CONST                      12: 'Windsurf'
+                64      BUILD_TUPLE                     2
+                66      LOAD_CONST                      13: ('claude_desktop', 'cursor', 'windsurf')
+                68      BUILD_CONST_KEY_MAP             3
+                70      STORE_FAST                      2: all_targets
+                72      LOAD_GLOBAL                     5: _resolve_target_keys
+                74      LOAD_FAST                       1: args
+                76      LOAD_ATTR                       6: targets
+                78      CALL_FUNCTION                   1
+                80      STORE_DEREF                     0: keys
+                82      LOAD_DEREF                      0: keys
+                84      POP_JUMP_IF_FALSE               110
+                86      LOAD_CLOSURE                    0: keys
+                88      BUILD_TUPLE                     1
+                90      LOAD_CONST                      14: <CODE> <dictcomp>
+                92      LOAD_CONST                      15: 'main.<locals>.<dictcomp>'
+                94      MAKE_FUNCTION                   8
+                96      LOAD_FAST                       2: all_targets
+                98      LOAD_METHOD                     7: items
+                100     CALL_METHOD                     0
+                102     GET_ITER                        
+                104     CALL_FUNCTION                   1
+                106     STORE_FAST                      3: targets
+                108     JUMP_FORWARD                    4 (to 114)
+                110     LOAD_FAST                       2: all_targets
+                112     STORE_FAST                      3: targets
+                114     LOAD_CONST                      16: True
+                116     STORE_FAST                      4: ok_all
+                118     BUILD_MAP                       0
+                120     STORE_FAST                      5: report
+                122     LOAD_FAST                       3: targets
+                124     LOAD_METHOD                     7: items
+                126     CALL_METHOD                     0
+                128     GET_ITER                        
+                130     FOR_ITER                        222 (to 354)
+                132     UNPACK_SEQUENCE                 2
+                134     STORE_FAST                      6: key
+                136     UNPACK_SEQUENCE                 2
+                138     STORE_FAST                      7: path
+                140     STORE_FAST                      8: client_name
+                142     LOAD_GLOBAL                     8: _read_json
+                144     LOAD_FAST                       7: path
+                146     CALL_FUNCTION                   1
+                148     STORE_FAST                      9: obj
+                150     LOAD_GLOBAL                     9: isinstance
+                152     LOAD_FAST                       9: obj
+                154     LOAD_GLOBAL                     10: dict
+                156     CALL_FUNCTION                   2
+                158     POP_JUMP_IF_FALSE               180
+                160     LOAD_FAST                       9: obj
+                162     LOAD_METHOD                     11: get
+                164     LOAD_CONST                      17: 'mcpServers'
+                166     CALL_METHOD                     1
+                168     JUMP_IF_TRUE_OR_POP             172
+                170     BUILD_MAP                       0
+                172     LOAD_METHOD                     11: get
+                174     LOAD_CONST                      18: 'openclaw-memory'
+                176     CALL_METHOD                     1
+                178     JUMP_FORWARD                    2 (to 182)
+                180     LOAD_CONST                      0: None
+                182     STORE_FAST                      10: server
+                184     LOAD_GLOBAL                     9: isinstance
+                186     LOAD_FAST                       10: server
+                188     LOAD_GLOBAL                     10: dict
+                190     CALL_FUNCTION                   2
+                192     STORE_FAST                      11: client_ok
+                194     LOAD_FAST                       11: client_ok
+                196     POP_JUMP_IF_FALSE               316
+                200     LOAD_GLOBAL                     12: str
+                202     LOAD_FAST                       10: server
+                204     LOAD_METHOD                     11: get
+                206     LOAD_CONST                      19: 'command'
+                208     LOAD_CONST                      4: ''
+                210     CALL_METHOD                     2
+                212     CALL_FUNCTION                   1
+                214     STORE_FAST                      12: cmd
+                216     LOAD_GLOBAL                     9: isinstance
+                218     LOAD_FAST                       10: server
+                220     LOAD_METHOD                     11: get
+                222     LOAD_CONST                      20: 'args'
+                224     CALL_METHOD                     1
+                226     LOAD_GLOBAL                     13: list
+                228     CALL_FUNCTION                   2
+                230     POP_JUMP_IF_FALSE               242
+                232     LOAD_FAST                       10: server
+                234     LOAD_METHOD                     11: get
+                236     LOAD_CONST                      20: 'args'
+                238     CALL_METHOD                     1
+                240     JUMP_FORWARD                    2 (to 244)
+                242     BUILD_LIST                      0
+                244     STORE_FAST                      1: args
+                246     LOAD_GLOBAL                     9: isinstance
+                248     LOAD_FAST                       10: server
+                250     LOAD_METHOD                     11: get
+                252     LOAD_CONST                      21: 'env'
+                254     CALL_METHOD                     1
+                256     LOAD_GLOBAL                     10: dict
+                258     CALL_FUNCTION                   2
+                260     POP_JUMP_IF_FALSE               274
+                264     LOAD_FAST                       10: server
+                266     LOAD_METHOD                     11: get
+                268     LOAD_CONST                      21: 'env'
+                270     CALL_METHOD                     1
+                272     JUMP_FORWARD                    2 (to 276)
+                274     BUILD_MAP                       0
+                276     STORE_FAST                      13: env
+                278     LOAD_GLOBAL                     14: bool
+                280     LOAD_FAST                       12: cmd
+                282     CALL_FUNCTION                   1
+                284     JUMP_IF_FALSE_OR_POP            314
+                288     LOAD_GLOBAL                     15: len
+                290     LOAD_FAST                       1: args
+                292     CALL_FUNCTION                   1
+                294     LOAD_CONST                      22: 1
+                296     COMPARE_OP                      5 (>=)
+                298     JUMP_IF_FALSE_OR_POP            314
+                302     LOAD_FAST                       13: env
+                304     LOAD_METHOD                     11: get
+                306     LOAD_CONST                      23: 'OPENCLAW_MCP_CLIENT'
+                308     CALL_METHOD                     1
+                310     LOAD_FAST                       8: client_name
+                312     COMPARE_OP                      2 (==)
+                314     STORE_FAST                      11: client_ok
+                316     LOAD_FAST                       11: client_ok
+                318     LOAD_GLOBAL                     12: str
+                320     LOAD_FAST                       7: path
+                322     CALL_FUNCTION                   1
+                324     LOAD_FAST                       7: path
+                326     LOAD_METHOD                     16: exists
+                328     CALL_METHOD                     0
+                330     LOAD_FAST                       8: client_name
+                332     LOAD_CONST                      24: ('ok', 'path', 'exists', 'client')
+                334     BUILD_CONST_KEY_MAP             4
+                336     LOAD_FAST                       5: report
+                338     LOAD_FAST                       6: key
+                340     STORE_SUBSCR                    
+                342     LOAD_FAST                       4: ok_all
+                344     JUMP_IF_FALSE_OR_POP            350
+                348     LOAD_FAST                       11: client_ok
+                350     STORE_FAST                      4: ok_all
+                352     JUMP_ABSOLUTE                   130
+                354     LOAD_FAST                       4: ok_all
+                356     LOAD_FAST                       5: report
+                358     LOAD_CONST                      25: '请重启 Claude Desktop/Cursor/Windsurf 以加载新配置'
+                360     LOAD_CONST                      26: ('ok', 'report', 'next_step')
+                362     BUILD_CONST_KEY_MAP             3
+                364     STORE_FAST                      14: out
+                366     LOAD_GLOBAL                     17: print
+                368     LOAD_GLOBAL                     18: json
+                370     LOAD_ATTR                       19: dumps
+                372     LOAD_FAST                       14: out
+                374     LOAD_CONST                      27: False
+                376     LOAD_CONST                      28: 2
+                378     LOAD_CONST                      29: ('ensure_ascii', 'indent')
+                380     CALL_FUNCTION_KW                3
+                382     CALL_FUNCTION                   1
+                384     POP_TOP                         
+                386     LOAD_FAST                       4: ok_all
+                388     POP_JUMP_IF_FALSE               396
+                392     LOAD_CONST                      30: 0
+                394     RETURN_VALUE                    
+                396     LOAD_CONST                      22: 1
+                398     RETURN_VALUE                    
+        'main'
+        '__main__'
+        (
+            ''
+        )
+    [Disassembly]
+        0       LOAD_CONST                      0: 0
+        2       LOAD_CONST                      1: ('annotations',)
+        4       IMPORT_NAME                     0: __future__
+        6       IMPORT_FROM                     1: annotations
+        8       STORE_NAME                      1: annotations
+        10      POP_TOP                         
+        12      LOAD_CONST                      0: 0
+        14      LOAD_CONST                      2: None
+        16      IMPORT_NAME                     2: argparse
+        18      STORE_NAME                      2: argparse
+        20      LOAD_CONST                      0: 0
+        22      LOAD_CONST                      2: None
+        24      IMPORT_NAME                     3: json
+        26      STORE_NAME                      3: json
+        28      LOAD_CONST                      0: 0
+        30      LOAD_CONST                      2: None
+        32      IMPORT_NAME                     4: os
+        34      STORE_NAME                      4: os
+        36      LOAD_CONST                      0: 0
+        38      LOAD_CONST                      3: ('Path',)
+        40      IMPORT_NAME                     5: pathlib
+        42      IMPORT_FROM                     6: Path
+        44      STORE_NAME                      6: Path
+        46      POP_TOP                         
+        48      LOAD_CONST                      0: 0
+        50      LOAD_CONST                      4: ('expand',)
+        52      IMPORT_NAME                     7: common
+        54      IMPORT_FROM                     8: expand
+        56      STORE_NAME                      8: expand
+        58      POP_TOP                         
+        60      LOAD_CONST                      5: 'Path'
+        62      LOAD_CONST                      6: 'dict'
+        64      LOAD_CONST                      7: ('path', 'return')
+        66      BUILD_CONST_KEY_MAP             2
+        68      LOAD_CONST                      8: <CODE> _read_json
+        70      LOAD_CONST                      9: '_read_json'
+        72      MAKE_FUNCTION                   4
+        74      STORE_NAME                      9: _read_json
+        76      LOAD_CONST                      21: ('',)
+        78      LOAD_CONST                      11: 'str'
+        80      LOAD_CONST                      12: 'list[str]'
+        82      LOAD_CONST                      13: ('cli_targets', 'return')
+        84      BUILD_CONST_KEY_MAP             2
+        86      LOAD_CONST                      14: <CODE> _resolve_target_keys
+        88      LOAD_CONST                      15: '_resolve_target_keys'
+        90      MAKE_FUNCTION                   5
+        92      STORE_NAME                      10: _resolve_target_keys
+        94      LOAD_CONST                      16: 'int'
+        96      LOAD_CONST                      17: ('return',)
+        98      BUILD_CONST_KEY_MAP             1
+        100     LOAD_CONST                      18: <CODE> main
+        102     LOAD_CONST                      19: 'main'
+        104     MAKE_FUNCTION                   4
+        106     STORE_NAME                      11: main
+        108     LOAD_NAME                       12: __name__
+        110     LOAD_CONST                      20: '__main__'
+        112     COMPARE_OP                      2 (==)
+        114     POP_JUMP_IF_FALSE               126
+        116     LOAD_NAME                       13: SystemExit
+        118     LOAD_NAME                       11: main
+        120     CALL_FUNCTION                   0
+        122     CALL_FUNCTION                   1
+        124     RAISE_VARARGS                   1
+        126     LOAD_CONST                      2: None
+        128     RETURN_VALUE                    

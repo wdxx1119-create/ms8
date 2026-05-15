@@ -1,0 +1,28 @@
+{
+  "ms8_default_adapter": {
+    "status": "active",
+    "capabilities": [
+      "submit",
+      "query",
+      "context",
+      "status",
+      "profile"
+    ],
+    "metadata": {
+      "provider": "ms8",
+      "mode": "local",
+      "version": "restored-connect"
+    }
+  },
+  "ms8_local_llm_adapter": {
+    "status": "active",
+    "capabilities": [
+      "status",
+      "context"
+    ],
+    "metadata": {
+      "provider": "ms8",
+      "mode": "adapter"
+    }
+  }
+}

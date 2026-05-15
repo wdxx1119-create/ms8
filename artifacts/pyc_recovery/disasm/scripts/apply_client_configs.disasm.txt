@@ -1,0 +1,850 @@
+apply_client_configs.cpython-39.pyc (Python 3.9)
+[Code]
+    File Name: scripts/apply_client_configs.py
+    Object Name: <module>
+    Arg Count: 0
+    Pos Only Arg Count: 0
+    KW Only Arg Count: 0
+    Locals: 0
+    Stack Size: 4
+    Flags: 0x01000040 (CO_NOFREE | CO_FUTURE_ANNOTATIONS)
+    [Names]
+        '__future__'
+        'annotations'
+        'json'
+        'os'
+        'datetime'
+        'pathlib'
+        'Path'
+        'typing'
+        'Dict'
+        'Tuple'
+        'common'
+        'ROOT'
+        'expand'
+        'expand_keep'
+        'load_cfg'
+        '_read_json'
+        '_write_json'
+        '_targets'
+        'main'
+        '__name__'
+        'SystemExit'
+    [Var Names]
+    [Free Vars]
+    [Cell Vars]
+    [Constants]
+        0
+        (
+            'annotations'
+        )
+        None
+        (
+            'datetime'
+        )
+        (
+            'Path'
+        )
+        (
+            'Dict'
+            'Tuple'
+        )
+        (
+            'ROOT'
+            'expand'
+            'expand_keep'
+            'load_cfg'
+        )
+        'Path'
+        'dict'
+        (
+            'path'
+            'return'
+        )
+        [Code]
+            File Name: scripts/apply_client_configs.py
+            Object Name: _read_json
+            Arg Count: 1
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 1
+            Stack Size: 8
+            Flags: 0x01000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE | CO_FUTURE_ANNOTATIONS)
+            [Names]
+                'exists'
+                'json'
+                'loads'
+                'read_text'
+                'Exception'
+            [Var Names]
+                'path'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                'utf-8'
+                (
+                    'encoding'
+                )
+            [Disassembly]
+                0       LOAD_FAST                       0: path
+                2       LOAD_METHOD                     0: exists
+                4       CALL_METHOD                     0
+                6       POP_JUMP_IF_TRUE                12
+                8       BUILD_MAP                       0
+                10      RETURN_VALUE                    
+                12      SETUP_FINALLY                   20 (to 34)
+                14      LOAD_GLOBAL                     1: json
+                16      LOAD_METHOD                     2: loads
+                18      LOAD_FAST                       0: path
+                20      LOAD_ATTR                       3: read_text
+                22      LOAD_CONST                      1: 'utf-8'
+                24      LOAD_CONST                      2: ('encoding',)
+                26      CALL_FUNCTION_KW                1
+                28      CALL_METHOD                     1
+                30      POP_BLOCK                       
+                32      RETURN_VALUE                    
+                34      DUP_TOP                         
+                36      LOAD_GLOBAL                     4: Exception
+                38      JUMP_IF_NOT_EXC_MATCH           54
+                40      POP_TOP                         
+                42      POP_TOP                         
+                44      POP_TOP                         
+                46      BUILD_MAP                       0
+                48      ROT_FOUR                        
+                50      POP_EXCEPT                      
+                52      RETURN_VALUE                    
+                54      RERAISE                         
+                56      LOAD_CONST                      0: None
+                58      RETURN_VALUE                    
+        '_read_json'
+        'None'
+        (
+            'path'
+            'payload'
+            'return'
+        )
+        [Code]
+            File Name: scripts/apply_client_configs.py
+            Object Name: _write_json
+            Arg Count: 2
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 2
+            Stack Size: 6
+            Flags: 0x01000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE | CO_FUTURE_ANNOTATIONS)
+            [Names]
+                'parent'
+                'mkdir'
+                'write_text'
+                'json'
+                'dumps'
+            [Var Names]
+                'path'
+                'payload'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                True
+                (
+                    'parents'
+                    'exist_ok'
+                )
+                False
+                2
+                (
+                    'ensure_ascii'
+                    'indent'
+                )
+                'utf-8'
+                (
+                    'encoding'
+                )
+            [Disassembly]
+                0       LOAD_FAST                       0: path
+                2       LOAD_ATTR                       0: parent
+                4       LOAD_ATTR                       1: mkdir
+                6       LOAD_CONST                      1: True
+                8       LOAD_CONST                      1: True
+                10      LOAD_CONST                      2: ('parents', 'exist_ok')
+                12      CALL_FUNCTION_KW                2
+                14      POP_TOP                         
+                16      LOAD_FAST                       0: path
+                18      LOAD_ATTR                       2: write_text
+                20      LOAD_GLOBAL                     3: json
+                22      LOAD_ATTR                       4: dumps
+                24      LOAD_FAST                       1: payload
+                26      LOAD_CONST                      3: False
+                28      LOAD_CONST                      4: 2
+                30      LOAD_CONST                      5: ('ensure_ascii', 'indent')
+                32      CALL_FUNCTION_KW                3
+                34      LOAD_CONST                      6: 'utf-8'
+                36      LOAD_CONST                      7: ('encoding',)
+                38      CALL_FUNCTION_KW                2
+                40      POP_TOP                         
+                42      LOAD_CONST                      0: None
+                44      RETURN_VALUE                    
+        '_write_json'
+        'Dict[str, Tuple[Path, str]]'
+        (
+            'return'
+        )
+        [Code]
+            File Name: scripts/apply_client_configs.py
+            Object Name: _targets
+            Arg Count: 0
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 2
+            Stack Size: 4
+            Flags: 0x01000003 (CO_OPTIMIZED | CO_NEWLOCALS | CO_FUTURE_ANNOTATIONS)
+            [Names]
+                'expand'
+                'os'
+                'environ'
+                'get'
+                'strip'
+                'split'
+                'items'
+            [Var Names]
+                'all_targets'
+                'raw'
+            [Free Vars]
+            [Cell Vars]
+                'keys'
+            [Constants]
+                None
+                '~/Library/Application Support/Claude/claude_desktop_config.json'
+                'Claude Desktop'
+                '~/.cursor/mcp.json'
+                'Cursor'
+                '~/.windsurf/mcp.json'
+                'Windsurf'
+                (
+                    'claude_desktop'
+                    'cursor'
+                    'windsurf'
+                )
+                'OCMA_TARGET_KEYS'
+                ''
+                [Code]
+                    File Name: scripts/apply_client_configs.py
+                    Object Name: <listcomp>
+                    Arg Count: 1
+                    Pos Only Arg Count: 0
+                    KW Only Arg Count: 0
+                    Locals: 2
+                    Stack Size: 4
+                    Flags: 0x01000053 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NESTED | CO_NOFREE | CO_FUTURE_ANNOTATIONS)
+                    [Names]
+                        'strip'
+                    [Var Names]
+                        '.0'
+                        'x'
+                    [Free Vars]
+                    [Cell Vars]
+                    [Constants]
+                    [Disassembly]
+                        0       BUILD_LIST                      0
+                        2       LOAD_FAST                       0: .0
+                        4       FOR_ITER                        20 (to 26)
+                        6       STORE_FAST                      1: x
+                        8       LOAD_FAST                       1: x
+                        10      LOAD_METHOD                     0: strip
+                        12      CALL_METHOD                     0
+                        14      POP_JUMP_IF_FALSE               4
+                        16      LOAD_FAST                       1: x
+                        18      LOAD_METHOD                     0: strip
+                        20      CALL_METHOD                     0
+                        22      LIST_APPEND                     2
+                        24      JUMP_ABSOLUTE                   4
+                        26      RETURN_VALUE                    
+                '_targets.<locals>.<listcomp>'
+                ','
+                [Code]
+                    File Name: scripts/apply_client_configs.py
+                    Object Name: <dictcomp>
+                    Arg Count: 1
+                    Pos Only Arg Count: 0
+                    KW Only Arg Count: 0
+                    Locals: 3
+                    Stack Size: 4
+                    Flags: 0x01000013 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NESTED | CO_FUTURE_ANNOTATIONS)
+                    [Names]
+                    [Var Names]
+                        '.0'
+                        'k'
+                        'v'
+                    [Free Vars]
+                        'keys'
+                    [Cell Vars]
+                    [Constants]
+                    [Disassembly]
+                        0       BUILD_MAP                       0
+                        2       LOAD_FAST                       0: .0
+                        4       FOR_ITER                        22 (to 28)
+                        6       UNPACK_SEQUENCE                 2
+                        8       STORE_FAST                      1: k
+                        10      STORE_FAST                      2: v
+                        12      LOAD_FAST                       1: k
+                        14      LOAD_DEREF                      0: keys
+                        16      CONTAINS_OP                     0 (in)
+                        18      POP_JUMP_IF_FALSE               4
+                        20      LOAD_FAST                       1: k
+                        22      LOAD_FAST                       2: v
+                        24      MAP_ADD                         2
+                        26      JUMP_ABSOLUTE                   4
+                        28      RETURN_VALUE                    
+                '_targets.<locals>.<dictcomp>'
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: expand
+                2       LOAD_CONST                      1: '~/Library/Application Support/Claude/claude_desktop_config.json'
+                4       CALL_FUNCTION                   1
+                6       LOAD_CONST                      2: 'Claude Desktop'
+                8       BUILD_TUPLE                     2
+                10      LOAD_GLOBAL                     0: expand
+                12      LOAD_CONST                      3: '~/.cursor/mcp.json'
+                14      CALL_FUNCTION                   1
+                16      LOAD_CONST                      4: 'Cursor'
+                18      BUILD_TUPLE                     2
+                20      LOAD_GLOBAL                     0: expand
+                22      LOAD_CONST                      5: '~/.windsurf/mcp.json'
+                24      CALL_FUNCTION                   1
+                26      LOAD_CONST                      6: 'Windsurf'
+                28      BUILD_TUPLE                     2
+                30      LOAD_CONST                      7: ('claude_desktop', 'cursor', 'windsurf')
+                32      BUILD_CONST_KEY_MAP             3
+                34      STORE_FAST                      0: all_targets
+                36      LOAD_GLOBAL                     1: os
+                38      LOAD_ATTR                       2: environ
+                40      LOAD_METHOD                     3: get
+                42      LOAD_CONST                      8: 'OCMA_TARGET_KEYS'
+                44      LOAD_CONST                      9: ''
+                46      CALL_METHOD                     2
+                48      LOAD_METHOD                     4: strip
+                50      CALL_METHOD                     0
+                52      STORE_FAST                      1: raw
+                54      LOAD_FAST                       1: raw
+                56      POP_JUMP_IF_TRUE                62
+                58      LOAD_FAST                       0: all_targets
+                60      RETURN_VALUE                    
+                62      LOAD_CONST                      10: <CODE> <listcomp>
+                64      LOAD_CONST                      11: '_targets.<locals>.<listcomp>'
+                66      MAKE_FUNCTION                   0
+                68      LOAD_FAST                       1: raw
+                70      LOAD_METHOD                     5: split
+                72      LOAD_CONST                      12: ','
+                74      CALL_METHOD                     1
+                76      GET_ITER                        
+                78      CALL_FUNCTION                   1
+                80      STORE_DEREF                     0: keys
+                82      LOAD_CLOSURE                    0: keys
+                84      BUILD_TUPLE                     1
+                86      LOAD_CONST                      13: <CODE> <dictcomp>
+                88      LOAD_CONST                      14: '_targets.<locals>.<dictcomp>'
+                90      MAKE_FUNCTION                   8
+                92      LOAD_FAST                       0: all_targets
+                94      LOAD_METHOD                     6: items
+                96      CALL_METHOD                     0
+                98      GET_ITER                        
+                100     CALL_FUNCTION                   1
+                102     RETURN_VALUE                    
+        '_targets'
+        'int'
+        [Code]
+            File Name: scripts/apply_client_configs.py
+            Object Name: main
+            Arg Count: 0
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 17
+            Stack Size: 7
+            Flags: 0x01000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE | CO_FUTURE_ANNOTATIONS)
+            [Names]
+                'load_cfg'
+                'ROOT'
+                'datetime'
+                'utcnow'
+                'strftime'
+                'mkdir'
+                'str'
+                'expand_keep'
+                'get'
+                '_targets'
+                'items'
+                '_read_json'
+                'isinstance'
+                'dict'
+                'exists'
+                'write_text'
+                'read_text'
+                'Path'
+                '_write_json'
+                'print'
+                'json'
+                'dumps'
+                'all'
+                'values'
+            [Var Names]
+                'cfg'
+                'snippets_dir'
+                'ts'
+                'snap_dir'
+                'core_py'
+                'results'
+                'key'
+                'target'
+                'client_name'
+                'snippet_file'
+                'snippet_obj'
+                'server'
+                'backup_name'
+                'current'
+                'mcp_servers'
+                'env'
+                'manifest'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                'runtime'
+                'client_snippets'
+                '%Y%m%d_%H%M%S'
+                'snapshots'
+                'client_configs'
+                True
+                (
+                    'parents'
+                    'exist_ok'
+                )
+                'memory_core'
+                'core_venv_python'
+                '~/.codex/skills/openclaw-memory/.venv/bin/python'
+                'claude_desktop'
+                'claude_desktop_config.json'
+                '_mcp.json'
+                'mcpServers'
+                'openclaw-memory'
+                False
+                'missing_snippet_server'
+                (
+                    'ok'
+                    'reason'
+                    'target'
+                )
+                '.backup.json'
+                'utf-8'
+                'ignore'
+                (
+                    'encoding'
+                    'errors'
+                )
+                (
+                    'encoding'
+                )
+                'command'
+                'env'
+                'OPENCLAW_MCP_CLIENT'
+                (
+                    'ok'
+                    'target'
+                    'client'
+                    'command'
+                )
+                (
+                    'timestamp'
+                    'results'
+                )
+                'manifest.json'
+                2
+                (
+                    'ensure_ascii'
+                    'indent'
+                )
+                [Code]
+                    File Name: scripts/apply_client_configs.py
+                    Object Name: <genexpr>
+                    Arg Count: 1
+                    Pos Only Arg Count: 0
+                    KW Only Arg Count: 0
+                    Locals: 2
+                    Stack Size: 4
+                    Flags: 0x01000073 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NESTED | CO_GENERATOR | CO_NOFREE | CO_FUTURE_ANNOTATIONS)
+                    [Names]
+                        'get'
+                    [Var Names]
+                        '.0'
+                        'v'
+                    [Free Vars]
+                    [Cell Vars]
+                    [Constants]
+                        'ok'
+                        None
+                    [Disassembly]
+                        0       LOAD_FAST                       0: .0
+                        2       FOR_ITER                        16 (to 20)
+                        4       STORE_FAST                      1: v
+                        6       LOAD_FAST                       1: v
+                        8       LOAD_METHOD                     0: get
+                        10      LOAD_CONST                      0: 'ok'
+                        12      CALL_METHOD                     1
+                        14      YIELD_VALUE                     
+                        16      POP_TOP                         
+                        18      JUMP_ABSOLUTE                   2
+                        20      LOAD_CONST                      1: None
+                        22      RETURN_VALUE                    
+                'main.<locals>.<genexpr>'
+                0
+                1
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: load_cfg
+                2       CALL_FUNCTION                   0
+                4       STORE_FAST                      0: cfg
+                6       LOAD_GLOBAL                     1: ROOT
+                8       LOAD_CONST                      1: 'runtime'
+                10      BINARY_TRUE_DIVIDE              
+                12      LOAD_CONST                      2: 'client_snippets'
+                14      BINARY_TRUE_DIVIDE              
+                16      STORE_FAST                      1: snippets_dir
+                18      LOAD_GLOBAL                     2: datetime
+                20      LOAD_METHOD                     3: utcnow
+                22      CALL_METHOD                     0
+                24      LOAD_METHOD                     4: strftime
+                26      LOAD_CONST                      3: '%Y%m%d_%H%M%S'
+                28      CALL_METHOD                     1
+                30      STORE_FAST                      2: ts
+                32      LOAD_GLOBAL                     1: ROOT
+                34      LOAD_CONST                      1: 'runtime'
+                36      BINARY_TRUE_DIVIDE              
+                38      LOAD_CONST                      4: 'snapshots'
+                40      BINARY_TRUE_DIVIDE              
+                42      LOAD_CONST                      5: 'client_configs'
+                44      BINARY_TRUE_DIVIDE              
+                46      LOAD_FAST                       2: ts
+                48      BINARY_TRUE_DIVIDE              
+                50      STORE_FAST                      3: snap_dir
+                52      LOAD_FAST                       3: snap_dir
+                54      LOAD_ATTR                       5: mkdir
+                56      LOAD_CONST                      6: True
+                58      LOAD_CONST                      6: True
+                60      LOAD_CONST                      7: ('parents', 'exist_ok')
+                62      CALL_FUNCTION_KW                2
+                64      POP_TOP                         
+                66      LOAD_GLOBAL                     6: str
+                68      LOAD_GLOBAL                     7: expand_keep
+                70      LOAD_FAST                       0: cfg
+                72      LOAD_METHOD                     8: get
+                74      LOAD_CONST                      8: 'memory_core'
+                76      BUILD_MAP                       0
+                78      CALL_METHOD                     2
+                80      LOAD_METHOD                     8: get
+                82      LOAD_CONST                      9: 'core_venv_python'
+                84      LOAD_CONST                      10: '~/.codex/skills/openclaw-memory/.venv/bin/python'
+                86      CALL_METHOD                     2
+                88      CALL_FUNCTION                   1
+                90      CALL_FUNCTION                   1
+                92      STORE_FAST                      4: core_py
+                94      BUILD_MAP                       0
+                96      STORE_FAST                      5: results
+                98      LOAD_GLOBAL                     9: _targets
+                100     CALL_FUNCTION                   0
+                102     LOAD_METHOD                     10: items
+                104     CALL_METHOD                     0
+                106     GET_ITER                        
+                108     FOR_ITER                        344 (to 456)
+                112     UNPACK_SEQUENCE                 2
+                114     STORE_FAST                      6: key
+                116     UNPACK_SEQUENCE                 2
+                118     STORE_FAST                      7: target
+                120     STORE_FAST                      8: client_name
+                122     LOAD_FAST                       1: snippets_dir
+                124     LOAD_FAST                       6: key
+                126     LOAD_CONST                      11: 'claude_desktop'
+                128     COMPARE_OP                      2 (==)
+                130     POP_JUMP_IF_FALSE               136
+                132     LOAD_CONST                      12: 'claude_desktop_config.json'
+                134     JUMP_FORWARD                    8 (to 144)
+                136     LOAD_FAST                       6: key
+                138     FORMAT_VALUE                    0 (FVC_NONE)
+                140     LOAD_CONST                      13: '_mcp.json'
+                142     BUILD_STRING                    2
+                144     BINARY_TRUE_DIVIDE              
+                146     STORE_FAST                      9: snippet_file
+                148     LOAD_GLOBAL                     11: _read_json
+                150     LOAD_FAST                       9: snippet_file
+                152     CALL_FUNCTION                   1
+                154     STORE_FAST                      10: snippet_obj
+                156     LOAD_GLOBAL                     12: isinstance
+                158     LOAD_FAST                       10: snippet_obj
+                160     LOAD_GLOBAL                     13: dict
+                162     CALL_FUNCTION                   2
+                164     POP_JUMP_IF_FALSE               186
+                166     LOAD_FAST                       10: snippet_obj
+                168     LOAD_METHOD                     8: get
+                170     LOAD_CONST                      14: 'mcpServers'
+                172     CALL_METHOD                     1
+                174     JUMP_IF_TRUE_OR_POP             178
+                176     BUILD_MAP                       0
+                178     LOAD_METHOD                     8: get
+                180     LOAD_CONST                      15: 'openclaw-memory'
+                182     CALL_METHOD                     1
+                184     JUMP_FORWARD                    2 (to 188)
+                186     LOAD_CONST                      0: None
+                188     STORE_FAST                      11: server
+                190     LOAD_GLOBAL                     12: isinstance
+                192     LOAD_FAST                       11: server
+                194     LOAD_GLOBAL                     13: dict
+                196     CALL_FUNCTION                   2
+                198     POP_JUMP_IF_TRUE                222
+                200     LOAD_CONST                      16: False
+                202     LOAD_CONST                      17: 'missing_snippet_server'
+                204     LOAD_GLOBAL                     6: str
+                206     LOAD_FAST                       7: target
+                208     CALL_FUNCTION                   1
+                210     LOAD_CONST                      18: ('ok', 'reason', 'target')
+                212     BUILD_CONST_KEY_MAP             3
+                214     LOAD_FAST                       5: results
+                216     LOAD_FAST                       6: key
+                218     STORE_SUBSCR                    
+                220     JUMP_ABSOLUTE                   108
+                222     LOAD_FAST                       7: target
+                224     LOAD_METHOD                     14: exists
+                226     CALL_METHOD                     0
+                228     POP_JUMP_IF_FALSE               270
+                232     LOAD_FAST                       6: key
+                234     FORMAT_VALUE                    0 (FVC_NONE)
+                236     LOAD_CONST                      19: '.backup.json'
+                238     BUILD_STRING                    2
+                240     STORE_FAST                      12: backup_name
+                242     LOAD_FAST                       3: snap_dir
+                244     LOAD_FAST                       12: backup_name
+                246     BINARY_TRUE_DIVIDE              
+                248     LOAD_ATTR                       15: write_text
+                250     LOAD_FAST                       7: target
+                252     LOAD_ATTR                       16: read_text
+                254     LOAD_CONST                      20: 'utf-8'
+                256     LOAD_CONST                      21: 'ignore'
+                258     LOAD_CONST                      22: ('encoding', 'errors')
+                260     CALL_FUNCTION_KW                2
+                262     LOAD_CONST                      20: 'utf-8'
+                264     LOAD_CONST                      23: ('encoding',)
+                266     CALL_FUNCTION_KW                2
+                268     POP_TOP                         
+                270     LOAD_GLOBAL                     11: _read_json
+                272     LOAD_FAST                       7: target
+                274     CALL_FUNCTION                   1
+                276     STORE_FAST                      13: current
+                278     LOAD_GLOBAL                     12: isinstance
+                280     LOAD_FAST                       13: current
+                282     LOAD_GLOBAL                     13: dict
+                284     CALL_FUNCTION                   2
+                286     POP_JUMP_IF_TRUE                294
+                290     BUILD_MAP                       0
+                292     STORE_FAST                      13: current
+                294     LOAD_FAST                       13: current
+                296     LOAD_METHOD                     8: get
+                298     LOAD_CONST                      14: 'mcpServers'
+                300     CALL_METHOD                     1
+                302     STORE_FAST                      14: mcp_servers
+                304     LOAD_GLOBAL                     12: isinstance
+                306     LOAD_FAST                       14: mcp_servers
+                308     LOAD_GLOBAL                     13: dict
+                310     CALL_FUNCTION                   2
+                312     POP_JUMP_IF_TRUE                320
+                316     BUILD_MAP                       0
+                318     STORE_FAST                      14: mcp_servers
+                320     LOAD_GLOBAL                     17: Path
+                322     LOAD_FAST                       4: core_py
+                324     CALL_FUNCTION                   1
+                326     LOAD_METHOD                     14: exists
+                328     CALL_METHOD                     0
+                330     POP_JUMP_IF_FALSE               338
+                334     LOAD_FAST                       4: core_py
+                336     JUMP_FORWARD                    8 (to 346)
+                338     LOAD_FAST                       11: server
+                340     LOAD_METHOD                     8: get
+                342     LOAD_CONST                      24: 'command'
+                344     CALL_METHOD                     1
+                346     LOAD_FAST                       11: server
+                348     LOAD_CONST                      24: 'command'
+                350     STORE_SUBSCR                    
+                352     LOAD_GLOBAL                     12: isinstance
+                354     LOAD_FAST                       11: server
+                356     LOAD_METHOD                     8: get
+                358     LOAD_CONST                      25: 'env'
+                360     CALL_METHOD                     1
+                362     LOAD_GLOBAL                     13: dict
+                364     CALL_FUNCTION                   2
+                366     POP_JUMP_IF_FALSE               380
+                370     LOAD_FAST                       11: server
+                372     LOAD_METHOD                     8: get
+                374     LOAD_CONST                      25: 'env'
+                376     CALL_METHOD                     1
+                378     JUMP_FORWARD                    2 (to 382)
+                380     BUILD_MAP                       0
+                382     STORE_FAST                      15: env
+                384     LOAD_FAST                       8: client_name
+                386     LOAD_FAST                       15: env
+                388     LOAD_CONST                      26: 'OPENCLAW_MCP_CLIENT'
+                390     STORE_SUBSCR                    
+                392     LOAD_FAST                       15: env
+                394     LOAD_FAST                       11: server
+                396     LOAD_CONST                      25: 'env'
+                398     STORE_SUBSCR                    
+                400     LOAD_FAST                       11: server
+                402     LOAD_FAST                       14: mcp_servers
+                404     LOAD_CONST                      15: 'openclaw-memory'
+                406     STORE_SUBSCR                    
+                408     LOAD_FAST                       14: mcp_servers
+                410     LOAD_FAST                       13: current
+                412     LOAD_CONST                      14: 'mcpServers'
+                414     STORE_SUBSCR                    
+                416     LOAD_GLOBAL                     18: _write_json
+                418     LOAD_FAST                       7: target
+                420     LOAD_FAST                       13: current
+                422     CALL_FUNCTION                   2
+                424     POP_TOP                         
+                426     LOAD_CONST                      6: True
+                428     LOAD_GLOBAL                     6: str
+                430     LOAD_FAST                       7: target
+                432     CALL_FUNCTION                   1
+                434     LOAD_FAST                       8: client_name
+                436     LOAD_FAST                       11: server
+                438     LOAD_METHOD                     8: get
+                440     LOAD_CONST                      24: 'command'
+                442     CALL_METHOD                     1
+                444     LOAD_CONST                      27: ('ok', 'target', 'client', 'command')
+                446     BUILD_CONST_KEY_MAP             4
+                448     LOAD_FAST                       5: results
+                450     LOAD_FAST                       6: key
+                452     STORE_SUBSCR                    
+                454     JUMP_ABSOLUTE                   108
+                456     LOAD_FAST                       2: ts
+                458     LOAD_FAST                       5: results
+                460     LOAD_CONST                      28: ('timestamp', 'results')
+                462     BUILD_CONST_KEY_MAP             2
+                464     STORE_FAST                      16: manifest
+                466     LOAD_GLOBAL                     18: _write_json
+                468     LOAD_FAST                       3: snap_dir
+                470     LOAD_CONST                      29: 'manifest.json'
+                472     BINARY_TRUE_DIVIDE              
+                474     LOAD_FAST                       16: manifest
+                476     CALL_FUNCTION                   2
+                478     POP_TOP                         
+                480     LOAD_GLOBAL                     19: print
+                482     LOAD_GLOBAL                     20: json
+                484     LOAD_ATTR                       21: dumps
+                486     LOAD_FAST                       16: manifest
+                488     LOAD_CONST                      16: False
+                490     LOAD_CONST                      30: 2
+                492     LOAD_CONST                      31: ('ensure_ascii', 'indent')
+                494     CALL_FUNCTION_KW                3
+                496     CALL_FUNCTION                   1
+                498     POP_TOP                         
+                500     LOAD_GLOBAL                     22: all
+                502     LOAD_CONST                      32: <CODE> <genexpr>
+                504     LOAD_CONST                      33: 'main.<locals>.<genexpr>'
+                506     MAKE_FUNCTION                   0
+                508     LOAD_FAST                       5: results
+                510     LOAD_METHOD                     23: values
+                512     CALL_METHOD                     0
+                514     GET_ITER                        
+                516     CALL_FUNCTION                   1
+                518     CALL_FUNCTION                   1
+                520     POP_JUMP_IF_FALSE               528
+                524     LOAD_CONST                      34: 0
+                526     RETURN_VALUE                    
+                528     LOAD_CONST                      35: 1
+                530     RETURN_VALUE                    
+        'main'
+        '__main__'
+    [Disassembly]
+        0       LOAD_CONST                      0: 0
+        2       LOAD_CONST                      1: ('annotations',)
+        4       IMPORT_NAME                     0: __future__
+        6       IMPORT_FROM                     1: annotations
+        8       STORE_NAME                      1: annotations
+        10      POP_TOP                         
+        12      LOAD_CONST                      0: 0
+        14      LOAD_CONST                      2: None
+        16      IMPORT_NAME                     2: json
+        18      STORE_NAME                      2: json
+        20      LOAD_CONST                      0: 0
+        22      LOAD_CONST                      2: None
+        24      IMPORT_NAME                     3: os
+        26      STORE_NAME                      3: os
+        28      LOAD_CONST                      0: 0
+        30      LOAD_CONST                      3: ('datetime',)
+        32      IMPORT_NAME                     4: datetime
+        34      IMPORT_FROM                     4: datetime
+        36      STORE_NAME                      4: datetime
+        38      POP_TOP                         
+        40      LOAD_CONST                      0: 0
+        42      LOAD_CONST                      4: ('Path',)
+        44      IMPORT_NAME                     5: pathlib
+        46      IMPORT_FROM                     6: Path
+        48      STORE_NAME                      6: Path
+        50      POP_TOP                         
+        52      LOAD_CONST                      0: 0
+        54      LOAD_CONST                      5: ('Dict', 'Tuple')
+        56      IMPORT_NAME                     7: typing
+        58      IMPORT_FROM                     8: Dict
+        60      STORE_NAME                      8: Dict
+        62      IMPORT_FROM                     9: Tuple
+        64      STORE_NAME                      9: Tuple
+        66      POP_TOP                         
+        68      LOAD_CONST                      0: 0
+        70      LOAD_CONST                      6: ('ROOT', 'expand', 'expand_keep', 'load_cfg')
+        72      IMPORT_NAME                     10: common
+        74      IMPORT_FROM                     11: ROOT
+        76      STORE_NAME                      11: ROOT
+        78      IMPORT_FROM                     12: expand
+        80      STORE_NAME                      12: expand
+        82      IMPORT_FROM                     13: expand_keep
+        84      STORE_NAME                      13: expand_keep
+        86      IMPORT_FROM                     14: load_cfg
+        88      STORE_NAME                      14: load_cfg
+        90      POP_TOP                         
+        92      LOAD_CONST                      7: 'Path'
+        94      LOAD_CONST                      8: 'dict'
+        96      LOAD_CONST                      9: ('path', 'return')
+        98      BUILD_CONST_KEY_MAP             2
+        100     LOAD_CONST                      10: <CODE> _read_json
+        102     LOAD_CONST                      11: '_read_json'
+        104     MAKE_FUNCTION                   4
+        106     STORE_NAME                      15: _read_json
+        108     LOAD_CONST                      7: 'Path'
+        110     LOAD_CONST                      8: 'dict'
+        112     LOAD_CONST                      12: 'None'
+        114     LOAD_CONST                      13: ('path', 'payload', 'return')
+        116     BUILD_CONST_KEY_MAP             3
+        118     LOAD_CONST                      14: <CODE> _write_json
+        120     LOAD_CONST                      15: '_write_json'
+        122     MAKE_FUNCTION                   4
+        124     STORE_NAME                      16: _write_json
+        126     LOAD_CONST                      16: 'Dict[str, Tuple[Path, str]]'
+        128     LOAD_CONST                      17: ('return',)
+        130     BUILD_CONST_KEY_MAP             1
+        132     LOAD_CONST                      18: <CODE> _targets
+        134     LOAD_CONST                      19: '_targets'
+        136     MAKE_FUNCTION                   4
+        138     STORE_NAME                      17: _targets
+        140     LOAD_CONST                      20: 'int'
+        142     LOAD_CONST                      17: ('return',)
+        144     BUILD_CONST_KEY_MAP             1
+        146     LOAD_CONST                      21: <CODE> main
+        148     LOAD_CONST                      22: 'main'
+        150     MAKE_FUNCTION                   4
+        152     STORE_NAME                      18: main
+        154     LOAD_NAME                       19: __name__
+        156     LOAD_CONST                      23: '__main__'
+        158     COMPARE_OP                      2 (==)
+        160     POP_JUMP_IF_FALSE               172
+        162     LOAD_NAME                       20: SystemExit
+        164     LOAD_NAME                       18: main
+        166     CALL_FUNCTION                   0
+        168     CALL_FUNCTION                   1
+        170     RAISE_VARARGS                   1
+        172     LOAD_CONST                      2: None
+        174     RETURN_VALUE                    

@@ -1,0 +1,9 @@
+include README.md
+include LICENSE
+global-exclude *.db *.sqlite *.jsonl .env
+prune .ms8_runtime
+prune backups
+prune cache
+prune artifacts
+prune restored_connect_from_pyc
+prune repo_public

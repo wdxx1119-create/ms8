@@ -1,0 +1,350 @@
+install_env.cpython-39.pyc (Python 3.9)
+[Code]
+    File Name: scripts/install_env.py
+    Object Name: <module>
+    Arg Count: 0
+    Pos Only Arg Count: 0
+    KW Only Arg Count: 0
+    Locals: 0
+    Stack Size: 3
+    Flags: 0x01000040 (CO_NOFREE | CO_FUTURE_ANNOTATIONS)
+    [Names]
+        '__future__'
+        'annotations'
+        'os'
+        'pathlib'
+        'Path'
+        'common'
+        'ROOT'
+        'choose_python'
+        'expand'
+        'expand_keep'
+        'load_cfg'
+        'run'
+        'main'
+        '__name__'
+        'SystemExit'
+    [Var Names]
+    [Free Vars]
+    [Cell Vars]
+    [Constants]
+        0
+        (
+            'annotations'
+        )
+        None
+        (
+            'Path'
+        )
+        (
+            'ROOT'
+            'choose_python'
+            'expand'
+            'expand_keep'
+            'load_cfg'
+            'run'
+        )
+        'int'
+        (
+            'return'
+        )
+        [Code]
+            File Name: scripts/install_env.py
+            Object Name: main
+            Arg Count: 0
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 12
+            Stack Size: 7
+            Flags: 0x01000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE | CO_FUTURE_ANNOTATIONS)
+            [Names]
+                'load_cfg'
+                'get'
+                'choose_python'
+                'expand'
+                'exists'
+                'run'
+                'str'
+                'print'
+                'expand_keep'
+            [Var Names]
+                'cfg'
+                'bridge'
+                'py'
+                'venv_dir'
+                'rc'
+                'out'
+                'err'
+                'pip'
+                'python'
+                'cmd'
+                'core_py'
+                'core_pip_cmds'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                'bridge_env'
+                'python_prefer'
+                'venv_dir'
+                '~/openclaw-memory-auto/.venv'
+                '-m'
+                'venv'
+                0
+                'bin'
+                'pip'
+                'python'
+                'install'
+                '--upgrade'
+                'mcp'
+                'pyyaml'
+                'memory_core'
+                'core_venv_python'
+                '~/.codex/skills/openclaw-memory/.venv/bin/python'
+                'bridge_python='
+                'core_python='
+                'install_env=ok'
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: load_cfg
+                2       CALL_FUNCTION                   0
+                4       STORE_FAST                      0: cfg
+                6       LOAD_FAST                       0: cfg
+                8       LOAD_METHOD                     1: get
+                10      LOAD_CONST                      1: 'bridge_env'
+                12      BUILD_MAP                       0
+                14      CALL_METHOD                     2
+                16      STORE_FAST                      1: bridge
+                18      LOAD_GLOBAL                     2: choose_python
+                20      LOAD_FAST                       1: bridge
+                22      LOAD_METHOD                     1: get
+                24      LOAD_CONST                      2: 'python_prefer'
+                26      BUILD_LIST                      0
+                28      CALL_METHOD                     2
+                30      CALL_FUNCTION                   1
+                32      STORE_FAST                      2: py
+                34      LOAD_GLOBAL                     3: expand
+                36      LOAD_FAST                       1: bridge
+                38      LOAD_METHOD                     1: get
+                40      LOAD_CONST                      3: 'venv_dir'
+                42      LOAD_CONST                      4: '~/openclaw-memory-auto/.venv'
+                44      CALL_METHOD                     2
+                46      CALL_FUNCTION                   1
+                48      STORE_FAST                      3: venv_dir
+                50      LOAD_FAST                       3: venv_dir
+                52      LOAD_METHOD                     4: exists
+                54      CALL_METHOD                     0
+                56      POP_JUMP_IF_TRUE                108
+                58      LOAD_GLOBAL                     5: run
+                60      LOAD_FAST                       2: py
+                62      LOAD_CONST                      5: '-m'
+                64      LOAD_CONST                      6: 'venv'
+                66      LOAD_GLOBAL                     6: str
+                68      LOAD_FAST                       3: venv_dir
+                70      CALL_FUNCTION                   1
+                72      BUILD_LIST                      4
+                74      CALL_FUNCTION                   1
+                76      UNPACK_SEQUENCE                 3
+                78      STORE_FAST                      4: rc
+                80      STORE_FAST                      5: out
+                82      STORE_FAST                      6: err
+                84      LOAD_FAST                       4: rc
+                86      LOAD_CONST                      7: 0
+                88      COMPARE_OP                      3 (!=)
+                90      POP_JUMP_IF_FALSE               108
+                92      LOAD_GLOBAL                     7: print
+                94      LOAD_FAST                       6: err
+                96      JUMP_IF_TRUE_OR_POP             100
+                98      LOAD_FAST                       5: out
+                100     CALL_FUNCTION                   1
+                102     POP_TOP                         
+                104     LOAD_FAST                       4: rc
+                106     RETURN_VALUE                    
+                108     LOAD_FAST                       3: venv_dir
+                110     LOAD_CONST                      8: 'bin'
+                112     BINARY_TRUE_DIVIDE              
+                114     LOAD_CONST                      9: 'pip'
+                116     BINARY_TRUE_DIVIDE              
+                118     STORE_FAST                      7: pip
+                120     LOAD_FAST                       3: venv_dir
+                122     LOAD_CONST                      8: 'bin'
+                124     BINARY_TRUE_DIVIDE              
+                126     LOAD_CONST                      10: 'python'
+                128     BINARY_TRUE_DIVIDE              
+                130     STORE_FAST                      8: python
+                132     LOAD_GLOBAL                     6: str
+                134     LOAD_FAST                       8: python
+                136     CALL_FUNCTION                   1
+                138     LOAD_CONST                      5: '-m'
+                140     LOAD_CONST                      9: 'pip'
+                142     LOAD_CONST                      11: 'install'
+                144     LOAD_CONST                      12: '--upgrade'
+                146     LOAD_CONST                      9: 'pip'
+                148     BUILD_LIST                      6
+                150     LOAD_GLOBAL                     6: str
+                152     LOAD_FAST                       7: pip
+                154     CALL_FUNCTION                   1
+                156     LOAD_CONST                      11: 'install'
+                158     LOAD_CONST                      13: 'mcp'
+                160     LOAD_CONST                      14: 'pyyaml'
+                162     BUILD_LIST                      4
+                164     BUILD_TUPLE                     2
+                166     GET_ITER                        
+                168     FOR_ITER                        46 (to 216)
+                170     STORE_FAST                      9: cmd
+                172     LOAD_GLOBAL                     5: run
+                174     LOAD_FAST                       9: cmd
+                176     CALL_FUNCTION                   1
+                178     UNPACK_SEQUENCE                 3
+                180     STORE_FAST                      4: rc
+                182     STORE_FAST                      5: out
+                184     STORE_FAST                      6: err
+                186     LOAD_FAST                       4: rc
+                188     LOAD_CONST                      7: 0
+                190     COMPARE_OP                      3 (!=)
+                192     POP_JUMP_IF_FALSE               168
+                194     LOAD_GLOBAL                     7: print
+                196     LOAD_FAST                       6: err
+                198     JUMP_IF_TRUE_OR_POP             202
+                200     LOAD_FAST                       5: out
+                202     CALL_FUNCTION                   1
+                204     POP_TOP                         
+                206     LOAD_FAST                       4: rc
+                208     ROT_TWO                         
+                210     POP_TOP                         
+                212     RETURN_VALUE                    
+                214     JUMP_ABSOLUTE                   168
+                216     LOAD_GLOBAL                     8: expand_keep
+                218     LOAD_FAST                       0: cfg
+                220     LOAD_METHOD                     1: get
+                222     LOAD_CONST                      15: 'memory_core'
+                224     BUILD_MAP                       0
+                226     CALL_METHOD                     2
+                228     LOAD_METHOD                     1: get
+                230     LOAD_CONST                      16: 'core_venv_python'
+                232     LOAD_CONST                      17: '~/.codex/skills/openclaw-memory/.venv/bin/python'
+                234     CALL_METHOD                     2
+                236     CALL_FUNCTION                   1
+                238     STORE_FAST                      10: core_py
+                240     LOAD_FAST                       10: core_py
+                242     LOAD_METHOD                     4: exists
+                244     CALL_METHOD                     0
+                246     POP_JUMP_IF_FALSE               348
+                250     LOAD_GLOBAL                     6: str
+                252     LOAD_FAST                       10: core_py
+                254     CALL_FUNCTION                   1
+                256     LOAD_CONST                      5: '-m'
+                258     LOAD_CONST                      9: 'pip'
+                260     LOAD_CONST                      11: 'install'
+                262     LOAD_CONST                      12: '--upgrade'
+                264     LOAD_CONST                      9: 'pip'
+                266     BUILD_LIST                      6
+                268     LOAD_GLOBAL                     6: str
+                270     LOAD_FAST                       10: core_py
+                272     CALL_FUNCTION                   1
+                274     LOAD_CONST                      5: '-m'
+                276     LOAD_CONST                      9: 'pip'
+                278     LOAD_CONST                      11: 'install'
+                280     LOAD_CONST                      13: 'mcp'
+                282     LOAD_CONST                      14: 'pyyaml'
+                284     BUILD_LIST                      6
+                286     BUILD_TUPLE                     2
+                288     STORE_FAST                      11: core_pip_cmds
+                290     LOAD_FAST                       11: core_pip_cmds
+                292     GET_ITER                        
+                294     FOR_ITER                        52 (to 348)
+                296     STORE_FAST                      9: cmd
+                298     LOAD_GLOBAL                     5: run
+                300     LOAD_FAST                       9: cmd
+                302     CALL_FUNCTION                   1
+                304     UNPACK_SEQUENCE                 3
+                306     STORE_FAST                      4: rc
+                308     STORE_FAST                      5: out
+                310     STORE_FAST                      6: err
+                312     LOAD_FAST                       4: rc
+                314     LOAD_CONST                      7: 0
+                316     COMPARE_OP                      3 (!=)
+                318     POP_JUMP_IF_FALSE               294
+                322     LOAD_GLOBAL                     7: print
+                324     LOAD_FAST                       6: err
+                326     JUMP_IF_TRUE_OR_POP             332
+                330     LOAD_FAST                       5: out
+                332     CALL_FUNCTION                   1
+                334     POP_TOP                         
+                336     LOAD_FAST                       4: rc
+                338     ROT_TWO                         
+                340     POP_TOP                         
+                342     RETURN_VALUE                    
+                344     JUMP_ABSOLUTE                   294
+                348     LOAD_GLOBAL                     7: print
+                350     LOAD_CONST                      18: 'bridge_python='
+                352     LOAD_FAST                       8: python
+                354     FORMAT_VALUE                    0 (FVC_NONE)
+                356     BUILD_STRING                    2
+                358     CALL_FUNCTION                   1
+                360     POP_TOP                         
+                362     LOAD_GLOBAL                     7: print
+                364     LOAD_CONST                      19: 'core_python='
+                366     LOAD_FAST                       10: core_py
+                368     FORMAT_VALUE                    0 (FVC_NONE)
+                370     BUILD_STRING                    2
+                372     CALL_FUNCTION                   1
+                374     POP_TOP                         
+                376     LOAD_GLOBAL                     7: print
+                378     LOAD_CONST                      20: 'install_env=ok'
+                380     CALL_FUNCTION                   1
+                382     POP_TOP                         
+                384     LOAD_CONST                      7: 0
+                386     RETURN_VALUE                    
+        'main'
+        '__main__'
+    [Disassembly]
+        0       LOAD_CONST                      0: 0
+        2       LOAD_CONST                      1: ('annotations',)
+        4       IMPORT_NAME                     0: __future__
+        6       IMPORT_FROM                     1: annotations
+        8       STORE_NAME                      1: annotations
+        10      POP_TOP                         
+        12      LOAD_CONST                      0: 0
+        14      LOAD_CONST                      2: None
+        16      IMPORT_NAME                     2: os
+        18      STORE_NAME                      2: os
+        20      LOAD_CONST                      0: 0
+        22      LOAD_CONST                      3: ('Path',)
+        24      IMPORT_NAME                     3: pathlib
+        26      IMPORT_FROM                     4: Path
+        28      STORE_NAME                      4: Path
+        30      POP_TOP                         
+        32      LOAD_CONST                      0: 0
+        34      LOAD_CONST                      4: ('ROOT', 'choose_python', 'expand', 'expand_keep', 'load_cfg', 'run')
+        36      IMPORT_NAME                     5: common
+        38      IMPORT_FROM                     6: ROOT
+        40      STORE_NAME                      6: ROOT
+        42      IMPORT_FROM                     7: choose_python
+        44      STORE_NAME                      7: choose_python
+        46      IMPORT_FROM                     8: expand
+        48      STORE_NAME                      8: expand
+        50      IMPORT_FROM                     9: expand_keep
+        52      STORE_NAME                      9: expand_keep
+        54      IMPORT_FROM                     10: load_cfg
+        56      STORE_NAME                      10: load_cfg
+        58      IMPORT_FROM                     11: run
+        60      STORE_NAME                      11: run
+        62      POP_TOP                         
+        64      LOAD_CONST                      5: 'int'
+        66      LOAD_CONST                      6: ('return',)
+        68      BUILD_CONST_KEY_MAP             1
+        70      LOAD_CONST                      7: <CODE> main
+        72      LOAD_CONST                      8: 'main'
+        74      MAKE_FUNCTION                   4
+        76      STORE_NAME                      12: main
+        78      LOAD_NAME                       13: __name__
+        80      LOAD_CONST                      9: '__main__'
+        82      COMPARE_OP                      2 (==)
+        84      POP_JUMP_IF_FALSE               96
+        86      LOAD_NAME                       14: SystemExit
+        88      LOAD_NAME                       12: main
+        90      CALL_FUNCTION                   0
+        92      CALL_FUNCTION                   1
+        94      RAISE_VARARGS                   1
+        96      LOAD_CONST                      2: None
+        98      RETURN_VALUE                    

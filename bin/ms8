@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+export MS8_HOME="/Users/s/Documents/New project/.ms8_runtime"
+export OPENCLAW_MEMORY_FAST_START="${OPENCLAW_MEMORY_FAST_START:-1}"
+export PYTHONPATH="/Users/s/Documents/New project/src:${PYTHONPATH:-}"
+exec "/Users/s/Documents/New project/.venv/bin/python" -m ms8 "$@"

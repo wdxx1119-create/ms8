@@ -1,0 +1,908 @@
+smoke_test.cpython-39.pyc (Python 3.9)
+[Code]
+    File Name: /Users/s/openclaw-memory-auto/scripts/smoke_test.py
+    Object Name: <module>
+    Arg Count: 0
+    Pos Only Arg Count: 0
+    KW Only Arg Count: 0
+    Locals: 0
+    Stack Size: 5
+    Flags: 0x01000040 (CO_NOFREE | CO_FUTURE_ANNOTATIONS)
+    [Names]
+        '__future__'
+        'annotations'
+        'argparse'
+        'json'
+        'os'
+        'sys'
+        'pathlib'
+        'Path'
+        'datetime'
+        'date'
+        'timezone'
+        'typing'
+        'Any'
+        'Dict'
+        'common'
+        'ROOT'
+        'write_json'
+        '_json_safe'
+        '_compact_value'
+        'main'
+        '__name__'
+        'SystemExit'
+    [Var Names]
+    [Free Vars]
+    [Cell Vars]
+    [Constants]
+        0
+        (
+            'annotations'
+        )
+        None
+        (
+            'Path'
+        )
+        (
+            'date'
+            'datetime'
+            'timezone'
+        )
+        (
+            'Any'
+            'Dict'
+        )
+        (
+            'ROOT'
+            'write_json'
+        )
+        'Any'
+        (
+            'value'
+            'return'
+        )
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/scripts/smoke_test.py
+            Object Name: _json_safe
+            Arg Count: 1
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 1
+            Stack Size: 4
+            Flags: 0x01000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE | CO_FUTURE_ANNOTATIONS)
+            [Names]
+                'isinstance'
+                'dict'
+                'items'
+                'list'
+                'datetime'
+                'date'
+                'isoformat'
+                'Path'
+                'str'
+            [Var Names]
+                'value'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                [Code]
+                    File Name: /Users/s/openclaw-memory-auto/scripts/smoke_test.py
+                    Object Name: <dictcomp>
+                    Arg Count: 1
+                    Pos Only Arg Count: 0
+                    KW Only Arg Count: 0
+                    Locals: 3
+                    Stack Size: 5
+                    Flags: 0x01000053 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NESTED | CO_NOFREE | CO_FUTURE_ANNOTATIONS)
+                    [Names]
+                        'str'
+                        '_json_safe'
+                    [Var Names]
+                        '.0'
+                        'k'
+                        'v'
+                    [Free Vars]
+                    [Cell Vars]
+                    [Constants]
+                    [Disassembly]
+                        0       BUILD_MAP                       0
+                        2       LOAD_FAST                       0: .0
+                        4       FOR_ITER                        22 (to 28)
+                        6       UNPACK_SEQUENCE                 2
+                        8       STORE_FAST                      1: k
+                        10      STORE_FAST                      2: v
+                        12      LOAD_GLOBAL                     0: str
+                        14      LOAD_FAST                       1: k
+                        16      CALL_FUNCTION                   1
+                        18      LOAD_GLOBAL                     1: _json_safe
+                        20      LOAD_FAST                       2: v
+                        22      CALL_FUNCTION                   1
+                        24      MAP_ADD                         2
+                        26      JUMP_ABSOLUTE                   4
+                        28      RETURN_VALUE                    
+                '_json_safe.<locals>.<dictcomp>'
+                [Code]
+                    File Name: /Users/s/openclaw-memory-auto/scripts/smoke_test.py
+                    Object Name: <listcomp>
+                    Arg Count: 1
+                    Pos Only Arg Count: 0
+                    KW Only Arg Count: 0
+                    Locals: 2
+                    Stack Size: 4
+                    Flags: 0x01000053 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NESTED | CO_NOFREE | CO_FUTURE_ANNOTATIONS)
+                    [Names]
+                        '_json_safe'
+                    [Var Names]
+                        '.0'
+                        'v'
+                    [Free Vars]
+                    [Cell Vars]
+                    [Constants]
+                    [Disassembly]
+                        0       BUILD_LIST                      0
+                        2       LOAD_FAST                       0: .0
+                        4       FOR_ITER                        12 (to 18)
+                        6       STORE_FAST                      1: v
+                        8       LOAD_GLOBAL                     0: _json_safe
+                        10      LOAD_FAST                       1: v
+                        12      CALL_FUNCTION                   1
+                        14      LIST_APPEND                     2
+                        16      JUMP_ABSOLUTE                   4
+                        18      RETURN_VALUE                    
+                '_json_safe.<locals>.<listcomp>'
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: isinstance
+                2       LOAD_FAST                       0: value
+                4       LOAD_GLOBAL                     1: dict
+                6       CALL_FUNCTION                   2
+                8       POP_JUMP_IF_FALSE               28
+                10      LOAD_CONST                      1: <CODE> <dictcomp>
+                12      LOAD_CONST                      2: '_json_safe.<locals>.<dictcomp>'
+                14      MAKE_FUNCTION                   0
+                16      LOAD_FAST                       0: value
+                18      LOAD_METHOD                     2: items
+                20      CALL_METHOD                     0
+                22      GET_ITER                        
+                24      CALL_FUNCTION                   1
+                26      RETURN_VALUE                    
+                28      LOAD_GLOBAL                     0: isinstance
+                30      LOAD_FAST                       0: value
+                32      LOAD_GLOBAL                     3: list
+                34      CALL_FUNCTION                   2
+                36      POP_JUMP_IF_FALSE               52
+                38      LOAD_CONST                      3: <CODE> <listcomp>
+                40      LOAD_CONST                      4: '_json_safe.<locals>.<listcomp>'
+                42      MAKE_FUNCTION                   0
+                44      LOAD_FAST                       0: value
+                46      GET_ITER                        
+                48      CALL_FUNCTION                   1
+                50      RETURN_VALUE                    
+                52      LOAD_GLOBAL                     0: isinstance
+                54      LOAD_FAST                       0: value
+                56      LOAD_GLOBAL                     4: datetime
+                58      LOAD_GLOBAL                     5: date
+                60      BUILD_TUPLE                     2
+                62      CALL_FUNCTION                   2
+                64      POP_JUMP_IF_FALSE               74
+                66      LOAD_FAST                       0: value
+                68      LOAD_METHOD                     6: isoformat
+                70      CALL_METHOD                     0
+                72      RETURN_VALUE                    
+                74      LOAD_GLOBAL                     0: isinstance
+                76      LOAD_FAST                       0: value
+                78      LOAD_GLOBAL                     7: Path
+                80      CALL_FUNCTION                   2
+                82      POP_JUMP_IF_FALSE               92
+                84      LOAD_GLOBAL                     8: str
+                86      LOAD_FAST                       0: value
+                88      CALL_FUNCTION                   1
+                90      RETURN_VALUE                    
+                92      LOAD_FAST                       0: value
+                94      RETURN_VALUE                    
+        '_json_safe'
+        240
+        'int'
+        (
+            'value'
+            'max_len'
+            'return'
+        )
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/scripts/smoke_test.py
+            Object Name: _compact_value
+            Arg Count: 2
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 6
+            Stack Size: 5
+            Flags: 0x01000003 (CO_OPTIMIZED | CO_NEWLOCALS | CO_FUTURE_ANNOTATIONS)
+            [Names]
+                'isinstance'
+                'dict'
+                'items'
+                '_compact_value'
+                'list'
+                'str'
+                'len'
+            [Var Names]
+                'value'
+                'max_len'
+                'keep'
+                'out'
+                'k'
+                'v'
+            [Free Vars]
+            [Cell Vars]
+                'max_len'
+            [Constants]
+                None
+                frozenset({
+                    'count'
+                    'time'
+                    'server'
+                    'error'
+                    'query'
+                    'mode'
+                    'ok'
+                    'error_code'
+                })
+                (
+                    'max_len'
+                )
+                [Code]
+                    File Name: /Users/s/openclaw-memory-auto/scripts/smoke_test.py
+                    Object Name: <listcomp>
+                    Arg Count: 1
+                    Pos Only Arg Count: 0
+                    KW Only Arg Count: 0
+                    Locals: 2
+                    Stack Size: 6
+                    Flags: 0x01000013 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NESTED | CO_FUTURE_ANNOTATIONS)
+                    [Names]
+                        '_compact_value'
+                    [Var Names]
+                        '.0'
+                        'v'
+                    [Free Vars]
+                        'max_len'
+                    [Cell Vars]
+                    [Constants]
+                        (
+                            'max_len'
+                        )
+                    [Disassembly]
+                        0       BUILD_LIST                      0
+                        2       LOAD_FAST                       0: .0
+                        4       FOR_ITER                        16 (to 22)
+                        6       STORE_FAST                      1: v
+                        8       LOAD_GLOBAL                     0: _compact_value
+                        10      LOAD_FAST                       1: v
+                        12      LOAD_DEREF                      0: max_len
+                        14      LOAD_CONST                      0: ('max_len',)
+                        16      CALL_FUNCTION_KW                2
+                        18      LIST_APPEND                     2
+                        20      JUMP_ABSOLUTE                   4
+                        22      RETURN_VALUE                    
+                '_compact_value.<locals>.<listcomp>'
+                3
+                '...'
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: isinstance
+                2       LOAD_FAST                       0: value
+                4       LOAD_GLOBAL                     1: dict
+                6       CALL_FUNCTION                   2
+                8       POP_JUMP_IF_FALSE               68
+                10      BUILD_SET                       0
+                12      LOAD_CONST                      1: frozenset({'count', 'time', 'server', 'error', 'query', 'mode', 'ok', 'error_code'})
+                14      SET_UPDATE                      1
+                16      STORE_FAST                      2: keep
+                18      BUILD_MAP                       0
+                20      STORE_FAST                      3: out
+                22      LOAD_FAST                       0: value
+                24      LOAD_METHOD                     2: items
+                26      CALL_METHOD                     0
+                28      GET_ITER                        
+                30      FOR_ITER                        32 (to 64)
+                32      UNPACK_SEQUENCE                 2
+                34      STORE_FAST                      4: k
+                36      STORE_FAST                      5: v
+                38      LOAD_FAST                       4: k
+                40      LOAD_FAST                       2: keep
+                42      CONTAINS_OP                     0 (in)
+                44      POP_JUMP_IF_FALSE               30
+                46      LOAD_GLOBAL                     3: _compact_value
+                48      LOAD_FAST                       5: v
+                50      LOAD_DEREF                      0: max_len
+                52      LOAD_CONST                      2: ('max_len',)
+                54      CALL_FUNCTION_KW                2
+                56      LOAD_FAST                       3: out
+                58      LOAD_FAST                       4: k
+                60      STORE_SUBSCR                    
+                62      JUMP_ABSOLUTE                   30
+                64      LOAD_FAST                       3: out
+                66      RETURN_VALUE                    
+                68      LOAD_GLOBAL                     0: isinstance
+                70      LOAD_FAST                       0: value
+                72      LOAD_GLOBAL                     4: list
+                74      CALL_FUNCTION                   2
+                76      POP_JUMP_IF_FALSE               104
+                78      LOAD_CLOSURE                    0: max_len
+                80      BUILD_TUPLE                     1
+                82      LOAD_CONST                      3: <CODE> <listcomp>
+                84      LOAD_CONST                      4: '_compact_value.<locals>.<listcomp>'
+                86      MAKE_FUNCTION                   8
+                88      LOAD_FAST                       0: value
+                90      LOAD_CONST                      0: None
+                92      LOAD_CONST                      5: 3
+                94      BUILD_SLICE                     2
+                96      BINARY_SUBSCR                   
+                98      GET_ITER                        
+                100     CALL_FUNCTION                   1
+                102     RETURN_VALUE                    
+                104     LOAD_GLOBAL                     0: isinstance
+                106     LOAD_FAST                       0: value
+                108     LOAD_GLOBAL                     5: str
+                110     CALL_FUNCTION                   2
+                112     POP_JUMP_IF_FALSE               142
+                114     LOAD_GLOBAL                     6: len
+                116     LOAD_FAST                       0: value
+                118     CALL_FUNCTION                   1
+                120     LOAD_DEREF                      0: max_len
+                122     COMPARE_OP                      4 (>)
+                124     POP_JUMP_IF_FALSE               142
+                126     LOAD_FAST                       0: value
+                128     LOAD_CONST                      0: None
+                130     LOAD_DEREF                      0: max_len
+                132     BUILD_SLICE                     2
+                134     BINARY_SUBSCR                   
+                136     LOAD_CONST                      6: '...'
+                138     BINARY_ADD                      
+                140     RETURN_VALUE                    
+                142     LOAD_FAST                       0: value
+                144     RETURN_VALUE                    
+        '_compact_value'
+        (
+            'return'
+        )
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/scripts/smoke_test.py
+            Object Name: main
+            Arg Count: 0
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 24
+            Stack Size: 11
+            Flags: 0x01000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE | CO_FUTURE_ANNOTATIONS)
+            [Names]
+                'argparse'
+                'ArgumentParser'
+                'add_argument'
+                'parse_args'
+                'os'
+                'environ'
+                'sys'
+                'path'
+                'insert'
+                'str'
+                'ROOT'
+                'mcp_server'
+                'memory_status'
+                'datetime'
+                'now'
+                'timezone'
+                'utc'
+                'strftime'
+                'save_memory'
+                'search_memory'
+                'get_context'
+                'bool'
+                'get'
+                'isinstance'
+                'list'
+                'compact'
+                'write_json'
+                '_json_safe'
+                '_compact_value'
+                'print'
+                'json'
+                'dumps'
+            [Var Names]
+                'parser'
+                'args'
+                'server'
+                'status_payload'
+                'stamp'
+                'sample'
+                'save'
+                'search'
+                'context'
+                'save_ok'
+                'save_useful'
+                'mode'
+                'result'
+                'item'
+                'item_result'
+                'item_status'
+                'record_status'
+                'report'
+                'out'
+                'safe_status'
+                'safe_save'
+                'safe_search'
+                'safe_context'
+                'to_print'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                'Run MCP smoke test.'
+                (
+                    'description'
+                )
+                '--compact'
+                'store_true'
+                'Print compact report for easier ops inspection'
+                (
+                    'action'
+                    'help'
+                )
+                '1'
+                'OPENCLAW_MCP_SMOKE'
+                'Claude Desktop'
+                'OPENCLAW_MCP_CLIENT'
+                0
+                (
+                    'mcp_server'
+                )
+                '%Y%m%dT%H%M%SZ'
+                '决定采用方案B，并将缓存配置改为 enabled=true。smoke='
+                (
+                    'client_name'
+                )
+                'smoke'
+                3
+                (
+                    'top_k'
+                )
+                '请总结最近的配置变更和决策'
+                'ok'
+                False
+                'mode'
+                ''
+                'append_interaction'
+                True
+                'auto_memory_pipeline'
+                'result'
+                'status'
+                'record'
+                frozenset({
+                    'saved'
+                    'queued_review'
+                    'success'
+                    'saved_review'
+                })
+                frozenset({
+                    'pending_review'
+                    'redacted_accept'
+                    'accepted'
+                })
+                (
+                    'status'
+                    'save'
+                    'save_useful'
+                    'search'
+                    'search_ok'
+                    'context'
+                    'context_ok'
+                    'compact'
+                )
+                'runtime'
+                'health.json'
+                (
+                    'status'
+                    'save'
+                    'save_useful'
+                    'search'
+                    'search_ok'
+                    'context'
+                    'context_ok'
+                )
+                2
+                (
+                    'ensure_ascii'
+                    'indent'
+                )
+                1
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: argparse
+                2       LOAD_ATTR                       1: ArgumentParser
+                4       LOAD_CONST                      1: 'Run MCP smoke test.'
+                6       LOAD_CONST                      2: ('description',)
+                8       CALL_FUNCTION_KW                1
+                10      STORE_FAST                      0: parser
+                12      LOAD_FAST                       0: parser
+                14      LOAD_ATTR                       2: add_argument
+                16      LOAD_CONST                      3: '--compact'
+                18      LOAD_CONST                      4: 'store_true'
+                20      LOAD_CONST                      5: 'Print compact report for easier ops inspection'
+                22      LOAD_CONST                      6: ('action', 'help')
+                24      CALL_FUNCTION_KW                3
+                26      POP_TOP                         
+                28      LOAD_FAST                       0: parser
+                30      LOAD_METHOD                     3: parse_args
+                32      CALL_METHOD                     0
+                34      STORE_FAST                      1: args
+                36      LOAD_CONST                      7: '1'
+                38      LOAD_GLOBAL                     4: os
+                40      LOAD_ATTR                       5: environ
+                42      LOAD_CONST                      8: 'OPENCLAW_MCP_SMOKE'
+                44      STORE_SUBSCR                    
+                46      LOAD_CONST                      9: 'Claude Desktop'
+                48      LOAD_GLOBAL                     4: os
+                50      LOAD_ATTR                       5: environ
+                52      LOAD_CONST                      10: 'OPENCLAW_MCP_CLIENT'
+                54      STORE_SUBSCR                    
+                56      LOAD_GLOBAL                     6: sys
+                58      LOAD_ATTR                       7: path
+                60      LOAD_METHOD                     8: insert
+                62      LOAD_CONST                      11: 0
+                64      LOAD_GLOBAL                     9: str
+                66      LOAD_GLOBAL                     10: ROOT
+                68      CALL_FUNCTION                   1
+                70      CALL_METHOD                     2
+                72      POP_TOP                         
+                74      LOAD_CONST                      11: 0
+                76      LOAD_CONST                      12: ('mcp_server',)
+                78      IMPORT_NAME                     11: mcp_server
+                80      IMPORT_FROM                     11: mcp_server
+                82      STORE_FAST                      2: server
+                84      POP_TOP                         
+                86      LOAD_FAST                       2: server
+                88      LOAD_METHOD                     12: memory_status
+                90      CALL_METHOD                     0
+                92      STORE_FAST                      3: status_payload
+                94      LOAD_GLOBAL                     13: datetime
+                96      LOAD_METHOD                     14: now
+                98      LOAD_GLOBAL                     15: timezone
+                100     LOAD_ATTR                       16: utc
+                102     CALL_METHOD                     1
+                104     LOAD_METHOD                     17: strftime
+                106     LOAD_CONST                      13: '%Y%m%dT%H%M%SZ'
+                108     CALL_METHOD                     1
+                110     STORE_FAST                      4: stamp
+                112     LOAD_CONST                      14: '决定采用方案B，并将缓存配置改为 enabled=true。smoke='
+                114     LOAD_FAST                       4: stamp
+                116     FORMAT_VALUE                    0 (FVC_NONE)
+                118     BUILD_STRING                    2
+                120     STORE_FAST                      5: sample
+                122     LOAD_FAST                       2: server
+                124     LOAD_ATTR                       18: save_memory
+                126     LOAD_FAST                       5: sample
+                128     LOAD_CONST                      9: 'Claude Desktop'
+                130     LOAD_CONST                      15: ('client_name',)
+                132     CALL_FUNCTION_KW                2
+                134     STORE_FAST                      6: save
+                136     LOAD_FAST                       2: server
+                138     LOAD_ATTR                       19: search_memory
+                140     LOAD_CONST                      16: 'smoke'
+                142     LOAD_CONST                      17: 3
+                144     LOAD_CONST                      18: ('top_k',)
+                146     CALL_FUNCTION_KW                2
+                148     STORE_FAST                      7: search
+                150     LOAD_FAST                       2: server
+                152     LOAD_METHOD                     20: get_context
+                154     LOAD_CONST                      19: '请总结最近的配置变更和决策'
+                156     CALL_METHOD                     1
+                158     STORE_FAST                      8: context
+                160     LOAD_GLOBAL                     21: bool
+                162     LOAD_FAST                       6: save
+                164     LOAD_METHOD                     22: get
+                166     LOAD_CONST                      20: 'ok'
+                168     LOAD_CONST                      21: False
+                170     CALL_METHOD                     2
+                172     CALL_FUNCTION                   1
+                174     STORE_FAST                      9: save_ok
+                176     LOAD_CONST                      21: False
+                178     STORE_FAST                      10: save_useful
+                180     LOAD_FAST                       9: save_ok
+                182     POP_JUMP_IF_FALSE               372
+                186     LOAD_GLOBAL                     9: str
+                188     LOAD_FAST                       6: save
+                190     LOAD_METHOD                     22: get
+                192     LOAD_CONST                      22: 'mode'
+                194     LOAD_CONST                      23: ''
+                196     CALL_METHOD                     2
+                198     CALL_FUNCTION                   1
+                200     STORE_FAST                      11: mode
+                202     LOAD_FAST                       11: mode
+                204     LOAD_CONST                      24: 'append_interaction'
+                206     COMPARE_OP                      2 (==)
+                208     POP_JUMP_IF_FALSE               216
+                210     LOAD_CONST                      25: True
+                212     STORE_FAST                      10: save_useful
+                214     JUMP_FORWARD                    156 (to 372)
+                216     LOAD_FAST                       11: mode
+                218     LOAD_CONST                      26: 'auto_memory_pipeline'
+                220     COMPARE_OP                      2 (==)
+                222     POP_JUMP_IF_FALSE               372
+                226     LOAD_FAST                       6: save
+                228     LOAD_METHOD                     22: get
+                230     LOAD_CONST                      27: 'result'
+                232     BUILD_LIST                      0
+                234     CALL_METHOD                     2
+                236     STORE_FAST                      12: result
+                238     LOAD_GLOBAL                     23: isinstance
+                240     LOAD_FAST                       12: result
+                242     LOAD_GLOBAL                     24: list
+                244     CALL_FUNCTION                   2
+                246     POP_JUMP_IF_FALSE               372
+                250     LOAD_FAST                       12: result
+                252     GET_ITER                        
+                254     FOR_ITER                        116 (to 372)
+                256     STORE_FAST                      13: item
+                258     LOAD_FAST                       13: item
+                260     JUMP_IF_TRUE_OR_POP             266
+                264     BUILD_MAP                       0
+                266     LOAD_METHOD                     22: get
+                268     LOAD_CONST                      27: 'result'
+                270     BUILD_MAP                       0
+                272     CALL_METHOD                     2
+                274     STORE_FAST                      14: item_result
+                276     LOAD_GLOBAL                     9: str
+                278     LOAD_FAST                       14: item_result
+                280     JUMP_IF_TRUE_OR_POP             286
+                284     BUILD_MAP                       0
+                286     LOAD_METHOD                     22: get
+                288     LOAD_CONST                      28: 'status'
+                290     LOAD_CONST                      23: ''
+                292     CALL_METHOD                     2
+                294     CALL_FUNCTION                   1
+                296     STORE_FAST                      15: item_status
+                298     LOAD_GLOBAL                     9: str
+                300     LOAD_FAST                       13: item
+                302     JUMP_IF_TRUE_OR_POP             308
+                306     BUILD_MAP                       0
+                308     LOAD_METHOD                     22: get
+                310     LOAD_CONST                      29: 'record'
+                312     CALL_METHOD                     1
+                314     JUMP_IF_TRUE_OR_POP             320
+                318     BUILD_MAP                       0
+                320     LOAD_METHOD                     22: get
+                322     LOAD_CONST                      28: 'status'
+                324     LOAD_CONST                      23: ''
+                326     CALL_METHOD                     2
+                328     CALL_FUNCTION                   1
+                330     STORE_FAST                      16: record_status
+                332     LOAD_FAST                       15: item_status
+                334     LOAD_CONST                      30: frozenset({'saved', 'queued_review', 'success', 'saved_review'})
+                336     CONTAINS_OP                     0 (in)
+                338     POP_JUMP_IF_FALSE               352
+                342     LOAD_CONST                      25: True
+                344     STORE_FAST                      10: save_useful
+                346     POP_TOP                         
+                348     JUMP_ABSOLUTE                   372
+                352     LOAD_FAST                       16: record_status
+                354     LOAD_CONST                      31: frozenset({'pending_review', 'redacted_accept', 'accepted'})
+                356     CONTAINS_OP                     0 (in)
+                358     POP_JUMP_IF_FALSE               254
+                360     LOAD_CONST                      25: True
+                362     STORE_FAST                      10: save_useful
+                364     POP_TOP                         
+                366     JUMP_ABSOLUTE                   372
+                370     JUMP_ABSOLUTE                   254
+                372     LOAD_FAST                       3: status_payload
+                374     LOAD_FAST                       6: save
+                376     LOAD_FAST                       10: save_useful
+                378     LOAD_FAST                       7: search
+                380     LOAD_GLOBAL                     21: bool
+                382     LOAD_FAST                       7: search
+                384     LOAD_METHOD                     22: get
+                386     LOAD_CONST                      20: 'ok'
+                388     LOAD_CONST                      21: False
+                390     CALL_METHOD                     2
+                392     CALL_FUNCTION                   1
+                394     LOAD_FAST                       8: context
+                396     LOAD_GLOBAL                     21: bool
+                398     LOAD_FAST                       8: context
+                400     LOAD_METHOD                     22: get
+                402     LOAD_CONST                      20: 'ok'
+                404     LOAD_CONST                      21: False
+                406     CALL_METHOD                     2
+                408     CALL_FUNCTION                   1
+                410     LOAD_GLOBAL                     21: bool
+                412     LOAD_FAST                       1: args
+                414     LOAD_ATTR                       25: compact
+                416     CALL_FUNCTION                   1
+                418     LOAD_CONST                      32: ('status', 'save', 'save_useful', 'search', 'search_ok', 'context', 'context_ok', 'compact')
+                420     BUILD_CONST_KEY_MAP             8
+                422     STORE_FAST                      17: report
+                424     LOAD_GLOBAL                     10: ROOT
+                426     LOAD_CONST                      33: 'runtime'
+                428     BINARY_TRUE_DIVIDE              
+                430     LOAD_CONST                      34: 'health.json'
+                432     BINARY_TRUE_DIVIDE              
+                434     STORE_FAST                      18: out
+                436     LOAD_GLOBAL                     26: write_json
+                438     LOAD_FAST                       18: out
+                440     LOAD_GLOBAL                     27: _json_safe
+                442     LOAD_FAST                       17: report
+                444     CALL_FUNCTION                   1
+                446     CALL_FUNCTION                   2
+                448     POP_TOP                         
+                450     LOAD_GLOBAL                     27: _json_safe
+                452     LOAD_FAST                       3: status_payload
+                454     CALL_FUNCTION                   1
+                456     STORE_FAST                      19: safe_status
+                458     LOAD_GLOBAL                     27: _json_safe
+                460     LOAD_FAST                       6: save
+                462     CALL_FUNCTION                   1
+                464     STORE_FAST                      20: safe_save
+                466     LOAD_GLOBAL                     27: _json_safe
+                468     LOAD_FAST                       7: search
+                470     CALL_FUNCTION                   1
+                472     STORE_FAST                      21: safe_search
+                474     LOAD_GLOBAL                     27: _json_safe
+                476     LOAD_FAST                       8: context
+                478     CALL_FUNCTION                   1
+                480     STORE_FAST                      22: safe_context
+                482     LOAD_FAST                       1: args
+                484     LOAD_ATTR                       25: compact
+                486     POP_JUMP_IF_FALSE               550
+                490     LOAD_GLOBAL                     28: _compact_value
+                492     LOAD_FAST                       19: safe_status
+                494     CALL_FUNCTION                   1
+                496     LOAD_GLOBAL                     28: _compact_value
+                498     LOAD_FAST                       20: safe_save
+                500     CALL_FUNCTION                   1
+                502     LOAD_FAST                       10: save_useful
+                504     LOAD_GLOBAL                     28: _compact_value
+                506     LOAD_FAST                       21: safe_search
+                508     CALL_FUNCTION                   1
+                510     LOAD_GLOBAL                     21: bool
+                512     LOAD_FAST                       7: search
+                514     LOAD_METHOD                     22: get
+                516     LOAD_CONST                      20: 'ok'
+                518     LOAD_CONST                      21: False
+                520     CALL_METHOD                     2
+                522     CALL_FUNCTION                   1
+                524     LOAD_GLOBAL                     28: _compact_value
+                526     LOAD_FAST                       22: safe_context
+                528     CALL_FUNCTION                   1
+                530     LOAD_GLOBAL                     21: bool
+                532     LOAD_FAST                       8: context
+                534     LOAD_METHOD                     22: get
+                536     LOAD_CONST                      20: 'ok'
+                538     LOAD_CONST                      21: False
+                540     CALL_METHOD                     2
+                542     CALL_FUNCTION                   1
+                544     LOAD_CONST                      35: ('status', 'save', 'save_useful', 'search', 'search_ok', 'context', 'context_ok')
+                546     BUILD_CONST_KEY_MAP             7
+                548     JUMP_FORWARD                    6 (to 556)
+                550     LOAD_GLOBAL                     27: _json_safe
+                552     LOAD_FAST                       17: report
+                554     CALL_FUNCTION                   1
+                556     STORE_FAST                      23: to_print
+                558     LOAD_GLOBAL                     29: print
+                560     LOAD_GLOBAL                     30: json
+                562     LOAD_ATTR                       31: dumps
+                564     LOAD_FAST                       23: to_print
+                566     LOAD_CONST                      21: False
+                568     LOAD_CONST                      36: 2
+                570     LOAD_CONST                      37: ('ensure_ascii', 'indent')
+                572     CALL_FUNCTION_KW                3
+                574     CALL_FUNCTION                   1
+                576     POP_TOP                         
+                578     LOAD_FAST                       3: status_payload
+                580     LOAD_METHOD                     22: get
+                582     LOAD_CONST                      20: 'ok'
+                584     CALL_METHOD                     1
+                586     POP_JUMP_IF_TRUE                594
+                590     LOAD_CONST                      38: 1
+                592     RETURN_VALUE                    
+                594     LOAD_FAST                       9: save_ok
+                596     POP_JUMP_IF_TRUE                604
+                600     LOAD_CONST                      38: 1
+                602     RETURN_VALUE                    
+                604     LOAD_FAST                       10: save_useful
+                606     POP_JUMP_IF_TRUE                614
+                610     LOAD_CONST                      38: 1
+                612     RETURN_VALUE                    
+                614     LOAD_CONST                      11: 0
+                616     RETURN_VALUE                    
+        'main'
+        '__main__'
+        (
+            240
+        )
+    [Disassembly]
+        0       LOAD_CONST                      0: 0
+        2       LOAD_CONST                      1: ('annotations',)
+        4       IMPORT_NAME                     0: __future__
+        6       IMPORT_FROM                     1: annotations
+        8       STORE_NAME                      1: annotations
+        10      POP_TOP                         
+        12      LOAD_CONST                      0: 0
+        14      LOAD_CONST                      2: None
+        16      IMPORT_NAME                     2: argparse
+        18      STORE_NAME                      2: argparse
+        20      LOAD_CONST                      0: 0
+        22      LOAD_CONST                      2: None
+        24      IMPORT_NAME                     3: json
+        26      STORE_NAME                      3: json
+        28      LOAD_CONST                      0: 0
+        30      LOAD_CONST                      2: None
+        32      IMPORT_NAME                     4: os
+        34      STORE_NAME                      4: os
+        36      LOAD_CONST                      0: 0
+        38      LOAD_CONST                      2: None
+        40      IMPORT_NAME                     5: sys
+        42      STORE_NAME                      5: sys
+        44      LOAD_CONST                      0: 0
+        46      LOAD_CONST                      3: ('Path',)
+        48      IMPORT_NAME                     6: pathlib
+        50      IMPORT_FROM                     7: Path
+        52      STORE_NAME                      7: Path
+        54      POP_TOP                         
+        56      LOAD_CONST                      0: 0
+        58      LOAD_CONST                      4: ('date', 'datetime', 'timezone')
+        60      IMPORT_NAME                     8: datetime
+        62      IMPORT_FROM                     9: date
+        64      STORE_NAME                      9: date
+        66      IMPORT_FROM                     8: datetime
+        68      STORE_NAME                      8: datetime
+        70      IMPORT_FROM                     10: timezone
+        72      STORE_NAME                      10: timezone
+        74      POP_TOP                         
+        76      LOAD_CONST                      0: 0
+        78      LOAD_CONST                      5: ('Any', 'Dict')
+        80      IMPORT_NAME                     11: typing
+        82      IMPORT_FROM                     12: Any
+        84      STORE_NAME                      12: Any
+        86      IMPORT_FROM                     13: Dict
+        88      STORE_NAME                      13: Dict
+        90      POP_TOP                         
+        92      LOAD_CONST                      0: 0
+        94      LOAD_CONST                      6: ('ROOT', 'write_json')
+        96      IMPORT_NAME                     14: common
+        98      IMPORT_FROM                     15: ROOT
+        100     STORE_NAME                      15: ROOT
+        102     IMPORT_FROM                     16: write_json
+        104     STORE_NAME                      16: write_json
+        106     POP_TOP                         
+        108     LOAD_CONST                      7: 'Any'
+        110     LOAD_CONST                      7: 'Any'
+        112     LOAD_CONST                      8: ('value', 'return')
+        114     BUILD_CONST_KEY_MAP             2
+        116     LOAD_CONST                      9: <CODE> _json_safe
+        118     LOAD_CONST                      10: '_json_safe'
+        120     MAKE_FUNCTION                   4
+        122     STORE_NAME                      17: _json_safe
+        124     LOAD_CONST                      20: (240,)
+        126     LOAD_CONST                      7: 'Any'
+        128     LOAD_CONST                      12: 'int'
+        130     LOAD_CONST                      7: 'Any'
+        132     LOAD_CONST                      13: ('value', 'max_len', 'return')
+        134     BUILD_CONST_KEY_MAP             3
+        136     LOAD_CONST                      14: <CODE> _compact_value
+        138     LOAD_CONST                      15: '_compact_value'
+        140     MAKE_FUNCTION                   5
+        142     STORE_NAME                      18: _compact_value
+        144     LOAD_CONST                      12: 'int'
+        146     LOAD_CONST                      16: ('return',)
+        148     BUILD_CONST_KEY_MAP             1
+        150     LOAD_CONST                      17: <CODE> main
+        152     LOAD_CONST                      18: 'main'
+        154     MAKE_FUNCTION                   4
+        156     STORE_NAME                      19: main
+        158     LOAD_NAME                       20: __name__
+        160     LOAD_CONST                      19: '__main__'
+        162     COMPARE_OP                      2 (==)
+        164     POP_JUMP_IF_FALSE               176
+        166     LOAD_NAME                       21: SystemExit
+        168     LOAD_NAME                       19: main
+        170     CALL_FUNCTION                   0
+        172     CALL_FUNCTION                   1
+        174     RAISE_VARARGS                   1
+        176     LOAD_CONST                      2: None
+        178     RETURN_VALUE                    

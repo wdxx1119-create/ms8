@@ -1,0 +1,354 @@
+scan_register.cpython-39.pyc (Python 3.9)
+[Code]
+    File Name: scripts/scan_register.py
+    Object Name: <module>
+    Arg Count: 0
+    Pos Only Arg Count: 0
+    KW Only Arg Count: 0
+    Locals: 0
+    Stack Size: 3
+    Flags: 0x01000040 (CO_NOFREE | CO_FUTURE_ANNOTATIONS)
+    [Names]
+        '__future__'
+        'annotations'
+        'pathlib'
+        'Path'
+        'common'
+        'ROOT'
+        'load_cfg'
+        'integration_hooks.service_models'
+        'CapabilityManifest'
+        'main'
+        '__name__'
+        'SystemExit'
+    [Var Names]
+    [Free Vars]
+    [Cell Vars]
+    [Constants]
+        0
+        (
+            'annotations'
+        )
+        (
+            'Path'
+        )
+        (
+            'ROOT'
+            'load_cfg'
+        )
+        (
+            'CapabilityManifest'
+        )
+        'int'
+        (
+            'return'
+        )
+        [Code]
+            File Name: scripts/scan_register.py
+            Object Name: main
+            Arg Count: 0
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 11
+            Stack Size: 14
+            Flags: 0x01000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE | CO_FUTURE_ANNOTATIONS)
+            [Names]
+                'load_cfg'
+                'get'
+                'adapter_registry.registry'
+                'AdapterRegistry'
+                'adapter_registry.scan_tools'
+                'scan_all'
+                'ROOT'
+                'register'
+                'CapabilityManifest'
+                'str'
+                'lower'
+                'bool'
+                'print'
+                'len'
+            [Var Names]
+                'cfg'
+                'scan_cfg'
+                'auto_cfg'
+                'AdapterRegistry'
+                'scan_all'
+                'reg_path'
+                'registry'
+                'found'
+                'added'
+                'item'
+                'ok'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                'scan'
+                'automation'
+                0
+                (
+                    'AdapterRegistry'
+                )
+                (
+                    'scan_all'
+                )
+                'adapter_registry'
+                'adapters.json'
+                'trusted_list'
+                (
+                    'trusted_list'
+                )
+                'name'
+                'capabilities'
+                'transport'
+                'stdio'
+                'detected_path'
+                ''
+                'config_file'
+                [Code]
+                    File Name: scripts/scan_register.py
+                    Object Name: <listcomp>
+                    Arg Count: 1
+                    Pos Only Arg Count: 0
+                    KW Only Arg Count: 0
+                    Locals: 2
+                    Stack Size: 4
+                    Flags: 0x01000053 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NESTED | CO_NOFREE | CO_FUTURE_ANNOTATIONS)
+                    [Names]
+                        'lower'
+                    [Var Names]
+                        '.0'
+                        'x'
+                    [Free Vars]
+                    [Cell Vars]
+                    [Constants]
+                    [Disassembly]
+                        0       BUILD_LIST                      0
+                        2       LOAD_FAST                       0: .0
+                        4       FOR_ITER                        12 (to 18)
+                        6       STORE_FAST                      1: x
+                        8       LOAD_FAST                       1: x
+                        10      LOAD_METHOD                     0: lower
+                        12      CALL_METHOD                     0
+                        14      LIST_APPEND                     2
+                        16      JUMP_ABSOLUTE                   4
+                        18      RETURN_VALUE                    
+                'main.<locals>.<listcomp>'
+                (
+                    'capabilities'
+                    'transport'
+                    'detected_path'
+                    'config_file'
+                    'trusted'
+                )
+                'non_interactive'
+                True
+                'approve_trusted_only'
+                False
+                (
+                    'capabilities'
+                    'non_interactive'
+                    'approve_trusted_only'
+                    'interactive_confirm'
+                )
+                1
+                'scan_found='
+                'registered_added='
+                'scan_register=ok'
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: load_cfg
+                2       CALL_FUNCTION                   0
+                4       STORE_FAST                      0: cfg
+                6       LOAD_FAST                       0: cfg
+                8       LOAD_METHOD                     1: get
+                10      LOAD_CONST                      1: 'scan'
+                12      BUILD_MAP                       0
+                14      CALL_METHOD                     2
+                16      STORE_FAST                      1: scan_cfg
+                18      LOAD_FAST                       0: cfg
+                20      LOAD_METHOD                     1: get
+                22      LOAD_CONST                      2: 'automation'
+                24      BUILD_MAP                       0
+                26      CALL_METHOD                     2
+                28      STORE_FAST                      2: auto_cfg
+                30      LOAD_CONST                      3: 0
+                32      LOAD_CONST                      4: ('AdapterRegistry',)
+                34      IMPORT_NAME                     2: adapter_registry.registry
+                36      IMPORT_FROM                     3: AdapterRegistry
+                38      STORE_FAST                      3: AdapterRegistry
+                40      POP_TOP                         
+                42      LOAD_CONST                      3: 0
+                44      LOAD_CONST                      5: ('scan_all',)
+                46      IMPORT_NAME                     4: adapter_registry.scan_tools
+                48      IMPORT_FROM                     5: scan_all
+                50      STORE_FAST                      4: scan_all
+                52      POP_TOP                         
+                54      LOAD_GLOBAL                     6: ROOT
+                56      LOAD_CONST                      6: 'adapter_registry'
+                58      BINARY_TRUE_DIVIDE              
+                60      LOAD_CONST                      7: 'adapters.json'
+                62      BINARY_TRUE_DIVIDE              
+                64      STORE_FAST                      5: reg_path
+                66      LOAD_FAST                       3: AdapterRegistry
+                68      LOAD_FAST                       5: reg_path
+                70      LOAD_FAST                       1: scan_cfg
+                72      LOAD_METHOD                     1: get
+                74      LOAD_CONST                      8: 'trusted_list'
+                76      BUILD_LIST                      0
+                78      CALL_METHOD                     2
+                80      LOAD_CONST                      9: ('trusted_list',)
+                82      CALL_FUNCTION_KW                2
+                84      STORE_FAST                      6: registry
+                86      LOAD_FAST                       4: scan_all
+                88      LOAD_FAST                       1: scan_cfg
+                90      CALL_FUNCTION                   1
+                92      STORE_FAST                      7: found
+                94      LOAD_CONST                      3: 0
+                96      STORE_FAST                      8: added
+                98      LOAD_FAST                       7: found
+                100     GET_ITER                        
+                102     FOR_ITER                        148 (to 252)
+                104     STORE_FAST                      9: item
+                106     LOAD_FAST                       6: registry
+                108     LOAD_ATTR                       7: register
+                110     LOAD_FAST                       9: item
+                112     LOAD_CONST                      10: 'name'
+                114     BINARY_SUBSCR                   
+                116     LOAD_GLOBAL                     8: CapabilityManifest
+                118     LOAD_FAST                       9: item
+                120     LOAD_METHOD                     1: get
+                122     LOAD_CONST                      11: 'capabilities'
+                124     BUILD_LIST                      0
+                126     CALL_METHOD                     2
+                128     LOAD_FAST                       9: item
+                130     LOAD_METHOD                     1: get
+                132     LOAD_CONST                      12: 'transport'
+                134     LOAD_CONST                      13: 'stdio'
+                136     CALL_METHOD                     2
+                138     LOAD_FAST                       9: item
+                140     LOAD_METHOD                     1: get
+                142     LOAD_CONST                      14: 'detected_path'
+                144     LOAD_CONST                      15: ''
+                146     CALL_METHOD                     2
+                148     LOAD_FAST                       9: item
+                150     LOAD_METHOD                     1: get
+                152     LOAD_CONST                      16: 'config_file'
+                154     LOAD_CONST                      15: ''
+                156     CALL_METHOD                     2
+                158     LOAD_GLOBAL                     9: str
+                160     LOAD_FAST                       9: item
+                162     LOAD_METHOD                     1: get
+                164     LOAD_CONST                      10: 'name'
+                166     LOAD_CONST                      15: ''
+                168     CALL_METHOD                     2
+                170     CALL_FUNCTION                   1
+                172     LOAD_METHOD                     10: lower
+                174     CALL_METHOD                     0
+                176     LOAD_CONST                      17: <CODE> <listcomp>
+                178     LOAD_CONST                      18: 'main.<locals>.<listcomp>'
+                180     MAKE_FUNCTION                   0
+                182     LOAD_FAST                       1: scan_cfg
+                184     LOAD_METHOD                     1: get
+                186     LOAD_CONST                      8: 'trusted_list'
+                188     BUILD_LIST                      0
+                190     CALL_METHOD                     2
+                192     GET_ITER                        
+                194     CALL_FUNCTION                   1
+                196     CONTAINS_OP                     0 (in)
+                198     LOAD_CONST                      19: ('capabilities', 'transport', 'detected_path', 'config_file', 'trusted')
+                200     CALL_FUNCTION_KW                5
+                202     LOAD_GLOBAL                     11: bool
+                204     LOAD_FAST                       2: auto_cfg
+                206     LOAD_METHOD                     1: get
+                208     LOAD_CONST                      20: 'non_interactive'
+                210     LOAD_CONST                      21: True
+                212     CALL_METHOD                     2
+                214     CALL_FUNCTION                   1
+                216     LOAD_GLOBAL                     11: bool
+                218     LOAD_FAST                       2: auto_cfg
+                220     LOAD_METHOD                     1: get
+                222     LOAD_CONST                      22: 'approve_trusted_only'
+                224     LOAD_CONST                      21: True
+                226     CALL_METHOD                     2
+                228     CALL_FUNCTION                   1
+                230     LOAD_CONST                      23: False
+                232     LOAD_CONST                      24: ('capabilities', 'non_interactive', 'approve_trusted_only', 'interactive_confirm')
+                234     CALL_FUNCTION_KW                5
+                236     STORE_FAST                      10: ok
+                238     LOAD_FAST                       10: ok
+                240     POP_JUMP_IF_FALSE               102
+                242     LOAD_FAST                       8: added
+                244     LOAD_CONST                      25: 1
+                246     INPLACE_ADD                     
+                248     STORE_FAST                      8: added
+                250     JUMP_ABSOLUTE                   102
+                252     LOAD_GLOBAL                     12: print
+                254     LOAD_CONST                      26: 'scan_found='
+                256     LOAD_GLOBAL                     13: len
+                258     LOAD_FAST                       7: found
+                260     CALL_FUNCTION                   1
+                262     FORMAT_VALUE                    0 (FVC_NONE)
+                264     BUILD_STRING                    2
+                266     CALL_FUNCTION                   1
+                268     POP_TOP                         
+                270     LOAD_GLOBAL                     12: print
+                272     LOAD_CONST                      27: 'registered_added='
+                274     LOAD_FAST                       8: added
+                276     FORMAT_VALUE                    0 (FVC_NONE)
+                278     BUILD_STRING                    2
+                280     CALL_FUNCTION                   1
+                282     POP_TOP                         
+                284     LOAD_GLOBAL                     12: print
+                286     LOAD_CONST                      28: 'scan_register=ok'
+                288     CALL_FUNCTION                   1
+                290     POP_TOP                         
+                292     LOAD_CONST                      3: 0
+                294     RETURN_VALUE                    
+        'main'
+        '__main__'
+        None
+    [Disassembly]
+        0       LOAD_CONST                      0: 0
+        2       LOAD_CONST                      1: ('annotations',)
+        4       IMPORT_NAME                     0: __future__
+        6       IMPORT_FROM                     1: annotations
+        8       STORE_NAME                      1: annotations
+        10      POP_TOP                         
+        12      LOAD_CONST                      0: 0
+        14      LOAD_CONST                      2: ('Path',)
+        16      IMPORT_NAME                     2: pathlib
+        18      IMPORT_FROM                     3: Path
+        20      STORE_NAME                      3: Path
+        22      POP_TOP                         
+        24      LOAD_CONST                      0: 0
+        26      LOAD_CONST                      3: ('ROOT', 'load_cfg')
+        28      IMPORT_NAME                     4: common
+        30      IMPORT_FROM                     5: ROOT
+        32      STORE_NAME                      5: ROOT
+        34      IMPORT_FROM                     6: load_cfg
+        36      STORE_NAME                      6: load_cfg
+        38      POP_TOP                         
+        40      LOAD_CONST                      0: 0
+        42      LOAD_CONST                      4: ('CapabilityManifest',)
+        44      IMPORT_NAME                     7: integration_hooks.service_models
+        46      IMPORT_FROM                     8: CapabilityManifest
+        48      STORE_NAME                      8: CapabilityManifest
+        50      POP_TOP                         
+        52      LOAD_CONST                      5: 'int'
+        54      LOAD_CONST                      6: ('return',)
+        56      BUILD_CONST_KEY_MAP             1
+        58      LOAD_CONST                      7: <CODE> main
+        60      LOAD_CONST                      8: 'main'
+        62      MAKE_FUNCTION                   4
+        64      STORE_NAME                      9: main
+        66      LOAD_NAME                       10: __name__
+        68      LOAD_CONST                      9: '__main__'
+        70      COMPARE_OP                      2 (==)
+        72      POP_JUMP_IF_FALSE               84
+        74      LOAD_NAME                       11: SystemExit
+        76      LOAD_NAME                       9: main
+        78      CALL_FUNCTION                   0
+        80      CALL_FUNCTION                   1
+        82      RAISE_VARARGS                   1
+        84      LOAD_CONST                      10: None
+        86      RETURN_VALUE                    

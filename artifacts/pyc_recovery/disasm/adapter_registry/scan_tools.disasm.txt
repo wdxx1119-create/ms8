@@ -1,0 +1,549 @@
+scan_tools.cpython-39.pyc (Python 3.9)
+[Code]
+    File Name: /Users/s/openclaw-memory-auto/adapter_registry/scan_tools.py
+    Object Name: <module>
+    Arg Count: 0
+    Pos Only Arg Count: 0
+    KW Only Arg Count: 0
+    Locals: 0
+    Stack Size: 4
+    Flags: 0x00000040 (CO_NOFREE)
+    [Names]
+        'json'
+        'os'
+        'pathlib'
+        'Path'
+        'typing'
+        'Dict'
+        'List'
+        'urllib.request'
+        'Request'
+        'urlopen'
+        'str'
+        'bool'
+        '_path_exists'
+        'scan_mcp_tools'
+        'scan_ollama_models'
+        'dict'
+        'scan_all'
+    [Var Names]
+    [Free Vars]
+    [Cell Vars]
+    [Constants]
+        0
+        None
+        (
+            'Path'
+        )
+        (
+            'Dict'
+            'List'
+        )
+        (
+            'Request'
+            'urlopen'
+        )
+        (
+            'raw_path'
+            'return'
+        )
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/adapter_registry/scan_tools.py
+            Object Name: _path_exists
+            Arg Count: 1
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 1
+            Stack Size: 4
+            Flags: 0x00000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE)
+            [Names]
+                'Path'
+                'os'
+                'path'
+                'expanduser'
+                'exists'
+            [Var Names]
+                'raw_path'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: Path
+                2       LOAD_GLOBAL                     1: os
+                4       LOAD_ATTR                       2: path
+                6       LOAD_METHOD                     3: expanduser
+                8       LOAD_FAST                       0: raw_path
+                10      CALL_METHOD                     1
+                12      CALL_FUNCTION                   1
+                14      LOAD_METHOD                     4: exists
+                16      CALL_METHOD                     0
+                18      RETURN_VALUE                    
+        '_path_exists'
+        (
+            'scan_paths'
+            'return'
+        )
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/adapter_registry/scan_tools.py
+            Object Name: scan_mcp_tools
+            Arg Count: 1
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 6
+            Stack Size: 12
+            Flags: 0x00000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE)
+            [Names]
+                'items'
+                '_path_exists'
+                'dict'
+                'append'
+            [Var Names]
+                'scan_paths'
+                'tool_map'
+                'found'
+                'key'
+                'path'
+                'info'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                'Claude Desktop'
+                (
+                    'save_memory'
+                    'search_memory'
+                    'get_context'
+                    'list_memories'
+                    'memory_status'
+                )
+                'stdio'
+                '~/Library/Application Support/Claude/claude_desktop_config.json'
+                (
+                    'name'
+                    'capabilities'
+                    'transport'
+                    'config_file'
+                )
+                'Cursor'
+                '~/.cursor/mcp.json'
+                'Windsurf'
+                '~/.windsurf/mcp.json'
+                'VS Code'
+                '~/.vscode/mcp.json'
+                'Cline'
+                (
+                    'save_memory'
+                    'search_memory'
+                    'get_context'
+                )
+                '~/.vscode/extensions/'
+                'JetBrains AI'
+                ''
+                'Warp'
+                'save_memory'
+                'search_memory'
+                'Zed'
+                (
+                    'claude_desktop'
+                    'cursor'
+                    'windsurf'
+                    'vscode'
+                    'cline'
+                    'jetbrains'
+                    'warp'
+                    'zed'
+                )
+                'detected_path'
+            [Disassembly]
+                0       LOAD_CONST                      1: 'Claude Desktop'
+                2       BUILD_LIST                      0
+                4       LOAD_CONST                      2: ('save_memory', 'search_memory', 'get_context', 'list_memories', 'memory_status')
+                6       LIST_EXTEND                     1
+                8       LOAD_CONST                      3: 'stdio'
+                10      LOAD_CONST                      4: '~/Library/Application Support/Claude/claude_desktop_config.json'
+                12      LOAD_CONST                      5: ('name', 'capabilities', 'transport', 'config_file')
+                14      BUILD_CONST_KEY_MAP             4
+                16      LOAD_CONST                      6: 'Cursor'
+                18      BUILD_LIST                      0
+                20      LOAD_CONST                      2: ('save_memory', 'search_memory', 'get_context', 'list_memories', 'memory_status')
+                22      LIST_EXTEND                     1
+                24      LOAD_CONST                      3: 'stdio'
+                26      LOAD_CONST                      7: '~/.cursor/mcp.json'
+                28      LOAD_CONST                      5: ('name', 'capabilities', 'transport', 'config_file')
+                30      BUILD_CONST_KEY_MAP             4
+                32      LOAD_CONST                      8: 'Windsurf'
+                34      BUILD_LIST                      0
+                36      LOAD_CONST                      2: ('save_memory', 'search_memory', 'get_context', 'list_memories', 'memory_status')
+                38      LIST_EXTEND                     1
+                40      LOAD_CONST                      3: 'stdio'
+                42      LOAD_CONST                      9: '~/.windsurf/mcp.json'
+                44      LOAD_CONST                      5: ('name', 'capabilities', 'transport', 'config_file')
+                46      BUILD_CONST_KEY_MAP             4
+                48      LOAD_CONST                      10: 'VS Code'
+                50      BUILD_LIST                      0
+                52      LOAD_CONST                      2: ('save_memory', 'search_memory', 'get_context', 'list_memories', 'memory_status')
+                54      LIST_EXTEND                     1
+                56      LOAD_CONST                      3: 'stdio'
+                58      LOAD_CONST                      11: '~/.vscode/mcp.json'
+                60      LOAD_CONST                      5: ('name', 'capabilities', 'transport', 'config_file')
+                62      BUILD_CONST_KEY_MAP             4
+                64      LOAD_CONST                      12: 'Cline'
+                66      BUILD_LIST                      0
+                68      LOAD_CONST                      13: ('save_memory', 'search_memory', 'get_context')
+                70      LIST_EXTEND                     1
+                72      LOAD_CONST                      3: 'stdio'
+                74      LOAD_CONST                      14: '~/.vscode/extensions/'
+                76      LOAD_CONST                      5: ('name', 'capabilities', 'transport', 'config_file')
+                78      BUILD_CONST_KEY_MAP             4
+                80      LOAD_CONST                      15: 'JetBrains AI'
+                82      BUILD_LIST                      0
+                84      LOAD_CONST                      13: ('save_memory', 'search_memory', 'get_context')
+                86      LIST_EXTEND                     1
+                88      LOAD_CONST                      3: 'stdio'
+                90      LOAD_CONST                      16: ''
+                92      LOAD_CONST                      5: ('name', 'capabilities', 'transport', 'config_file')
+                94      BUILD_CONST_KEY_MAP             4
+                96      LOAD_CONST                      17: 'Warp'
+                98      LOAD_CONST                      18: 'save_memory'
+                100     LOAD_CONST                      19: 'search_memory'
+                102     BUILD_LIST                      2
+                104     LOAD_CONST                      3: 'stdio'
+                106     LOAD_CONST                      16: ''
+                108     LOAD_CONST                      5: ('name', 'capabilities', 'transport', 'config_file')
+                110     BUILD_CONST_KEY_MAP             4
+                112     LOAD_CONST                      20: 'Zed'
+                114     LOAD_CONST                      18: 'save_memory'
+                116     LOAD_CONST                      19: 'search_memory'
+                118     BUILD_LIST                      2
+                120     LOAD_CONST                      3: 'stdio'
+                122     LOAD_CONST                      16: ''
+                124     LOAD_CONST                      5: ('name', 'capabilities', 'transport', 'config_file')
+                126     BUILD_CONST_KEY_MAP             4
+                128     LOAD_CONST                      21: ('claude_desktop', 'cursor', 'windsurf', 'vscode', 'cline', 'jetbrains', 'warp', 'zed')
+                130     BUILD_CONST_KEY_MAP             8
+                132     STORE_FAST                      1: tool_map
+                134     BUILD_LIST                      0
+                136     STORE_FAST                      2: found
+                138     LOAD_FAST                       0: scan_paths
+                140     LOAD_METHOD                     0: items
+                142     CALL_METHOD                     0
+                144     GET_ITER                        
+                146     FOR_ITER                        54 (to 202)
+                148     UNPACK_SEQUENCE                 2
+                150     STORE_FAST                      3: key
+                152     STORE_FAST                      4: path
+                154     LOAD_FAST                       3: key
+                156     LOAD_FAST                       1: tool_map
+                158     CONTAINS_OP                     0 (in)
+                160     POP_JUMP_IF_FALSE               146
+                162     LOAD_GLOBAL                     1: _path_exists
+                164     LOAD_FAST                       4: path
+                166     CALL_FUNCTION                   1
+                168     POP_JUMP_IF_FALSE               146
+                170     LOAD_GLOBAL                     2: dict
+                172     LOAD_FAST                       1: tool_map
+                174     LOAD_FAST                       3: key
+                176     BINARY_SUBSCR                   
+                178     CALL_FUNCTION                   1
+                180     STORE_FAST                      5: info
+                182     LOAD_FAST                       4: path
+                184     LOAD_FAST                       5: info
+                186     LOAD_CONST                      22: 'detected_path'
+                188     STORE_SUBSCR                    
+                190     LOAD_FAST                       2: found
+                192     LOAD_METHOD                     3: append
+                194     LOAD_FAST                       5: info
+                196     CALL_METHOD                     1
+                198     POP_TOP                         
+                200     JUMP_ABSOLUTE                   146
+                202     LOAD_FAST                       2: found
+                204     RETURN_VALUE                    
+        'scan_mcp_tools'
+        'http://127.0.0.1:11434'
+        (
+            'ollama_host'
+            'return'
+        )
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/adapter_registry/scan_tools.py
+            Object Name: scan_ollama_models
+            Arg Count: 1
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 5
+            Stack Size: 8
+            Flags: 0x00000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE)
+            [Names]
+                'Request'
+                'urlopen'
+                'json'
+                'loads'
+                'read'
+                'decode'
+                'get'
+                'Exception'
+            [Var Names]
+                'ollama_host'
+                'req'
+                'resp'
+                'data'
+                'models'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                '/api/tags'
+                'GET'
+                (
+                    'method'
+                )
+                3
+                (
+                    'timeout'
+                )
+                'models'
+                [Code]
+                    File Name: /Users/s/openclaw-memory-auto/adapter_registry/scan_tools.py
+                    Object Name: <listcomp>
+                    Arg Count: 1
+                    Pos Only Arg Count: 0
+                    KW Only Arg Count: 0
+                    Locals: 2
+                    Stack Size: 7
+                    Flags: 0x00000053 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NESTED | CO_NOFREE)
+                    [Names]
+                    [Var Names]
+                        '.0'
+                        'm'
+                    [Free Vars]
+                    [Cell Vars]
+                    [Constants]
+                        'Ollama:'
+                        'name'
+                        'llm_enhance'
+                        'search_memory'
+                        'local'
+                        (
+                            'name'
+                            'capabilities'
+                            'transport'
+                            'model_name'
+                        )
+                    [Disassembly]
+                        0       BUILD_LIST                      0
+                        2       LOAD_FAST                       0: .0
+                        4       FOR_ITER                        36 (to 42)
+                        6       STORE_FAST                      1: m
+                        8       LOAD_CONST                      0: 'Ollama:'
+                        10      LOAD_FAST                       1: m
+                        12      LOAD_CONST                      1: 'name'
+                        14      BINARY_SUBSCR                   
+                        16      FORMAT_VALUE                    0 (FVC_NONE)
+                        18      BUILD_STRING                    2
+                        20      LOAD_CONST                      2: 'llm_enhance'
+                        22      LOAD_CONST                      3: 'search_memory'
+                        24      BUILD_LIST                      2
+                        26      LOAD_CONST                      4: 'local'
+                        28      LOAD_FAST                       1: m
+                        30      LOAD_CONST                      1: 'name'
+                        32      BINARY_SUBSCR                   
+                        34      LOAD_CONST                      5: ('name', 'capabilities', 'transport', 'model_name')
+                        36      BUILD_CONST_KEY_MAP             4
+                        38      LIST_APPEND                     2
+                        40      JUMP_ABSOLUTE                   4
+                        42      RETURN_VALUE                    
+                'scan_ollama_models.<locals>.<listcomp>'
+            [Disassembly]
+                0       SETUP_FINALLY                   108 (to 110)
+                2       LOAD_GLOBAL                     0: Request
+                4       LOAD_FAST                       0: ollama_host
+                6       FORMAT_VALUE                    0 (FVC_NONE)
+                8       LOAD_CONST                      1: '/api/tags'
+                10      BUILD_STRING                    2
+                12      LOAD_CONST                      2: 'GET'
+                14      LOAD_CONST                      3: ('method',)
+                16      CALL_FUNCTION_KW                2
+                18      STORE_FAST                      1: req
+                20      LOAD_GLOBAL                     1: urlopen
+                22      LOAD_FAST                       1: req
+                24      LOAD_CONST                      4: 3
+                26      LOAD_CONST                      5: ('timeout',)
+                28      CALL_FUNCTION_KW                2
+                30      SETUP_WITH                      34 (to 66)
+                32      STORE_FAST                      2: resp
+                34      LOAD_GLOBAL                     2: json
+                36      LOAD_METHOD                     3: loads
+                38      LOAD_FAST                       2: resp
+                40      LOAD_METHOD                     4: read
+                42      CALL_METHOD                     0
+                44      LOAD_METHOD                     5: decode
+                46      CALL_METHOD                     0
+                48      CALL_METHOD                     1
+                50      STORE_FAST                      3: data
+                52      POP_BLOCK                       
+                54      LOAD_CONST                      0: None
+                56      DUP_TOP                         
+                58      DUP_TOP                         
+                60      CALL_FUNCTION                   3
+                62      POP_TOP                         
+                64      JUMP_FORWARD                    16 (to 82)
+                66      WITH_EXCEPT_START               
+                68      POP_JUMP_IF_TRUE                72
+                70      RERAISE                         
+                72      POP_TOP                         
+                74      POP_TOP                         
+                76      POP_TOP                         
+                78      POP_EXCEPT                      
+                80      POP_TOP                         
+                82      LOAD_FAST                       3: data
+                84      LOAD_METHOD                     6: get
+                86      LOAD_CONST                      6: 'models'
+                88      BUILD_LIST                      0
+                90      CALL_METHOD                     2
+                92      STORE_FAST                      4: models
+                94      LOAD_CONST                      7: <CODE> <listcomp>
+                96      LOAD_CONST                      8: 'scan_ollama_models.<locals>.<listcomp>'
+                98      MAKE_FUNCTION                   0
+                100     LOAD_FAST                       4: models
+                102     GET_ITER                        
+                104     CALL_FUNCTION                   1
+                106     POP_BLOCK                       
+                108     RETURN_VALUE                    
+                110     DUP_TOP                         
+                112     LOAD_GLOBAL                     7: Exception
+                114     JUMP_IF_NOT_EXC_MATCH           130
+                116     POP_TOP                         
+                118     POP_TOP                         
+                120     POP_TOP                         
+                122     BUILD_LIST                      0
+                124     ROT_FOUR                        
+                126     POP_EXCEPT                      
+                128     RETURN_VALUE                    
+                130     RERAISE                         
+                132     LOAD_CONST                      0: None
+                134     RETURN_VALUE                    
+        'scan_ollama_models'
+        (
+            'scan_config'
+            'return'
+        )
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/adapter_registry/scan_tools.py
+            Object Name: scan_all
+            Arg Count: 1
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 1
+            Stack Size: 6
+            Flags: 0x00000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE)
+            [Names]
+                'scan_mcp_tools'
+                'get'
+                'scan_ollama_models'
+            [Var Names]
+                'scan_config'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                'scan_paths'
+                'ollama_host'
+                'http://127.0.0.1:11434'
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: scan_mcp_tools
+                2       LOAD_FAST                       0: scan_config
+                4       LOAD_METHOD                     1: get
+                6       LOAD_CONST                      1: 'scan_paths'
+                8       BUILD_MAP                       0
+                10      CALL_METHOD                     2
+                12      CALL_FUNCTION                   1
+                14      LOAD_GLOBAL                     2: scan_ollama_models
+                16      LOAD_FAST                       0: scan_config
+                18      LOAD_METHOD                     1: get
+                20      LOAD_CONST                      2: 'ollama_host'
+                22      LOAD_CONST                      3: 'http://127.0.0.1:11434'
+                24      CALL_METHOD                     2
+                26      CALL_FUNCTION                   1
+                28      BINARY_ADD                      
+                30      RETURN_VALUE                    
+        'scan_all'
+        (
+            'http://127.0.0.1:11434'
+        )
+    [Disassembly]
+        0       LOAD_CONST                      0: 0
+        2       LOAD_CONST                      1: None
+        4       IMPORT_NAME                     0: json
+        6       STORE_NAME                      0: json
+        8       LOAD_CONST                      0: 0
+        10      LOAD_CONST                      1: None
+        12      IMPORT_NAME                     1: os
+        14      STORE_NAME                      1: os
+        16      LOAD_CONST                      0: 0
+        18      LOAD_CONST                      2: ('Path',)
+        20      IMPORT_NAME                     2: pathlib
+        22      IMPORT_FROM                     3: Path
+        24      STORE_NAME                      3: Path
+        26      POP_TOP                         
+        28      LOAD_CONST                      0: 0
+        30      LOAD_CONST                      3: ('Dict', 'List')
+        32      IMPORT_NAME                     4: typing
+        34      IMPORT_FROM                     5: Dict
+        36      STORE_NAME                      5: Dict
+        38      IMPORT_FROM                     6: List
+        40      STORE_NAME                      6: List
+        42      POP_TOP                         
+        44      LOAD_CONST                      0: 0
+        46      LOAD_CONST                      4: ('Request', 'urlopen')
+        48      IMPORT_NAME                     7: urllib.request
+        50      IMPORT_FROM                     8: Request
+        52      STORE_NAME                      8: Request
+        54      IMPORT_FROM                     9: urlopen
+        56      STORE_NAME                      9: urlopen
+        58      POP_TOP                         
+        60      LOAD_NAME                       10: str
+        62      LOAD_NAME                       11: bool
+        64      LOAD_CONST                      5: ('raw_path', 'return')
+        66      BUILD_CONST_KEY_MAP             2
+        68      LOAD_CONST                      6: <CODE> _path_exists
+        70      LOAD_CONST                      7: '_path_exists'
+        72      MAKE_FUNCTION                   4
+        74      STORE_NAME                      12: _path_exists
+        76      LOAD_NAME                       5: Dict
+        78      LOAD_NAME                       10: str
+        80      LOAD_NAME                       10: str
+        82      BUILD_TUPLE                     2
+        84      BINARY_SUBSCR                   
+        86      LOAD_NAME                       6: List
+        88      LOAD_NAME                       5: Dict
+        90      BINARY_SUBSCR                   
+        92      LOAD_CONST                      8: ('scan_paths', 'return')
+        94      BUILD_CONST_KEY_MAP             2
+        96      LOAD_CONST                      9: <CODE> scan_mcp_tools
+        98      LOAD_CONST                      10: 'scan_mcp_tools'
+        100     MAKE_FUNCTION                   4
+        102     STORE_NAME                      13: scan_mcp_tools
+        104     LOAD_CONST                      18: ('http://127.0.0.1:11434',)
+        106     LOAD_NAME                       10: str
+        108     LOAD_NAME                       6: List
+        110     LOAD_NAME                       5: Dict
+        112     BINARY_SUBSCR                   
+        114     LOAD_CONST                      12: ('ollama_host', 'return')
+        116     BUILD_CONST_KEY_MAP             2
+        118     LOAD_CONST                      13: <CODE> scan_ollama_models
+        120     LOAD_CONST                      14: 'scan_ollama_models'
+        122     MAKE_FUNCTION                   5
+        124     STORE_NAME                      14: scan_ollama_models
+        126     LOAD_NAME                       15: dict
+        128     LOAD_NAME                       6: List
+        130     LOAD_NAME                       5: Dict
+        132     BINARY_SUBSCR                   
+        134     LOAD_CONST                      15: ('scan_config', 'return')
+        136     BUILD_CONST_KEY_MAP             2
+        138     LOAD_CONST                      16: <CODE> scan_all
+        140     LOAD_CONST                      17: 'scan_all'
+        142     MAKE_FUNCTION                   4
+        144     STORE_NAME                      16: scan_all
+        146     LOAD_CONST                      1: None
+        148     RETURN_VALUE                    

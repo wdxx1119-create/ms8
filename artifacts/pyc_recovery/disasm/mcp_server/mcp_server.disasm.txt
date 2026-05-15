@@ -1,0 +1,1638 @@
+mcp_server.cpython-39.pyc (Python 3.9)
+[Code]
+    File Name: /Users/s/openclaw-memory-auto/mcp_server/mcp_server.py
+    Object Name: <module>
+    Arg Count: 0
+    Pos Only Arg Count: 0
+    KW Only Arg Count: 0
+    Locals: 0
+    Stack Size: 7
+    Flags: 0x00000040 (CO_NOFREE)
+    [Names]
+        'json'
+        'os'
+        'datetime'
+        'pathlib'
+        'Path'
+        'typing'
+        'Any'
+        'Dict'
+        'Optional'
+        'yaml'
+        'integration_hooks.service_models'
+        'MemoryCandidate'
+        'mcp.server.fastmcp'
+        'FastMCP'
+        'mcp_server.memory_service_interface'
+        'MemoryServiceInterface'
+        '__file__'
+        'resolve'
+        'parents'
+        'ROOT'
+        'CONFIG_PATH'
+        'ERR_WRITE_DENIED'
+        'ERR_CLIENT_MISMATCH'
+        'ERR_CLIENT_NOT_REGISTERED'
+        'ERR_CLIENT_TOKEN_MISMATCH'
+        'ERR_CORE_UNAVAILABLE'
+        'str'
+        '_expand'
+        'dict'
+        '_load_config'
+        'CONFIG'
+        'from_config'
+        'SERVICE'
+        '_audit'
+        '_load_registry'
+        '_get_client_name'
+        '_source_tag'
+        '_enforce_client_token'
+        '_write_allowed'
+        '_degraded'
+        'get'
+        'app'
+        'tool'
+        'save_memory'
+        'int'
+        'search_memory'
+        'get_context'
+        'list_memories'
+        'memory_status'
+        'resource'
+        'resource_long_term'
+        'resource_profile'
+        'resource_recent'
+        '__name__'
+        'environ'
+        'print'
+        'run'
+    [Var Names]
+    [Free Vars]
+    [Cell Vars]
+    [Constants]
+        0
+        None
+        (
+            'datetime'
+        )
+        (
+            'Path'
+        )
+        (
+            'Any'
+            'Dict'
+            'Optional'
+        )
+        (
+            'MemoryCandidate'
+        )
+        (
+            'FastMCP'
+        )
+        (
+            'MemoryServiceInterface'
+        )
+        1
+        'config'
+        'mcp_config.yaml'
+        'E_WRITE_DENIED'
+        'E_CLIENT_MISMATCH'
+        'E_CLIENT_NOT_REGISTERED'
+        'E_CLIENT_TOKEN_MISMATCH'
+        'E_CORE_UNAVAILABLE'
+        (
+            'p'
+            'return'
+        )
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/mcp_server/mcp_server.py
+            Object Name: _expand
+            Arg Count: 1
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 1
+            Stack Size: 4
+            Flags: 0x00000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE)
+            [Names]
+                'Path'
+                'os'
+                'path'
+                'expanduser'
+                'resolve'
+            [Var Names]
+                'p'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: Path
+                2       LOAD_GLOBAL                     1: os
+                4       LOAD_ATTR                       2: path
+                6       LOAD_METHOD                     3: expanduser
+                8       LOAD_FAST                       0: p
+                10      CALL_METHOD                     1
+                12      CALL_FUNCTION                   1
+                14      LOAD_METHOD                     4: resolve
+                16      CALL_METHOD                     0
+                18      RETURN_VALUE                    
+        '_expand'
+        (
+            'return'
+        )
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/mcp_server/mcp_server.py
+            Object Name: _load_config
+            Arg Count: 0
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 0
+            Stack Size: 5
+            Flags: 0x00000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE)
+            [Names]
+                'CONFIG_PATH'
+                'exists'
+                'yaml'
+                'safe_load'
+                'read_text'
+            [Var Names]
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                'utf-8'
+                (
+                    'encoding'
+                )
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: CONFIG_PATH
+                2       LOAD_METHOD                     1: exists
+                4       CALL_METHOD                     0
+                6       POP_JUMP_IF_FALSE               30
+                8       LOAD_GLOBAL                     2: yaml
+                10      LOAD_METHOD                     3: safe_load
+                12      LOAD_GLOBAL                     0: CONFIG_PATH
+                14      LOAD_ATTR                       4: read_text
+                16      LOAD_CONST                      1: 'utf-8'
+                18      LOAD_CONST                      2: ('encoding',)
+                20      CALL_FUNCTION_KW                1
+                22      CALL_METHOD                     1
+                24      JUMP_IF_TRUE_OR_POP             28
+                26      BUILD_MAP                       0
+                28      RETURN_VALUE                    
+                30      BUILD_MAP                       0
+                32      RETURN_VALUE                    
+        '_load_config'
+        (
+            'event'
+            'return'
+        )
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/mcp_server/mcp_server.py
+            Object Name: _audit
+            Arg Count: 1
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 4
+            Stack Size: 8
+            Flags: 0x00000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE)
+            [Names]
+                '_expand'
+                'CONFIG'
+                'get'
+                'parent'
+                'mkdir'
+                'datetime'
+                'utcnow'
+                'isoformat'
+                'open'
+                'write'
+                'json'
+                'dumps'
+            [Var Names]
+                'event'
+                'p'
+                'payload'
+                'f'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                'runtime'
+                'audit_log'
+                '~/openclaw-memory-auto/logs/audit.log'
+                True
+                (
+                    'parents'
+                    'exist_ok'
+                )
+                'ts'
+                'a'
+                'utf-8'
+                (
+                    'encoding'
+                )
+                False
+                (
+                    'ensure_ascii'
+                )
+                '\n'
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: _expand
+                2       LOAD_GLOBAL                     1: CONFIG
+                4       LOAD_METHOD                     2: get
+                6       LOAD_CONST                      1: 'runtime'
+                8       BUILD_MAP                       0
+                10      CALL_METHOD                     2
+                12      LOAD_METHOD                     2: get
+                14      LOAD_CONST                      2: 'audit_log'
+                16      LOAD_CONST                      3: '~/openclaw-memory-auto/logs/audit.log'
+                18      CALL_METHOD                     2
+                20      CALL_FUNCTION                   1
+                22      STORE_FAST                      1: p
+                24      LOAD_FAST                       1: p
+                26      LOAD_ATTR                       3: parent
+                28      LOAD_ATTR                       4: mkdir
+                30      LOAD_CONST                      4: True
+                32      LOAD_CONST                      4: True
+                34      LOAD_CONST                      5: ('parents', 'exist_ok')
+                36      CALL_FUNCTION_KW                2
+                38      POP_TOP                         
+                40      LOAD_CONST                      6: 'ts'
+                42      LOAD_GLOBAL                     5: datetime
+                44      LOAD_METHOD                     6: utcnow
+                46      CALL_METHOD                     0
+                48      LOAD_METHOD                     7: isoformat
+                50      CALL_METHOD                     0
+                52      BUILD_MAP                       1
+                54      LOAD_FAST                       0: event
+                56      DICT_UPDATE                     1
+                58      STORE_FAST                      2: payload
+                60      LOAD_FAST                       1: p
+                62      LOAD_ATTR                       8: open
+                64      LOAD_CONST                      7: 'a'
+                66      LOAD_CONST                      8: 'utf-8'
+                68      LOAD_CONST                      9: ('encoding',)
+                70      CALL_FUNCTION_KW                2
+                72      SETUP_WITH                      40 (to 114)
+                74      STORE_FAST                      3: f
+                76      LOAD_FAST                       3: f
+                78      LOAD_METHOD                     9: write
+                80      LOAD_GLOBAL                     10: json
+                82      LOAD_ATTR                       11: dumps
+                84      LOAD_FAST                       2: payload
+                86      LOAD_CONST                      10: False
+                88      LOAD_CONST                      11: ('ensure_ascii',)
+                90      CALL_FUNCTION_KW                2
+                92      LOAD_CONST                      12: '\n'
+                94      BINARY_ADD                      
+                96      CALL_METHOD                     1
+                98      POP_TOP                         
+                100     POP_BLOCK                       
+                102     LOAD_CONST                      0: None
+                104     DUP_TOP                         
+                106     DUP_TOP                         
+                108     CALL_FUNCTION                   3
+                110     POP_TOP                         
+                112     JUMP_FORWARD                    16 (to 130)
+                114     WITH_EXCEPT_START               
+                116     POP_JUMP_IF_TRUE                120
+                118     RERAISE                         
+                120     POP_TOP                         
+                122     POP_TOP                         
+                124     POP_TOP                         
+                126     POP_EXCEPT                      
+                128     POP_TOP                         
+                130     LOAD_CONST                      0: None
+                132     RETURN_VALUE                    
+        '_audit'
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/mcp_server/mcp_server.py
+            Object Name: _load_registry
+            Arg Count: 0
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 2
+            Stack Size: 8
+            Flags: 0x00000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE)
+            [Names]
+                'ROOT'
+                'exists'
+                'json'
+                'loads'
+                'read_text'
+                'isinstance'
+                'dict'
+                'Exception'
+            [Var Names]
+                'p'
+                'obj'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                'adapter_registry'
+                'adapters.json'
+                'utf-8'
+                (
+                    'encoding'
+                )
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: ROOT
+                2       LOAD_CONST                      1: 'adapter_registry'
+                4       BINARY_TRUE_DIVIDE              
+                6       LOAD_CONST                      2: 'adapters.json'
+                8       BINARY_TRUE_DIVIDE              
+                10      STORE_FAST                      0: p
+                12      LOAD_FAST                       0: p
+                14      LOAD_METHOD                     1: exists
+                16      CALL_METHOD                     0
+                18      POP_JUMP_IF_TRUE                24
+                20      BUILD_MAP                       0
+                22      RETURN_VALUE                    
+                24      SETUP_FINALLY                   38 (to 64)
+                26      LOAD_GLOBAL                     2: json
+                28      LOAD_METHOD                     3: loads
+                30      LOAD_FAST                       0: p
+                32      LOAD_ATTR                       4: read_text
+                34      LOAD_CONST                      3: 'utf-8'
+                36      LOAD_CONST                      4: ('encoding',)
+                38      CALL_FUNCTION_KW                1
+                40      CALL_METHOD                     1
+                42      STORE_FAST                      1: obj
+                44      LOAD_GLOBAL                     5: isinstance
+                46      LOAD_FAST                       1: obj
+                48      LOAD_GLOBAL                     6: dict
+                50      CALL_FUNCTION                   2
+                52      POP_JUMP_IF_FALSE               58
+                54      LOAD_FAST                       1: obj
+                56      JUMP_FORWARD                    2 (to 60)
+                58      BUILD_MAP                       0
+                60      POP_BLOCK                       
+                62      RETURN_VALUE                    
+                64      DUP_TOP                         
+                66      LOAD_GLOBAL                     7: Exception
+                68      JUMP_IF_NOT_EXC_MATCH           84
+                70      POP_TOP                         
+                72      POP_TOP                         
+                74      POP_TOP                         
+                76      BUILD_MAP                       0
+                78      ROT_FOUR                        
+                80      POP_EXCEPT                      
+                82      RETURN_VALUE                    
+                84      RERAISE                         
+                86      LOAD_CONST                      0: None
+                88      RETURN_VALUE                    
+        '_load_registry'
+        (
+            'client_name'
+            'return'
+        )
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/mcp_server/mcp_server.py
+            Object Name: _get_client_name
+            Arg Count: 1
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 4
+            Stack Size: 5
+            Flags: 0x00000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE)
+            [Names]
+                'str'
+                'os'
+                'environ'
+                'get'
+                'strip'
+                'CONFIG'
+            [Var Names]
+                'client_name'
+                'env_client'
+                'arg_client'
+                'default_name'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                'OPENCLAW_MCP_CLIENT'
+                ''
+                'security'
+                'default_client_name'
+                'unknown'
+                '__mismatch__'
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: str
+                2       LOAD_GLOBAL                     1: os
+                4       LOAD_ATTR                       2: environ
+                6       LOAD_METHOD                     3: get
+                8       LOAD_CONST                      1: 'OPENCLAW_MCP_CLIENT'
+                10      LOAD_CONST                      2: ''
+                12      CALL_METHOD                     2
+                14      CALL_FUNCTION                   1
+                16      LOAD_METHOD                     4: strip
+                18      CALL_METHOD                     0
+                20      STORE_FAST                      1: env_client
+                22      LOAD_GLOBAL                     0: str
+                24      LOAD_FAST                       0: client_name
+                26      JUMP_IF_TRUE_OR_POP             30
+                28      LOAD_CONST                      2: ''
+                30      CALL_FUNCTION                   1
+                32      LOAD_METHOD                     4: strip
+                34      CALL_METHOD                     0
+                36      STORE_FAST                      2: arg_client
+                38      LOAD_GLOBAL                     0: str
+                40      LOAD_GLOBAL                     5: CONFIG
+                42      LOAD_METHOD                     3: get
+                44      LOAD_CONST                      3: 'security'
+                46      BUILD_MAP                       0
+                48      CALL_METHOD                     2
+                50      LOAD_METHOD                     3: get
+                52      LOAD_CONST                      4: 'default_client_name'
+                54      LOAD_CONST                      5: 'unknown'
+                56      CALL_METHOD                     2
+                58      CALL_FUNCTION                   1
+                60      LOAD_METHOD                     4: strip
+                62      CALL_METHOD                     0
+                64      STORE_FAST                      3: default_name
+                66      LOAD_FAST                       2: arg_client
+                68      POP_JUMP_IF_FALSE               86
+                70      LOAD_FAST                       1: env_client
+                72      POP_JUMP_IF_FALSE               86
+                74      LOAD_FAST                       2: arg_client
+                76      LOAD_FAST                       1: env_client
+                78      COMPARE_OP                      3 (!=)
+                80      POP_JUMP_IF_FALSE               86
+                82      LOAD_CONST                      6: '__mismatch__'
+                84      RETURN_VALUE                    
+                86      LOAD_FAST                       2: arg_client
+                88      JUMP_IF_TRUE_OR_POP             96
+                90      LOAD_FAST                       1: env_client
+                92      JUMP_IF_TRUE_OR_POP             96
+                94      LOAD_FAST                       3: default_name
+                96      RETURN_VALUE                    
+        '_get_client_name'
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/mcp_server/mcp_server.py
+            Object Name: _source_tag
+            Arg Count: 1
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 1
+            Stack Size: 2
+            Flags: 0x00000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE)
+            [Names]
+            [Var Names]
+                'client_name'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                'mcp:'
+            [Disassembly]
+                0       LOAD_CONST                      1: 'mcp:'
+                2       LOAD_FAST                       0: client_name
+                4       FORMAT_VALUE                    0 (FVC_NONE)
+                6       BUILD_STRING                    2
+                8       RETURN_VALUE                    
+        '_source_tag'
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/mcp_server/mcp_server.py
+            Object Name: _enforce_client_token
+            Arg Count: 1
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 4
+            Stack Size: 5
+            Flags: 0x00000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE)
+            [Names]
+                'CONFIG'
+                'get'
+                'isinstance'
+                'dict'
+                'str'
+                'strip'
+                'os'
+                'environ'
+                'ERR_CLIENT_TOKEN_MISMATCH'
+            [Var Names]
+                'client_name'
+                'tokens'
+                'expected'
+                'actual'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                'security'
+                'client_tokens'
+                ''
+                'OPENCLAW_MCP_CLIENT_TOKEN'
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: CONFIG
+                2       LOAD_METHOD                     1: get
+                4       LOAD_CONST                      1: 'security'
+                6       BUILD_MAP                       0
+                8       CALL_METHOD                     2
+                10      LOAD_METHOD                     1: get
+                12      LOAD_CONST                      2: 'client_tokens'
+                14      BUILD_MAP                       0
+                16      CALL_METHOD                     2
+                18      STORE_FAST                      1: tokens
+                20      LOAD_GLOBAL                     2: isinstance
+                22      LOAD_FAST                       1: tokens
+                24      LOAD_GLOBAL                     3: dict
+                26      CALL_FUNCTION                   2
+                28      POP_JUMP_IF_TRUE                34
+                30      LOAD_CONST                      0: None
+                32      RETURN_VALUE                    
+                34      LOAD_GLOBAL                     4: str
+                36      LOAD_FAST                       1: tokens
+                38      LOAD_METHOD                     1: get
+                40      LOAD_FAST                       0: client_name
+                42      LOAD_CONST                      3: ''
+                44      CALL_METHOD                     2
+                46      CALL_FUNCTION                   1
+                48      LOAD_METHOD                     5: strip
+                50      CALL_METHOD                     0
+                52      STORE_FAST                      2: expected
+                54      LOAD_FAST                       2: expected
+                56      POP_JUMP_IF_TRUE                62
+                58      LOAD_CONST                      0: None
+                60      RETURN_VALUE                    
+                62      LOAD_GLOBAL                     4: str
+                64      LOAD_GLOBAL                     6: os
+                66      LOAD_ATTR                       7: environ
+                68      LOAD_METHOD                     1: get
+                70      LOAD_CONST                      4: 'OPENCLAW_MCP_CLIENT_TOKEN'
+                72      LOAD_CONST                      3: ''
+                74      CALL_METHOD                     2
+                76      CALL_FUNCTION                   1
+                78      LOAD_METHOD                     5: strip
+                80      CALL_METHOD                     0
+                82      STORE_FAST                      3: actual
+                84      LOAD_FAST                       3: actual
+                86      POP_JUMP_IF_FALSE               96
+                88      LOAD_FAST                       3: actual
+                90      LOAD_FAST                       2: expected
+                92      COMPARE_OP                      3 (!=)
+                94      POP_JUMP_IF_FALSE               100
+                96      LOAD_GLOBAL                     8: ERR_CLIENT_TOKEN_MISMATCH
+                98      RETURN_VALUE                    
+                100     LOAD_CONST                      0: None
+                102     RETURN_VALUE                    
+        '_enforce_client_token'
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/mcp_server/mcp_server.py
+            Object Name: _write_allowed
+            Arg Count: 1
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 7
+            Stack Size: 5
+            Flags: 0x00000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE)
+            [Names]
+                'ERR_CLIENT_MISMATCH'
+                'CONFIG'
+                'get'
+                'lower'
+                'ERR_WRITE_DENIED'
+                'bool'
+                '_load_registry'
+                'isinstance'
+                'dict'
+                'str'
+                'ERR_CLIENT_NOT_REGISTERED'
+                '_enforce_client_token'
+            [Var Names]
+                'client_name'
+                'sec'
+                'allowed'
+                'require_registered'
+                'reg'
+                'row'
+                'token_error'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                '__mismatch__'
+                'security'
+                'write_allowed_clients'
+                (
+                    'Claude Desktop'
+                    'Cursor'
+                    'Windsurf'
+                )
+                '*'
+                [Code]
+                    File Name: /Users/s/openclaw-memory-auto/mcp_server/mcp_server.py
+                    Object Name: <listcomp>
+                    Arg Count: 1
+                    Pos Only Arg Count: 0
+                    KW Only Arg Count: 0
+                    Locals: 2
+                    Stack Size: 4
+                    Flags: 0x00000053 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NESTED | CO_NOFREE)
+                    [Names]
+                        'lower'
+                    [Var Names]
+                        '.0'
+                        'x'
+                    [Free Vars]
+                    [Cell Vars]
+                    [Constants]
+                    [Disassembly]
+                        0       BUILD_LIST                      0
+                        2       LOAD_FAST                       0: .0
+                        4       FOR_ITER                        12 (to 18)
+                        6       STORE_FAST                      1: x
+                        8       LOAD_FAST                       1: x
+                        10      LOAD_METHOD                     0: lower
+                        12      CALL_METHOD                     0
+                        14      LIST_APPEND                     2
+                        16      JUMP_ABSOLUTE                   4
+                        18      RETURN_VALUE                    
+                '_write_allowed.<locals>.<listcomp>'
+                'require_registered_client'
+                True
+                'status'
+                ''
+                'active'
+            [Disassembly]
+                0       LOAD_FAST                       0: client_name
+                2       LOAD_CONST                      1: '__mismatch__'
+                4       COMPARE_OP                      2 (==)
+                6       POP_JUMP_IF_FALSE               12
+                8       LOAD_GLOBAL                     0: ERR_CLIENT_MISMATCH
+                10      RETURN_VALUE                    
+                12      LOAD_GLOBAL                     1: CONFIG
+                14      LOAD_METHOD                     2: get
+                16      LOAD_CONST                      2: 'security'
+                18      BUILD_MAP                       0
+                20      CALL_METHOD                     2
+                22      STORE_FAST                      1: sec
+                24      LOAD_FAST                       1: sec
+                26      LOAD_METHOD                     2: get
+                28      LOAD_CONST                      3: 'write_allowed_clients'
+                30      BUILD_LIST                      0
+                32      LOAD_CONST                      4: ('Claude Desktop', 'Cursor', 'Windsurf')
+                34      LIST_EXTEND                     1
+                36      CALL_METHOD                     2
+                38      STORE_FAST                      2: allowed
+                40      LOAD_CONST                      5: '*'
+                42      LOAD_FAST                       2: allowed
+                44      CONTAINS_OP                     1 (not in)
+                46      POP_JUMP_IF_FALSE               74
+                48      LOAD_FAST                       0: client_name
+                50      LOAD_METHOD                     3: lower
+                52      CALL_METHOD                     0
+                54      LOAD_CONST                      6: <CODE> <listcomp>
+                56      LOAD_CONST                      7: '_write_allowed.<locals>.<listcomp>'
+                58      MAKE_FUNCTION                   0
+                60      LOAD_FAST                       2: allowed
+                62      GET_ITER                        
+                64      CALL_FUNCTION                   1
+                66      CONTAINS_OP                     1 (not in)
+                68      POP_JUMP_IF_FALSE               74
+                70      LOAD_GLOBAL                     4: ERR_WRITE_DENIED
+                72      RETURN_VALUE                    
+                74      LOAD_GLOBAL                     5: bool
+                76      LOAD_FAST                       1: sec
+                78      LOAD_METHOD                     2: get
+                80      LOAD_CONST                      8: 'require_registered_client'
+                82      LOAD_CONST                      9: True
+                84      CALL_METHOD                     2
+                86      CALL_FUNCTION                   1
+                88      STORE_FAST                      3: require_registered
+                90      LOAD_FAST                       3: require_registered
+                92      POP_JUMP_IF_FALSE               148
+                94      LOAD_GLOBAL                     6: _load_registry
+                96      CALL_FUNCTION                   0
+                98      STORE_FAST                      4: reg
+                100     LOAD_FAST                       4: reg
+                102     LOAD_METHOD                     2: get
+                104     LOAD_FAST                       0: client_name
+                106     CALL_METHOD                     1
+                108     STORE_FAST                      5: row
+                110     LOAD_GLOBAL                     7: isinstance
+                112     LOAD_FAST                       5: row
+                114     LOAD_GLOBAL                     8: dict
+                116     CALL_FUNCTION                   2
+                118     POP_JUMP_IF_FALSE               144
+                120     LOAD_GLOBAL                     9: str
+                122     LOAD_FAST                       5: row
+                124     LOAD_METHOD                     2: get
+                126     LOAD_CONST                      10: 'status'
+                128     LOAD_CONST                      11: ''
+                130     CALL_METHOD                     2
+                132     CALL_FUNCTION                   1
+                134     LOAD_METHOD                     3: lower
+                136     CALL_METHOD                     0
+                138     LOAD_CONST                      12: 'active'
+                140     COMPARE_OP                      3 (!=)
+                142     POP_JUMP_IF_FALSE               148
+                144     LOAD_GLOBAL                     10: ERR_CLIENT_NOT_REGISTERED
+                146     RETURN_VALUE                    
+                148     LOAD_GLOBAL                     11: _enforce_client_token
+                150     LOAD_FAST                       0: client_name
+                152     CALL_FUNCTION                   1
+                154     STORE_FAST                      6: token_error
+                156     LOAD_FAST                       6: token_error
+                158     POP_JUMP_IF_FALSE               164
+                160     LOAD_FAST                       6: token_error
+                162     RETURN_VALUE                    
+                164     LOAD_CONST                      0: None
+                166     RETURN_VALUE                    
+        '_write_allowed'
+        (
+            'tool_name'
+            'return'
+        )
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/mcp_server/mcp_server.py
+            Object Name: _degraded
+            Arg Count: 1
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 1
+            Stack Size: 5
+            Flags: 0x00000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE)
+            [Names]
+                'SERVICE'
+                'core_error'
+                'ERR_CORE_UNAVAILABLE'
+            [Var Names]
+                'tool_name'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                False
+                'MemoryCore unavailable: '
+                (
+                    'ok'
+                    'tool'
+                    'error'
+                    'error_code'
+                )
+            [Disassembly]
+                0       LOAD_CONST                      1: False
+                2       LOAD_FAST                       0: tool_name
+                4       LOAD_CONST                      2: 'MemoryCore unavailable: '
+                6       LOAD_GLOBAL                     0: SERVICE
+                8       LOAD_ATTR                       1: core_error
+                10      FORMAT_VALUE                    0 (FVC_NONE)
+                12      BUILD_STRING                    2
+                14      LOAD_GLOBAL                     2: ERR_CORE_UNAVAILABLE
+                16      LOAD_CONST                      3: ('ok', 'tool', 'error', 'error_code')
+                18      BUILD_CONST_KEY_MAP             4
+                20      RETURN_VALUE                    
+        '_degraded'
+        'server'
+        'name'
+        'openclaw-memory'
+        'save_memory'
+        (
+            'name'
+        )
+        ''
+        (
+            'text'
+            'client_name'
+            'return'
+        )
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/mcp_server/mcp_server.py
+            Object Name: save_memory
+            Arg Count: 2
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 8
+            Stack Size: 8
+            Flags: 0x00000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE)
+            [Names]
+                '_get_client_name'
+                '_write_allowed'
+                '_audit'
+                'SERVICE'
+                'available'
+                '_degraded'
+                '_source_tag'
+                'MemoryCandidate'
+                'submit'
+                'get'
+                'int'
+            [Var Names]
+                'text'
+                'client_name'
+                'client'
+                'denial'
+                'source'
+                'candidate'
+                'result'
+                'count'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                'save_memory_denied'
+                (
+                    'event'
+                    'client'
+                    'error_code'
+                )
+                False
+                'write_not_allowed'
+                (
+                    'ok'
+                    'error'
+                    'error_code'
+                    'client'
+                )
+                'save_memory'
+                'client_name'
+                (
+                    'source'
+                    'content'
+                    'metadata'
+                )
+                'ok'
+                'accepted_count'
+                0
+                'review_count'
+                'save_memory_ok'
+                'mode'
+                'submit'
+                (
+                    'event'
+                    'client'
+                    'source'
+                    'mode'
+                    'records'
+                )
+                'save_memory_error'
+                'error'
+                ''
+                (
+                    'event'
+                    'client'
+                    'error'
+                )
+                'error_code'
+                'E_SUBMIT_FAILED'
+                (
+                    'client'
+                    'error_code'
+                )
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: _get_client_name
+                2       LOAD_FAST                       1: client_name
+                4       CALL_FUNCTION                   1
+                6       STORE_FAST                      2: client
+                8       LOAD_GLOBAL                     1: _write_allowed
+                10      LOAD_FAST                       2: client
+                12      CALL_FUNCTION                   1
+                14      STORE_FAST                      3: denial
+                16      LOAD_FAST                       3: denial
+                18      POP_JUMP_IF_FALSE               50
+                20      LOAD_GLOBAL                     2: _audit
+                22      LOAD_CONST                      1: 'save_memory_denied'
+                24      LOAD_FAST                       2: client
+                26      LOAD_FAST                       3: denial
+                28      LOAD_CONST                      2: ('event', 'client', 'error_code')
+                30      BUILD_CONST_KEY_MAP             3
+                32      CALL_FUNCTION                   1
+                34      POP_TOP                         
+                36      LOAD_CONST                      3: False
+                38      LOAD_CONST                      4: 'write_not_allowed'
+                40      LOAD_FAST                       3: denial
+                42      LOAD_FAST                       2: client
+                44      LOAD_CONST                      5: ('ok', 'error', 'error_code', 'client')
+                46      BUILD_CONST_KEY_MAP             4
+                48      RETURN_VALUE                    
+                50      LOAD_GLOBAL                     3: SERVICE
+                52      LOAD_METHOD                     4: available
+                54      CALL_METHOD                     0
+                56      POP_JUMP_IF_TRUE                66
+                58      LOAD_GLOBAL                     5: _degraded
+                60      LOAD_CONST                      6: 'save_memory'
+                62      CALL_FUNCTION                   1
+                64      RETURN_VALUE                    
+                66      LOAD_GLOBAL                     6: _source_tag
+                68      LOAD_FAST                       2: client
+                70      CALL_FUNCTION                   1
+                72      STORE_FAST                      4: source
+                74      LOAD_GLOBAL                     7: MemoryCandidate
+                76      LOAD_FAST                       4: source
+                78      LOAD_FAST                       0: text
+                80      LOAD_CONST                      7: 'client_name'
+                82      LOAD_FAST                       2: client
+                84      BUILD_MAP                       1
+                86      LOAD_CONST                      8: ('source', 'content', 'metadata')
+                88      CALL_FUNCTION_KW                3
+                90      STORE_FAST                      5: candidate
+                92      LOAD_GLOBAL                     3: SERVICE
+                94      LOAD_METHOD                     8: submit
+                96      LOAD_FAST                       5: candidate
+                98      CALL_METHOD                     1
+                100     STORE_FAST                      6: result
+                102     LOAD_FAST                       6: result
+                104     LOAD_METHOD                     9: get
+                106     LOAD_CONST                      9: 'ok'
+                108     CALL_METHOD                     1
+                110     POP_JUMP_IF_FALSE               176
+                112     LOAD_GLOBAL                     10: int
+                114     LOAD_FAST                       6: result
+                116     LOAD_METHOD                     9: get
+                118     LOAD_CONST                      10: 'accepted_count'
+                120     LOAD_CONST                      11: 0
+                122     CALL_METHOD                     2
+                124     CALL_FUNCTION                   1
+                126     LOAD_GLOBAL                     10: int
+                128     LOAD_FAST                       6: result
+                130     LOAD_METHOD                     9: get
+                132     LOAD_CONST                      12: 'review_count'
+                134     LOAD_CONST                      11: 0
+                136     CALL_METHOD                     2
+                138     CALL_FUNCTION                   1
+                140     BINARY_ADD                      
+                142     STORE_FAST                      7: count
+                144     LOAD_GLOBAL                     2: _audit
+                146     LOAD_CONST                      13: 'save_memory_ok'
+                148     LOAD_FAST                       2: client
+                150     LOAD_FAST                       4: source
+                152     LOAD_FAST                       6: result
+                154     LOAD_METHOD                     9: get
+                156     LOAD_CONST                      14: 'mode'
+                158     LOAD_CONST                      15: 'submit'
+                160     CALL_METHOD                     2
+                162     LOAD_FAST                       7: count
+                164     LOAD_CONST                      16: ('event', 'client', 'source', 'mode', 'records')
+                166     BUILD_CONST_KEY_MAP             5
+                168     CALL_FUNCTION                   1
+                170     POP_TOP                         
+                172     LOAD_FAST                       6: result
+                174     RETURN_VALUE                    
+                176     LOAD_GLOBAL                     2: _audit
+                178     LOAD_CONST                      17: 'save_memory_error'
+                180     LOAD_FAST                       2: client
+                182     LOAD_FAST                       6: result
+                184     LOAD_METHOD                     9: get
+                186     LOAD_CONST                      18: 'error'
+                188     LOAD_CONST                      19: ''
+                190     CALL_METHOD                     2
+                192     LOAD_CONST                      20: ('event', 'client', 'error')
+                194     BUILD_CONST_KEY_MAP             3
+                196     CALL_FUNCTION                   1
+                198     POP_TOP                         
+                200     BUILD_MAP                       0
+                202     LOAD_FAST                       6: result
+                204     DICT_UPDATE                     1
+                206     LOAD_FAST                       2: client
+                208     LOAD_FAST                       6: result
+                210     LOAD_METHOD                     9: get
+                212     LOAD_CONST                      21: 'error_code'
+                214     LOAD_CONST                      22: 'E_SUBMIT_FAILED'
+                216     CALL_METHOD                     2
+                218     LOAD_CONST                      23: ('client', 'error_code')
+                220     BUILD_CONST_KEY_MAP             2
+                222     DICT_UPDATE                     1
+                224     RETURN_VALUE                    
+        'search_memory'
+        5
+        (
+            'query'
+            'top_k'
+            'return'
+        )
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/mcp_server/mcp_server.py
+            Object Name: search_memory
+            Arg Count: 2
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 2
+            Stack Size: 4
+            Flags: 0x00000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE)
+            [Names]
+                'SERVICE'
+                'available'
+                '_degraded'
+                'query'
+            [Var Names]
+                'query'
+                'top_k'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                'search_memory'
+                (
+                    'query'
+                    'top_k'
+                )
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: SERVICE
+                2       LOAD_METHOD                     1: available
+                4       CALL_METHOD                     0
+                6       POP_JUMP_IF_TRUE                16
+                8       LOAD_GLOBAL                     2: _degraded
+                10      LOAD_CONST                      1: 'search_memory'
+                12      CALL_FUNCTION                   1
+                14      RETURN_VALUE                    
+                16      LOAD_GLOBAL                     0: SERVICE
+                18      LOAD_ATTR                       3: query
+                20      LOAD_FAST                       0: query
+                22      LOAD_FAST                       1: top_k
+                24      LOAD_CONST                      2: ('query', 'top_k')
+                26      CALL_FUNCTION_KW                2
+                28      RETURN_VALUE                    
+        'get_context'
+        (
+            'message'
+            'return'
+        )
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/mcp_server/mcp_server.py
+            Object Name: get_context
+            Arg Count: 1
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 1
+            Stack Size: 3
+            Flags: 0x00000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE)
+            [Names]
+                'SERVICE'
+                'available'
+                '_degraded'
+                'context'
+            [Var Names]
+                'message'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                'get_context'
+                (
+                    'message'
+                )
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: SERVICE
+                2       LOAD_METHOD                     1: available
+                4       CALL_METHOD                     0
+                6       POP_JUMP_IF_TRUE                16
+                8       LOAD_GLOBAL                     2: _degraded
+                10      LOAD_CONST                      1: 'get_context'
+                12      CALL_FUNCTION                   1
+                14      RETURN_VALUE                    
+                16      LOAD_GLOBAL                     0: SERVICE
+                18      LOAD_ATTR                       3: context
+                20      LOAD_FAST                       0: message
+                22      LOAD_CONST                      2: ('message',)
+                24      CALL_FUNCTION_KW                1
+                26      RETURN_VALUE                    
+        'list_memories'
+        20
+        (
+            'limit'
+            'return'
+        )
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/mcp_server/mcp_server.py
+            Object Name: list_memories
+            Arg Count: 1
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 1
+            Stack Size: 4
+            Flags: 0x00000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE)
+            [Names]
+                'SERVICE'
+                'available'
+                '_degraded'
+                'query'
+            [Var Names]
+                'limit'
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                'list_memories'
+                ''
+                (
+                    'query'
+                    'top_k'
+                )
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: SERVICE
+                2       LOAD_METHOD                     1: available
+                4       CALL_METHOD                     0
+                6       POP_JUMP_IF_TRUE                16
+                8       LOAD_GLOBAL                     2: _degraded
+                10      LOAD_CONST                      1: 'list_memories'
+                12      CALL_FUNCTION                   1
+                14      RETURN_VALUE                    
+                16      LOAD_GLOBAL                     0: SERVICE
+                18      LOAD_ATTR                       3: query
+                20      LOAD_CONST                      2: ''
+                22      LOAD_FAST                       0: limit
+                24      LOAD_CONST                      3: ('query', 'top_k')
+                26      CALL_FUNCTION_KW                2
+                28      RETURN_VALUE                    
+        'memory_status'
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/mcp_server/mcp_server.py
+            Object Name: memory_status
+            Arg Count: 0
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 0
+            Stack Size: 2
+            Flags: 0x00000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE)
+            [Names]
+                'SERVICE'
+                'available'
+                '_degraded'
+                'status'
+            [Var Names]
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                'memory_status'
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: SERVICE
+                2       LOAD_METHOD                     1: available
+                4       CALL_METHOD                     0
+                6       POP_JUMP_IF_TRUE                16
+                8       LOAD_GLOBAL                     2: _degraded
+                10      LOAD_CONST                      1: 'memory_status'
+                12      CALL_FUNCTION                   1
+                14      RETURN_VALUE                    
+                16      LOAD_GLOBAL                     0: SERVICE
+                18      LOAD_METHOD                     3: status
+                20      CALL_METHOD                     0
+                22      RETURN_VALUE                    
+        'memory://long-term'
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/mcp_server/mcp_server.py
+            Object Name: resource_long_term
+            Arg Count: 0
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 0
+            Stack Size: 5
+            Flags: 0x00000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE)
+            [Names]
+                'str'
+                'SERVICE'
+                'profile'
+                'get'
+            [Var Names]
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                'long-term'
+                'content'
+                ''
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: str
+                2       LOAD_GLOBAL                     1: SERVICE
+                4       LOAD_METHOD                     2: profile
+                6       LOAD_CONST                      1: 'long-term'
+                8       CALL_METHOD                     1
+                10      LOAD_METHOD                     3: get
+                12      LOAD_CONST                      2: 'content'
+                14      LOAD_CONST                      3: ''
+                16      CALL_METHOD                     2
+                18      CALL_FUNCTION                   1
+                20      RETURN_VALUE                    
+        'resource_long_term'
+        'memory://profile'
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/mcp_server/mcp_server.py
+            Object Name: resource_profile
+            Arg Count: 0
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 0
+            Stack Size: 5
+            Flags: 0x00000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE)
+            [Names]
+                'str'
+                'SERVICE'
+                'profile'
+                'get'
+            [Var Names]
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                'profile'
+                'content'
+                ''
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: str
+                2       LOAD_GLOBAL                     1: SERVICE
+                4       LOAD_METHOD                     2: profile
+                6       LOAD_CONST                      1: 'profile'
+                8       CALL_METHOD                     1
+                10      LOAD_METHOD                     3: get
+                12      LOAD_CONST                      2: 'content'
+                14      LOAD_CONST                      3: ''
+                16      CALL_METHOD                     2
+                18      CALL_FUNCTION                   1
+                20      RETURN_VALUE                    
+        'resource_profile'
+        'memory://recent'
+        [Code]
+            File Name: /Users/s/openclaw-memory-auto/mcp_server/mcp_server.py
+            Object Name: resource_recent
+            Arg Count: 0
+            Pos Only Arg Count: 0
+            KW Only Arg Count: 0
+            Locals: 0
+            Stack Size: 5
+            Flags: 0x00000043 (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE)
+            [Names]
+                'str'
+                'SERVICE'
+                'profile'
+                'get'
+            [Var Names]
+            [Free Vars]
+            [Cell Vars]
+            [Constants]
+                None
+                'recent'
+                'content'
+                ''
+            [Disassembly]
+                0       LOAD_GLOBAL                     0: str
+                2       LOAD_GLOBAL                     1: SERVICE
+                4       LOAD_METHOD                     2: profile
+                6       LOAD_CONST                      1: 'recent'
+                8       CALL_METHOD                     1
+                10      LOAD_METHOD                     3: get
+                12      LOAD_CONST                      2: 'content'
+                14      LOAD_CONST                      3: ''
+                16      CALL_METHOD                     2
+                18      CALL_FUNCTION                   1
+                20      RETURN_VALUE                    
+        'resource_recent'
+        '__main__'
+        'OPENCLAW_MCP_SMOKE'
+        '1'
+        'mcp_server_smoke_ok'
+        (
+            None
+        )
+        (
+            ''
+        )
+        (
+            5
+        )
+        (
+            20
+        )
+    [Disassembly]
+        0       LOAD_CONST                      0: 0
+        2       LOAD_CONST                      1: None
+        4       IMPORT_NAME                     0: json
+        6       STORE_NAME                      0: json
+        8       LOAD_CONST                      0: 0
+        10      LOAD_CONST                      1: None
+        12      IMPORT_NAME                     1: os
+        14      STORE_NAME                      1: os
+        16      LOAD_CONST                      0: 0
+        18      LOAD_CONST                      2: ('datetime',)
+        20      IMPORT_NAME                     2: datetime
+        22      IMPORT_FROM                     2: datetime
+        24      STORE_NAME                      2: datetime
+        26      POP_TOP                         
+        28      LOAD_CONST                      0: 0
+        30      LOAD_CONST                      3: ('Path',)
+        32      IMPORT_NAME                     3: pathlib
+        34      IMPORT_FROM                     4: Path
+        36      STORE_NAME                      4: Path
+        38      POP_TOP                         
+        40      LOAD_CONST                      0: 0
+        42      LOAD_CONST                      4: ('Any', 'Dict', 'Optional')
+        44      IMPORT_NAME                     5: typing
+        46      IMPORT_FROM                     6: Any
+        48      STORE_NAME                      6: Any
+        50      IMPORT_FROM                     7: Dict
+        52      STORE_NAME                      7: Dict
+        54      IMPORT_FROM                     8: Optional
+        56      STORE_NAME                      8: Optional
+        58      POP_TOP                         
+        60      LOAD_CONST                      0: 0
+        62      LOAD_CONST                      1: None
+        64      IMPORT_NAME                     9: yaml
+        66      STORE_NAME                      9: yaml
+        68      LOAD_CONST                      0: 0
+        70      LOAD_CONST                      5: ('MemoryCandidate',)
+        72      IMPORT_NAME                     10: integration_hooks.service_models
+        74      IMPORT_FROM                     11: MemoryCandidate
+        76      STORE_NAME                      11: MemoryCandidate
+        78      POP_TOP                         
+        80      LOAD_CONST                      0: 0
+        82      LOAD_CONST                      6: ('FastMCP',)
+        84      IMPORT_NAME                     12: mcp.server.fastmcp
+        86      IMPORT_FROM                     13: FastMCP
+        88      STORE_NAME                      13: FastMCP
+        90      POP_TOP                         
+        92      LOAD_CONST                      0: 0
+        94      LOAD_CONST                      7: ('MemoryServiceInterface',)
+        96      IMPORT_NAME                     14: mcp_server.memory_service_interface
+        98      IMPORT_FROM                     15: MemoryServiceInterface
+        100     STORE_NAME                      15: MemoryServiceInterface
+        102     POP_TOP                         
+        104     LOAD_NAME                       4: Path
+        106     LOAD_NAME                       16: __file__
+        108     CALL_FUNCTION                   1
+        110     LOAD_METHOD                     17: resolve
+        112     CALL_METHOD                     0
+        114     LOAD_ATTR                       18: parents
+        116     LOAD_CONST                      8: 1
+        118     BINARY_SUBSCR                   
+        120     STORE_NAME                      19: ROOT
+        122     LOAD_NAME                       19: ROOT
+        124     LOAD_CONST                      9: 'config'
+        126     BINARY_TRUE_DIVIDE              
+        128     LOAD_CONST                      10: 'mcp_config.yaml'
+        130     BINARY_TRUE_DIVIDE              
+        132     STORE_NAME                      20: CONFIG_PATH
+        134     LOAD_CONST                      11: 'E_WRITE_DENIED'
+        136     STORE_NAME                      21: ERR_WRITE_DENIED
+        138     LOAD_CONST                      12: 'E_CLIENT_MISMATCH'
+        140     STORE_NAME                      22: ERR_CLIENT_MISMATCH
+        142     LOAD_CONST                      13: 'E_CLIENT_NOT_REGISTERED'
+        144     STORE_NAME                      23: ERR_CLIENT_NOT_REGISTERED
+        146     LOAD_CONST                      14: 'E_CLIENT_TOKEN_MISMATCH'
+        148     STORE_NAME                      24: ERR_CLIENT_TOKEN_MISMATCH
+        150     LOAD_CONST                      15: 'E_CORE_UNAVAILABLE'
+        152     STORE_NAME                      25: ERR_CORE_UNAVAILABLE
+        154     LOAD_NAME                       26: str
+        156     LOAD_NAME                       4: Path
+        158     LOAD_CONST                      16: ('p', 'return')
+        160     BUILD_CONST_KEY_MAP             2
+        162     LOAD_CONST                      17: <CODE> _expand
+        164     LOAD_CONST                      18: '_expand'
+        166     MAKE_FUNCTION                   4
+        168     STORE_NAME                      27: _expand
+        170     LOAD_NAME                       28: dict
+        172     LOAD_CONST                      19: ('return',)
+        174     BUILD_CONST_KEY_MAP             1
+        176     LOAD_CONST                      20: <CODE> _load_config
+        178     LOAD_CONST                      21: '_load_config'
+        180     MAKE_FUNCTION                   4
+        182     STORE_NAME                      29: _load_config
+        184     LOAD_NAME                       29: _load_config
+        186     CALL_FUNCTION                   0
+        188     STORE_NAME                      30: CONFIG
+        190     LOAD_NAME                       15: MemoryServiceInterface
+        192     LOAD_METHOD                     31: from_config
+        194     LOAD_NAME                       30: CONFIG
+        196     CALL_METHOD                     1
+        198     STORE_NAME                      32: SERVICE
+        200     LOAD_NAME                       7: Dict
+        202     LOAD_NAME                       26: str
+        204     LOAD_NAME                       6: Any
+        206     BUILD_TUPLE                     2
+        208     BINARY_SUBSCR                   
+        210     LOAD_CONST                      1: None
+        212     LOAD_CONST                      22: ('event', 'return')
+        214     BUILD_CONST_KEY_MAP             2
+        216     LOAD_CONST                      23: <CODE> _audit
+        218     LOAD_CONST                      24: '_audit'
+        220     MAKE_FUNCTION                   4
+        222     STORE_NAME                      33: _audit
+        224     LOAD_NAME                       7: Dict
+        226     LOAD_NAME                       26: str
+        228     LOAD_NAME                       6: Any
+        230     BUILD_TUPLE                     2
+        232     BINARY_SUBSCR                   
+        234     LOAD_CONST                      19: ('return',)
+        236     BUILD_CONST_KEY_MAP             1
+        238     LOAD_CONST                      25: <CODE> _load_registry
+        240     LOAD_CONST                      26: '_load_registry'
+        242     MAKE_FUNCTION                   4
+        244     STORE_NAME                      34: _load_registry
+        246     LOAD_CONST                      73: (None,)
+        248     LOAD_NAME                       8: Optional
+        250     LOAD_NAME                       26: str
+        252     BINARY_SUBSCR                   
+        254     LOAD_NAME                       26: str
+        256     LOAD_CONST                      27: ('client_name', 'return')
+        258     BUILD_CONST_KEY_MAP             2
+        260     LOAD_CONST                      28: <CODE> _get_client_name
+        262     LOAD_CONST                      29: '_get_client_name'
+        264     MAKE_FUNCTION                   5
+        266     STORE_NAME                      35: _get_client_name
+        268     LOAD_NAME                       26: str
+        270     LOAD_NAME                       26: str
+        272     LOAD_CONST                      27: ('client_name', 'return')
+        274     BUILD_CONST_KEY_MAP             2
+        276     LOAD_CONST                      30: <CODE> _source_tag
+        278     LOAD_CONST                      31: '_source_tag'
+        280     MAKE_FUNCTION                   4
+        282     STORE_NAME                      36: _source_tag
+        284     LOAD_NAME                       26: str
+        286     LOAD_NAME                       8: Optional
+        288     LOAD_NAME                       26: str
+        290     BINARY_SUBSCR                   
+        292     LOAD_CONST                      27: ('client_name', 'return')
+        294     BUILD_CONST_KEY_MAP             2
+        296     LOAD_CONST                      32: <CODE> _enforce_client_token
+        298     LOAD_CONST                      33: '_enforce_client_token'
+        300     MAKE_FUNCTION                   4
+        302     STORE_NAME                      37: _enforce_client_token
+        304     LOAD_NAME                       26: str
+        306     LOAD_NAME                       8: Optional
+        308     LOAD_NAME                       26: str
+        310     BINARY_SUBSCR                   
+        312     LOAD_CONST                      27: ('client_name', 'return')
+        314     BUILD_CONST_KEY_MAP             2
+        316     LOAD_CONST                      34: <CODE> _write_allowed
+        318     LOAD_CONST                      35: '_write_allowed'
+        320     MAKE_FUNCTION                   4
+        322     STORE_NAME                      38: _write_allowed
+        324     LOAD_NAME                       26: str
+        326     LOAD_NAME                       7: Dict
+        328     LOAD_NAME                       26: str
+        330     LOAD_NAME                       6: Any
+        332     BUILD_TUPLE                     2
+        334     BINARY_SUBSCR                   
+        336     LOAD_CONST                      36: ('tool_name', 'return')
+        338     BUILD_CONST_KEY_MAP             2
+        340     LOAD_CONST                      37: <CODE> _degraded
+        342     LOAD_CONST                      38: '_degraded'
+        344     MAKE_FUNCTION                   4
+        346     STORE_NAME                      39: _degraded
+        348     LOAD_NAME                       13: FastMCP
+        350     LOAD_NAME                       30: CONFIG
+        352     LOAD_METHOD                     40: get
+        354     LOAD_CONST                      39: 'server'
+        356     BUILD_MAP                       0
+        358     CALL_METHOD                     2
+        360     LOAD_METHOD                     40: get
+        362     LOAD_CONST                      40: 'name'
+        364     LOAD_CONST                      41: 'openclaw-memory'
+        366     CALL_METHOD                     2
+        368     CALL_FUNCTION                   1
+        370     STORE_NAME                      41: app
+        372     LOAD_NAME                       41: app
+        374     LOAD_ATTR                       42: tool
+        376     LOAD_CONST                      42: 'save_memory'
+        378     LOAD_CONST                      43: ('name',)
+        380     CALL_FUNCTION_KW                1
+        382     LOAD_CONST                      74: ('',)
+        384     LOAD_NAME                       26: str
+        386     LOAD_NAME                       26: str
+        388     LOAD_NAME                       7: Dict
+        390     LOAD_NAME                       26: str
+        392     LOAD_NAME                       6: Any
+        394     BUILD_TUPLE                     2
+        396     BINARY_SUBSCR                   
+        398     LOAD_CONST                      45: ('text', 'client_name', 'return')
+        400     BUILD_CONST_KEY_MAP             3
+        402     LOAD_CONST                      46: <CODE> save_memory
+        404     LOAD_CONST                      42: 'save_memory'
+        406     MAKE_FUNCTION                   5
+        408     CALL_FUNCTION                   1
+        410     STORE_NAME                      43: save_memory
+        412     LOAD_NAME                       41: app
+        414     LOAD_ATTR                       42: tool
+        416     LOAD_CONST                      47: 'search_memory'
+        418     LOAD_CONST                      43: ('name',)
+        420     CALL_FUNCTION_KW                1
+        422     LOAD_CONST                      75: (5,)
+        424     LOAD_NAME                       26: str
+        426     LOAD_NAME                       44: int
+        428     LOAD_NAME                       7: Dict
+        430     LOAD_NAME                       26: str
+        432     LOAD_NAME                       6: Any
+        434     BUILD_TUPLE                     2
+        436     BINARY_SUBSCR                   
+        438     LOAD_CONST                      49: ('query', 'top_k', 'return')
+        440     BUILD_CONST_KEY_MAP             3
+        442     LOAD_CONST                      50: <CODE> search_memory
+        444     LOAD_CONST                      47: 'search_memory'
+        446     MAKE_FUNCTION                   5
+        448     CALL_FUNCTION                   1
+        450     STORE_NAME                      45: search_memory
+        452     LOAD_NAME                       41: app
+        454     LOAD_ATTR                       42: tool
+        456     LOAD_CONST                      51: 'get_context'
+        458     LOAD_CONST                      43: ('name',)
+        460     CALL_FUNCTION_KW                1
+        462     LOAD_NAME                       26: str
+        464     LOAD_NAME                       7: Dict
+        466     LOAD_NAME                       26: str
+        468     LOAD_NAME                       6: Any
+        470     BUILD_TUPLE                     2
+        472     BINARY_SUBSCR                   
+        474     LOAD_CONST                      52: ('message', 'return')
+        476     BUILD_CONST_KEY_MAP             2
+        478     LOAD_CONST                      53: <CODE> get_context
+        480     LOAD_CONST                      51: 'get_context'
+        482     MAKE_FUNCTION                   4
+        484     CALL_FUNCTION                   1
+        486     STORE_NAME                      46: get_context
+        488     LOAD_NAME                       41: app
+        490     LOAD_ATTR                       42: tool
+        492     LOAD_CONST                      54: 'list_memories'
+        494     LOAD_CONST                      43: ('name',)
+        496     CALL_FUNCTION_KW                1
+        498     LOAD_CONST                      76: (20,)
+        500     LOAD_NAME                       44: int
+        502     LOAD_NAME                       7: Dict
+        504     LOAD_NAME                       26: str
+        506     LOAD_NAME                       6: Any
+        508     BUILD_TUPLE                     2
+        510     BINARY_SUBSCR                   
+        512     LOAD_CONST                      56: ('limit', 'return')
+        514     BUILD_CONST_KEY_MAP             2
+        516     LOAD_CONST                      57: <CODE> list_memories
+        518     LOAD_CONST                      54: 'list_memories'
+        520     MAKE_FUNCTION                   5
+        522     CALL_FUNCTION                   1
+        524     STORE_NAME                      47: list_memories
+        526     LOAD_NAME                       41: app
+        528     LOAD_ATTR                       42: tool
+        530     LOAD_CONST                      58: 'memory_status'
+        532     LOAD_CONST                      43: ('name',)
+        534     CALL_FUNCTION_KW                1
+        536     LOAD_NAME                       7: Dict
+        538     LOAD_NAME                       26: str
+        540     LOAD_NAME                       6: Any
+        542     BUILD_TUPLE                     2
+        544     BINARY_SUBSCR                   
+        546     LOAD_CONST                      19: ('return',)
+        548     BUILD_CONST_KEY_MAP             1
+        550     LOAD_CONST                      59: <CODE> memory_status
+        552     LOAD_CONST                      58: 'memory_status'
+        554     MAKE_FUNCTION                   4
+        556     CALL_FUNCTION                   1
+        558     STORE_NAME                      48: memory_status
+        560     LOAD_NAME                       41: app
+        562     LOAD_METHOD                     49: resource
+        564     LOAD_CONST                      60: 'memory://long-term'
+        566     CALL_METHOD                     1
+        568     LOAD_NAME                       26: str
+        570     LOAD_CONST                      19: ('return',)
+        572     BUILD_CONST_KEY_MAP             1
+        574     LOAD_CONST                      61: <CODE> resource_long_term
+        576     LOAD_CONST                      62: 'resource_long_term'
+        578     MAKE_FUNCTION                   4
+        580     CALL_FUNCTION                   1
+        582     STORE_NAME                      50: resource_long_term
+        584     LOAD_NAME                       41: app
+        586     LOAD_METHOD                     49: resource
+        588     LOAD_CONST                      63: 'memory://profile'
+        590     CALL_METHOD                     1
+        592     LOAD_NAME                       26: str
+        594     LOAD_CONST                      19: ('return',)
+        596     BUILD_CONST_KEY_MAP             1
+        598     LOAD_CONST                      64: <CODE> resource_profile
+        600     LOAD_CONST                      65: 'resource_profile'
+        602     MAKE_FUNCTION                   4
+        604     CALL_FUNCTION                   1
+        606     STORE_NAME                      51: resource_profile
+        608     LOAD_NAME                       41: app
+        610     LOAD_METHOD                     49: resource
+        612     LOAD_CONST                      66: 'memory://recent'
+        614     CALL_METHOD                     1
+        616     LOAD_NAME                       26: str
+        618     LOAD_CONST                      19: ('return',)
+        620     BUILD_CONST_KEY_MAP             1
+        622     LOAD_CONST                      67: <CODE> resource_recent
+        624     LOAD_CONST                      68: 'resource_recent'
+        626     MAKE_FUNCTION                   4
+        628     CALL_FUNCTION                   1
+        630     STORE_NAME                      52: resource_recent
+        632     LOAD_NAME                       53: __name__
+        634     LOAD_CONST                      69: '__main__'
+        636     COMPARE_OP                      2 (==)
+        638     POP_JUMP_IF_FALSE               678
+        642     LOAD_NAME                       1: os
+        644     LOAD_ATTR                       54: environ
+        646     LOAD_METHOD                     40: get
+        648     LOAD_CONST                      70: 'OPENCLAW_MCP_SMOKE'
+        650     CALL_METHOD                     1
+        652     LOAD_CONST                      71: '1'
+        654     COMPARE_OP                      2 (==)
+        656     POP_JUMP_IF_FALSE               670
+        660     LOAD_NAME                       55: print
+        662     LOAD_CONST                      72: 'mcp_server_smoke_ok'
+        664     CALL_FUNCTION                   1
+        666     POP_TOP                         
+        668     JUMP_FORWARD                    8 (to 678)
+        670     LOAD_NAME                       41: app
+        672     LOAD_METHOD                     56: run
+        674     CALL_METHOD                     0
+        676     POP_TOP                         
+        678     LOAD_CONST                      1: None
+        680     RETURN_VALUE                    
