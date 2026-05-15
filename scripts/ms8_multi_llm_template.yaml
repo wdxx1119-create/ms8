@@ -1,0 +1,44 @@
+# MS8 multi-LLM production template (local-first + cloud fallback)
+memory:
+  llm:
+    enabled: true
+    timeout_seconds: 25
+    failover_enabled: true
+    failover_max_errors: 3
+    failover_cooldown_seconds: 120
+
+    # Default routing chains
+    provider_order_chat:
+      - ollama
+      - openai
+      - openrouter
+    provider_order_embedding:
+      - ollama
+      - openai
+      - openrouter
+
+    # Task-specific override chains
+    task_provider_order:
+      kg_extract: [ollama, openrouter, openai]
+      classification: [ollama, openai]
+      reasoning: [openai, openrouter, ollama]
+
+    models:
+      primary_model: "gemma3:1b"
+      complex_model: "llama3.2:3b"
+      reasoning_model: "llama3.2:3b"
+      embedding_model: "nomic-embed-text:latest"
+
+    openai:
+      enabled: true
+      base_url: "https://api.openai.com/v1"
+      api_key: ""  # prefer OPENAI_API_KEY env
+      chat_model: "gpt-4.1-mini"
+      embedding_model: "text-embedding-3-small"
+
+    openrouter:
+      enabled: true
+      base_url: "https://openrouter.ai/api/v1"
+      api_key: ""  # prefer OPENROUTER_API_KEY env
+      chat_model: "openai/gpt-4.1-mini"
+      embedding_model: "openai/text-embedding-3-small"
