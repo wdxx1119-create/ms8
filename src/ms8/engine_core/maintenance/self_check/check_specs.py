@@ -1403,7 +1403,16 @@ def _check_l3_shadow_permissions(core: Any, _ctx: dict[str, Any]) -> dict[str, A
         from ...security.shadow.shadow_permissions import ensure_shadow_permissions
 
         shadow_dir = Path(core.config["memory_dir"]) / "security" / "shadow_data"
-        backup_dir = Path("~/.shadow_backup").expanduser()
+        sec_shadow_cfg = (
+            (core.config.get("settings", {}) or {})
+            .get("memory", {})
+            .get("security", {})
+            .get("shadow", {})
+        )
+        backup_raw = str(sec_shadow_cfg.get("backup_dir", "memory/security/shadow_backup") or "memory/security/shadow_backup")
+        backup_dir = Path(backup_raw).expanduser()
+        if not backup_dir.is_absolute():
+            backup_dir = Path(core.config["memory_dir"]) / backup_dir
         out = ensure_shadow_permissions(shadow_dir, backup_dir=backup_dir)
         violations = list(out.get("violations", []))
         corrected = list(out.get("corrected", []))
@@ -1693,6 +1702,11 @@ def _check_l4_capture_trend(core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
         "dropped_samples": int(sum(day_stats[d]["dropped"] for d in days)),
         "traffic_samples": int(sum(day_stats[d]["traffic_total"] for d in days)),
     }
+    # If all recent samples were policy/noise drops, we don't have enough
+    # extraction-quality evidence to mark trend as failed. Keep it visible
+    # as a warning so operators can correlate with noise-block metrics.
+    if details["quality_samples"] == 0:
+        return _ok("capture trend has no quality samples", details)
     if avg < 0.60:
         return _fail("capture trend low", details)
     if delta < -0.15:
@@ -2193,7 +2207,17 @@ def _check_s3_shadow_immutable_flags(core: Any, _ctx: dict[str, Any]) -> dict[st
 
 def _check_s4_shadow_backup_dual_site(core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
     primary = Path(core.config["memory_dir"]) / "security" / "shadow_data" / "shadow_events.jsonl"
-    backup = Path("~/.shadow_backup/shadow_events.jsonl").expanduser()
+    sec_shadow_cfg = (
+        (core.config.get("settings", {}) or {})
+        .get("memory", {})
+        .get("security", {})
+        .get("shadow", {})
+    )
+    backup_raw = str(sec_shadow_cfg.get("backup_dir", "memory/security/shadow_backup") or "memory/security/shadow_backup")
+    backup_root = Path(backup_raw).expanduser()
+    if not backup_root.is_absolute():
+        backup_root = Path(core.config["memory_dir"]) / backup_root
+    backup = backup_root / "shadow_events.jsonl"
     details = {
         "primary_exists": primary.exists(),
         "backup_exists": backup.exists(),

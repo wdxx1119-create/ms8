@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from ...policy_engine_loader import get_policy_engine
 from .check_specs import (
     STATUS_ERROR,
     STATUS_FAIL,
@@ -306,6 +307,27 @@ def run_self_check(core: Any, level: str = "L1") -> dict[str, Any]:
         progress_path.write_text(json.dumps(progress_payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
         checks = build_check_specs(level=level)
+        # Policy-engine hook (Phase 2): allow backend to reorder/filter check list.
+        # Open backend is passthrough; failures never break self-check execution.
+        try:
+            engine = get_policy_engine()
+            plan_env = engine.run_self_check_specs(
+                {
+                    "level": str(level or "L1").upper(),
+                    "check_ids": [spec.check_id for spec in checks],
+                    "checks_version": CHECKS_VERSION,
+                }
+            )
+            data = plan_env.get("data", {}) if isinstance(plan_env.get("data", {}), dict) else {}
+            selected_ids = data.get("check_ids", []) if isinstance(data.get("check_ids", []), list) else []
+            if selected_ids:
+                by_id = {spec.check_id: spec for spec in checks}
+                filtered = [by_id[cid] for cid in selected_ids if isinstance(cid, str) and cid in by_id]
+                if filtered:
+                    checks = filtered
+        except (RuntimeError, OSError, TypeError, ValueError, KeyError):
+            # keep local check list as-is
+            pass
         started_at_iso = _iso_now()
         results: list[dict[str, Any]] = []
         ctx: dict[str, Any] = {

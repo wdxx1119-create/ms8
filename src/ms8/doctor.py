@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
+from .engine_core.policy_engine_loader import get_policy_backend_status
 from .paths import detect_install_mode, get_config_dir, get_data_dir, get_log_dir, get_ms8_home
 from .runtime import (
     backup_memories,
@@ -246,6 +247,11 @@ def run_doctor() -> int:
         if summary_warn > 0:
             if warn_checks:
                 print(f" ⚠️ self-check warn checks: {', '.join(warn_checks[:8])}")
+                if "l4_capture_trend" in warn_checks:
+                    print(
+                        "    ↳ l4_capture_trend note: recent window has noise/policy drops but no "
+                        "quality samples; treated as explainable warn (not fail)."
+                    )
             else:
                 print(" ⚠️ self-check warns exist but warn check_ids are unavailable in row details.")
         if summary_fail > 0:
@@ -336,6 +342,16 @@ def run_doctor() -> int:
                 " ⚠️ llm fallback active: semantic/KG-LLM enhancements limited. "
                 "next: `ms8 llm setup --mode local` or `ms8 llm setup --mode cloud`."
             )
+    policy_backend = get_policy_backend_status()
+    print(
+        " ✅ policy engine: "
+        f"backend={policy_backend.get('policy_backend', 'unknown')} "
+        f"version={policy_backend.get('policy_engine_version', 'unknown')} "
+        f"strict={policy_backend.get('policy_strict_mode', False)}"
+    )
+    fallback_reason = str(policy_backend.get("policy_fallback_reason", "") or "")
+    if fallback_reason:
+        print(f" ⚠️ policy engine fallback: {fallback_reason}")
     gov = get_governance_report()
     print(
         " ✅ governance: "
@@ -354,6 +370,20 @@ def run_doctor() -> int:
     if gov.get("baseline_update_pending"):
         runtime_status = "degraded"
         print(" ⚠️ baseline_update_request pending authorization")
+    policy_attack = gov.get("policy_attack_samples", {}) if isinstance(gov.get("policy_attack_samples", {}), dict) else {}
+    if policy_attack:
+        pa_present = bool(policy_attack.get("present", False))
+        pa_ok = bool(policy_attack.get("ok", False))
+        pa_failed = int(policy_attack.get("failed_cases", 0) or 0)
+        pa_total = int(policy_attack.get("total_cases", 0) or 0)
+        pa_age = policy_attack.get("age_hours", None)
+        age_text = f"{float(pa_age):.1f}h" if isinstance(pa_age, (int, float)) else "n/a"
+        print(
+            " ✅ policy-attack-samples: "
+            f"present={pa_present} ok={pa_ok} failed={pa_failed}/{pa_total} age={age_text}"
+        )
+        if pa_present and (not pa_ok or pa_failed > 0):
+            print(" ⚠️ policy-attack-samples gate unhealthy: investigate closed policy regression")
     trend = gov.get("trend", {})
     if isinstance(trend, dict):
         t24 = trend.get("window_24h", {})
@@ -422,8 +452,19 @@ def run_doctor() -> int:
     if status.lower() in {"fail", "error"}:
         runtime_health = "degraded"
 
-    # memory quality: trustworthiness / freshness / injectability oriented
-    if isinstance(mon, dict):
+    # memory quality: prefer governance domain status when available.
+    gov_domains = gov.get("health_domains", {}) if isinstance(gov.get("health_domains", {}), dict) else {}
+    gov_memory_quality = str(
+        gov_domains.get("memory_quality_health", gov.get("memory_quality_health", ""))
+    ).strip().lower()
+    if gov_memory_quality in {"green", "yellow", "red"}:
+        memory_quality_health = {
+            "green": "healthy",
+            "yellow": "warn",
+            "red": "degraded",
+        }[gov_memory_quality]
+    # Fallback heuristic only when governance domain is unavailable.
+    elif isinstance(mon, dict):
         rates = mon.get("rates", {}) if isinstance(mon.get("rates", {}), dict) else {}
         slo = mon.get("slo", {}) if isinstance(mon.get("slo", {}), dict) else {}
         checks_m = slo.get("checks", {}) if isinstance(slo.get("checks", {}), dict) else {}

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any, cast
 
@@ -7,6 +8,9 @@ from ms8.app.pipeline.risk_scoring import compute_risk_scores
 from ms8.app.rules.block_rules import evaluate_block
 from ms8.app.rules.conflict_rules import evaluate_conflict
 from ms8.app.rules.privacy_rules import redact_sensitive_text
+from ms8.engine_core.policy_engine_loader import get_policy_engine
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -69,6 +73,51 @@ def evaluate_candidate(
 ) -> AdmissionDecision:
     _ = metadata, candidate_type, existing_memories
     normalized = str(text or "").strip()
+    policy_route: str | None = None
+    policy_data: dict[str, Any] = {}
+    try:
+        engine = get_policy_engine()
+        env = engine.evaluate_admission(
+            {
+                "text": normalized,
+                "metadata": dict(metadata or {}),
+            }
+        )
+        pd = env.get("data", {}) if isinstance(env.get("data", {}), dict) else {}
+        route_hint = str(pd.get("route", "") or "").strip()
+        if route_hint in {"accepted", "rejected", "short_term_only", "pending_review", "redacted_accept"}:
+            policy_route = route_hint
+            policy_data = pd
+    except (RuntimeError, OSError, TypeError, ValueError, KeyError) as exc:
+        logger.debug("policy_engine evaluate_admission fallback to local rules: %s", exc)
+
+    if policy_route is not None:
+        final_text = str(policy_data.get("normalized_text", normalized)).strip()
+        return AdmissionDecision(
+            normalized_text=final_text,
+            route=policy_route,
+            reasons=[str(x) for x in policy_data.get("reasons", [])]
+            if isinstance(policy_data.get("reasons", []), list) and policy_data.get("reasons", [])
+            else ["policy_engine_route"],
+            privacy_flags=[str(x) for x in policy_data.get("privacy_flags", [])]
+            if isinstance(policy_data.get("privacy_flags", []), list)
+            else [],
+            conflict_flags=[str(x) for x in policy_data.get("conflict_flags", [])]
+            if isinstance(policy_data.get("conflict_flags", []), list)
+            else [],
+            risk_scores=dict(policy_data.get("risk_scores", {}))
+            if isinstance(policy_data.get("risk_scores", {}), dict)
+            else {},
+            should_persist_main=bool(policy_data.get("should_persist_main", policy_route != "rejected")),
+            should_index=bool(policy_data.get("should_index", policy_route in {"accepted", "redacted_accept"})),
+            should_write_memory_md=bool(
+                policy_data.get("should_write_memory_md", policy_route in {"accepted", "redacted_accept"})
+            ),
+            redacted=bool(policy_data.get("redacted", policy_route == "redacted_accept")),
+            replace_old=bool(policy_data.get("replace_old", False)),
+            raw={"policy_engine": dict(policy_data)},
+        )
+
     block_result = evaluate_block(normalized)
     privacy_result = redact_sensitive_text(normalized)
     conflict_result = evaluate_conflict(normalized)
@@ -135,11 +184,13 @@ def evaluate_candidate(
     if not reasons:
         reasons.append("admission_default_accept")
 
+    privacy_flags = _as_str_list(privacy_result.get("flags", []))
+
     return AdmissionDecision(
         normalized_text=final_text,
         route=route,
         reasons=reasons,
-        privacy_flags=_as_str_list(privacy_result.get("flags", [])),
+        privacy_flags=privacy_flags,
         conflict_flags=_as_str_list(conflict_result.get("conflict_flags", [])),
         risk_scores=risk_scores,
         should_persist_main=should_persist_main,

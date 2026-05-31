@@ -119,7 +119,17 @@ def archive_and_sync_review_queue(
     _write_jsonl(archive_file, rows)
 
     mem_rows = _read_jsonl(records_file)
-    mem_by_id = {str(r.get("id", "")): r for r in mem_rows if str(r.get("id", ""))}
+    mem_by_id: dict[str, dict[str, Any]] = {}
+    for rec in mem_rows:
+        if not isinstance(rec, dict):
+            continue
+        top_id = str(rec.get("id", "")).strip()
+        meta = rec.get("meta", {})
+        meta_id = str(meta.get("id", "") if isinstance(meta, dict) else "").strip()
+        if top_id:
+            mem_by_id[top_id] = rec
+        if meta_id:
+            mem_by_id[meta_id] = rec
     pending: list[dict[str, Any]] = []
     orphan = 0
     synced = 0
@@ -135,7 +145,11 @@ def archive_and_sync_review_queue(
 
     for item in rows:
         decision = str(item.get("decision", "pending")).strip().lower() or "pending"
-        memory_id = str(item.get("memory_id", "")).strip()
+        memory_id = str(
+            item.get("memory_id", "")
+            or item.get("record_id", "")
+            or item.get("id", "")
+        ).strip()
         risk = str(item.get("risk_level", "normal") or "normal")
         cat = str(item.get("category", "unknown") or "unknown")
         risk_counter[risk] += 1

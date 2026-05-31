@@ -57,6 +57,7 @@ class ShadowLedger:
         self.events_file = self.shadow_dir / "shadow_events.jsonl"
         self.backup_dir = backup_dir
         self.backup_events_file = (Path(backup_dir) / "shadow_events.jsonl") if backup_dir is not None else None
+        self._backup_write_disabled = False
         self.spool_file = self.shadow_dir / "shadow_spool.jsonl"
         self.checkpoints_file = self.shadow_dir / "shadow_checkpoints.jsonl"
         self.verify_file = self.shadow_dir / "shadow_verify.jsonl"
@@ -258,8 +259,15 @@ class ShadowLedger:
         row = event.to_dict()
         line = _json_line(row)
         self._safe_append_with_fallback(self.events_file, line)
-        if self.backup_events_file is not None:
-            self._safe_append_with_fallback(self.backup_events_file, line)
+        if self.backup_events_file is not None and not self._backup_write_disabled:
+            try:
+                self._append_line(self.backup_events_file, line)
+            except OSError as exc:
+                self._backup_write_disabled = True
+                print(
+                    f"[ShadowLedger] Backup events disabled (path not writable): "
+                    f"{self.backup_events_file} ({exc})"
+                )
         self._checkpoint_buffer.append(_sha256_text(line))
         self._checkpoint_if_needed()
         self._snapshot_if_needed()
