@@ -57,6 +57,22 @@ def test_run_doctor_healthy_exit_and_layer_output(monkeypatch, capsys, tmp_path:
             "health_domains": {"memory_quality_health": "green"},
         },
     )
+    monkeypatch.setattr(
+        doctor,
+        "get_policy_backend_status",
+        lambda: {
+            "policy_backend": "open",
+            "policy_engine_version": "0.1.0-open",
+            "policy_fallback_reason": "",
+            "policy_module": "ms8_policy_engine",
+            "policy_strict_mode": False,
+            "policy_license": {
+                "status": "disabled",
+                "reason_code": "license_check_disabled",
+                "enabled": False,
+            },
+        },
+    )
     monkeypatch.setattr(doctor, "get_expression_router_status", lambda: {"total_samples": 0, "mode_counts": {}})
     monkeypatch.setattr(doctor, "get_capability_reachability_report", lambda top_unreachable=10: {"reachable_ratio": 1.0, "referenced_methods": 1, "public_methods_total": 1, "unreachable_methods": 0})
     monkeypatch.setattr(doctor, "_agent_native_status", lambda: {"policy": "PRESENT", "permission_profile": "DEFAULT_SAFE", "task_files": "install=P, ops=P, usage=P", "agent_native_status": "OK"})
@@ -70,6 +86,7 @@ def test_run_doctor_healthy_exit_and_layer_output(monkeypatch, capsys, tmp_path:
     assert "memory_quality_health: healthy" in out
     assert "security_governance_health: healthy" in out
     assert "Overall: healthy" in out
+    assert "policy license: status=disabled enabled=False" in out
 
 
 def test_run_doctor_with_hint_handles_permission_error(monkeypatch, capsys) -> None:
