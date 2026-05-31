@@ -10,7 +10,13 @@ build/
 health_card_*.json
 repair_ops_audit.jsonl
 .ms8/
+.ms8_runtime
 .ms8_runtime/
+repo_public/
+dist_src/
+cov.json
+ARTIFACT_*.md
+backups/project_runtime_snapshot_*/
 .tmp*/
 .pytest_cache/
 .mypy_cache/
