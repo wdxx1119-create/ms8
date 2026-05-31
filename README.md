@@ -309,6 +309,9 @@ ms8 ops self-check-report
 ms8 ops self-repair-run --dry-run
 ```
 
+说明：
+- `l4_capture_trend` 出现 `warn` 时，如果提示“无质量样本（仅噪声/策略丢弃样本）”，属于可解释告警，不代表系统故障。
+
 ---
 
 ## 开发
@@ -337,7 +340,32 @@ python -m build --no-isolation
 ```bash
 scripts/check_release_artifacts.sh
 scripts/release_isolated_test.sh
+scripts/publish_testpypi.sh
+scripts/publish_pypi.sh
 ```
+
+### 安全发布（Token 不落盘）
+
+```bash
+export TWINE_USERNAME="__token__"
+export TWINE_PASSWORD="pypi-***"
+
+# 先做发布前检查
+bash scripts/release_checklist.sh
+
+# 预发布到 TestPyPI
+bash scripts/publish_testpypi.sh
+
+# 正式发布到 PyPI
+bash scripts/publish_pypi.sh
+
+# 或使用 Make 一步化
+make publish-test
+make clear-release-env
+```
+
+可先用 `--dry-run` 验证上传目标，不会实际发布。
+详细说明见：[RELEASE_SECURITY.md](docs/RELEASE_SECURITY.md)
 
 ---
 
