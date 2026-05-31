@@ -141,6 +141,20 @@ def run_dashboard(limit: int = 5) -> int:
             warn_n = sum(1 for r in rows if isinstance(r, dict) and str(r.get("status", "")).lower() == "warn")
             fail_n = sum(1 for r in rows if isinstance(r, dict) and str(r.get("status", "")).lower() == "fail")
             print(f" - self-check L4: pass={pass_n}, warn={warn_n}, fail={fail_n}")
+            warn_ids: list[str] = []
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                if str(row.get("status", "")).lower() != "warn":
+                    continue
+                warn_ids.append(str(row.get("check_id", "")))
+            if warn_ids:
+                print(f" - self-check warn checks: {', '.join(warn_ids[:5])}")
+            if "l4_capture_trend" in warn_ids:
+                print(
+                    "   note: capture trend warn is explainable when recent window has only "
+                    "noise/policy drops and no quality samples."
+                )
     gov = get_governance_report()
     print(
         " - governance: "
@@ -160,6 +174,20 @@ def run_dashboard(limit: int = 5) -> int:
     if bool(gov.get("baseline_update_pending", False)):
         overall = "degraded"
         print(" - governance alert: baseline_update_request pending")
+    policy_attack = gov.get("policy_attack_samples", {}) if isinstance(gov.get("policy_attack_samples", {}), dict) else {}
+    if policy_attack:
+        pa_present = bool(policy_attack.get("present", False))
+        pa_ok = bool(policy_attack.get("ok", False))
+        pa_failed = int(policy_attack.get("failed_cases", 0) or 0)
+        pa_total = int(policy_attack.get("total_cases", 0) or 0)
+        pa_age = policy_attack.get("age_hours", None)
+        age_text = f"{float(pa_age):.1f}h" if isinstance(pa_age, (int, float)) else "n/a"
+        print(
+            " - policy-attack-samples: "
+            f"present={pa_present} ok={pa_ok} failed={pa_failed}/{pa_total} age={age_text}"
+        )
+        if pa_present and (not pa_ok or pa_failed > 0):
+            print(" - policy-attack-samples alert: closed policy regression suspected")
     trend = gov.get("trend", {})
     if isinstance(trend, dict):
         t24 = trend.get("window_24h", {})

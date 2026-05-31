@@ -46,3 +46,30 @@ def test_clean_reports_failed_removal(monkeypatch, tmp_path: Path) -> None:
     assert out["ok"] is False
     assert out["failed_count"] >= 1
     assert any(item.get("path", "").endswith("/health") for item in out["failed"])
+
+
+def test_reset_runtime_no_backup_dry_run(monkeypatch, tmp_path: Path) -> None:
+    root = tmp_path / "runtime"
+    (root / "memory").mkdir(parents=True, exist_ok=True)
+    (root / "memory" / "auto_memory_index.json").write_text("{}", encoding="utf-8")
+
+    def _fake_ensure():
+        return {"root": root}
+
+    monkeypatch.setattr(lifecycle, "ensure_runtime_dirs", _fake_ensure)
+    out = lifecycle.reset_runtime(dry_run=True, backup=False)
+    assert out["ok"] is True
+    assert out["backup_enabled"] is False
+    assert out["backup_items"] == []
+
+
+def test_uninstall_guard_when_backup_inside_runtime(monkeypatch, tmp_path: Path) -> None:
+    root = tmp_path / "runtime"
+    (root / "memory").mkdir(parents=True, exist_ok=True)
+    (root / "memory" / "auto_memory_records.jsonl").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(lifecycle, "get_runtime_dir", lambda: root)
+
+    monkeypatch.setattr(lifecycle, "_is_subpath", lambda child, parent: True)
+    out = lifecycle.uninstall_runtime(dry_run=False, purge_data=False, backup=True, remove_launchd=False)
+    assert out["ok"] is False
+    assert out["backup_error"] == "backup_root_inside_runtime_root"

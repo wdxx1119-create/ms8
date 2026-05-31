@@ -6,6 +6,7 @@ from __future__ import annotations
 import glob
 import hashlib
 import json
+import logging
 import re
 import threading
 from dataclasses import asdict
@@ -15,13 +16,26 @@ from typing import Any
 
 from .file_write_guard import atomic_write_json
 
-build_pipeline: Any = None
-try:
-    from ms8.app.main import build_pipeline as _build_pipeline
+logger = logging.getLogger(__name__)
+_build_pipeline_fn: Any = None
+_build_pipeline_load_attempted = False
 
-    build_pipeline = _build_pipeline
-except ImportError as exc:
-    print(f"[AutoMemory] Optional admission pipeline unavailable: {exc}")
+
+def _get_build_pipeline_fn() -> Any:
+    global _build_pipeline_fn, _build_pipeline_load_attempted
+    if _build_pipeline_fn is not None:
+        return _build_pipeline_fn
+    if _build_pipeline_load_attempted:
+        return None
+    _build_pipeline_load_attempted = True
+    try:
+        from ms8.app.main import build_pipeline as _build_pipeline
+
+        _build_pipeline_fn = _build_pipeline
+        return _build_pipeline_fn
+    except (ImportError, RuntimeError, AttributeError) as exc:
+        logger.debug("AutoMemory optional admission pipeline unavailable: %s", exc)
+        return None
 
 
 class AutoMemoryExtractor:
@@ -80,6 +94,7 @@ class AutoMemoryExtractor:
         self.session_state_file.parent.mkdir(parents=True, exist_ok=True)
 
         self.pipeline = None
+        build_pipeline = _get_build_pipeline_fn()
         if build_pipeline is not None:
             try:
                 self.pipeline = build_pipeline(

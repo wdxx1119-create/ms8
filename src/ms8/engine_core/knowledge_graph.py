@@ -18,7 +18,8 @@ import shutil
 import sqlite3
 import threading
 from collections import Counter
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Iterator, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from difflib import SequenceMatcher
@@ -290,10 +291,14 @@ class KnowledgeGraph:
         merged.update(override)
         return merged
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            yield conn
+        finally:
+            conn.close()
 
     def _init_database(self) -> None:
         with self._connect() as conn:
@@ -1284,34 +1289,54 @@ class KnowledgeGraph:
                     writeback_mode = "unchanged"
                 updated_relations_count = 1 if writeback_mode in {"reinforced", "merged"} else 0
             else:
-                cursor.execute(
-                    """
-                    INSERT INTO relations (
-                        subject_entity_id, object_entity_id, relation_type,
-                        strength, description, confidence, access_count,
-                        created_at, updated_at, source_memory_ref
-                    ) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
-                    """,
-                    (
-                        subject["id"],
-                        object_entity["id"],
-                        relation_type,
-                        strength,
-                        description.strip(),
-                        confidence,
-                        now,
-                        now,
-                        source_memory_ref,
-                    ),
-                )
-                last_rel_id = cursor.lastrowid
-                relation_id = int(last_rel_id) if isinstance(last_rel_id, int) else 0
-                if relation_id <= 0:
-                    raise RuntimeError("relation insert did not return lastrowid")
-                strength_delta = max(0.0, strength)
-                confidence_delta = max(0.0, confidence)
-                writeback_mode = "inserted"
-                updated_relations_count = 1
+                try:
+                    cursor.execute(
+                        """
+                        INSERT INTO relations (
+                            subject_entity_id, object_entity_id, relation_type,
+                            strength, description, confidence, access_count,
+                            created_at, updated_at, source_memory_ref
+                        ) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
+                        """,
+                        (
+                            subject["id"],
+                            object_entity["id"],
+                            relation_type,
+                            strength,
+                            description.strip(),
+                            confidence,
+                            now,
+                            now,
+                            source_memory_ref,
+                        ),
+                    )
+                    last_rel_id = cursor.lastrowid
+                    relation_id = int(last_rel_id) if isinstance(last_rel_id, int) else 0
+                    if relation_id <= 0:
+                        raise RuntimeError("relation insert did not return lastrowid")
+                    strength_delta = max(0.0, strength)
+                    confidence_delta = max(0.0, confidence)
+                    writeback_mode = "inserted"
+                    updated_relations_count = 1
+                except sqlite3.IntegrityError:
+                    # Concurrent ingest may insert the same relation first.
+                    # Treat it as an existing relation merge path instead of surfacing thread warnings.
+                    conn.rollback()
+                    existing = cursor.execute(
+                        """
+                        SELECT id, strength, description, confidence
+                        FROM relations
+                        WHERE subject_entity_id = ? AND object_entity_id = ? AND relation_type = ?
+                        """,
+                        (subject["id"], object_entity["id"], relation_type),
+                    ).fetchone()
+                    if existing is None:
+                        raise
+                    relation_id = int(existing["id"])
+                    strength_delta = 0.0
+                    confidence_delta = 0.0
+                    writeback_mode = "concurrent_existing"
+                    updated_relations_count = 0
             conn.commit()
         relation = self.get_relation(relation_id)
         if relation is None:

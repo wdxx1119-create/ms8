@@ -623,6 +623,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_review = sub.add_parser("review", help="review queue and threshold approvals")
     p_review_sub = p_review.add_subparsers(dest="review_cmd")
     p_review_sub.add_parser("list", help="list pending review items")
+    p_review_sub.add_parser("status", help="alias of list (compat)")
     p_review_batch = p_review_sub.add_parser("batch", help="run batch review")
     p_review_batch.add_argument("--mode", default="triage_default", help="batch mode")
     p_review_batch.add_argument("--limit", type=int, default=30, help="max items")
@@ -678,7 +679,12 @@ def _build_parser() -> argparse.ArgumentParser:
     p_ops_sub.add_parser("backfill-ids", help="backfill missing auto-memory record ids")
     p_ops_sub.add_parser("cleanup-memory", help="cleanup old memory data")
     p_ops_sub.add_parser("monitoring-status", help="show monitoring status")
-    p_ops_sub.add_parser("governance", help="show governance layered health report")
+    p_ops_governance = p_ops_sub.add_parser("governance", help="show governance layered health report")
+    p_ops_governance.add_argument(
+        "--json",
+        action="store_true",
+        help="compat flag; output is JSON by default",
+    )
     p_ops_sub.add_parser("compression-status", help="show compression lifecycle status")
     p_ops_comp_run = p_ops_sub.add_parser("compression-run", help="run compression lifecycle")
     p_ops_comp_run.add_argument("--dry-run", action="store_true", help="preview compression only")
@@ -1351,7 +1357,7 @@ def main(argv: list[str] | None = None) -> int:
                 "ms8 graph: choose stats|extract|maintain|repair-access|search|relations|neighbors|path|timeline|health"
             )
         if args.command == "review":
-            if args.review_cmd == "list":
+            if args.review_cmd in {"list", "status"}:
                 out = review_list_runtime()
                 print(json.dumps(out, ensure_ascii=False, indent=2))
                 return 0 if bool(out.get("ok", False)) else 1
@@ -1639,6 +1645,12 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, ValueError) as exc:
         logger.error("ms8 runtime error: %s", exc)
         print(f"ms8 error: {exc}", file=sys.stderr)
+        if isinstance(exc, PermissionError):
+            hint = (
+                "hint: current runtime path is not writable. "
+                "Try: MS8_HOME=/path/to/writable/.ms8 ms8 <command>"
+            )
+            print(hint, file=sys.stderr)
         return 1
 
     parser.print_help()

@@ -1,16 +1,2 @@
-service:
-  name: ms8-connect
-  mode: local
 mcp:
   enabled: true
-  tools:
-    - submit
-    - query
-    - context
-    - status
-    - profile
-  resources:
-    - long-term
-    - profile
-    - recent
-

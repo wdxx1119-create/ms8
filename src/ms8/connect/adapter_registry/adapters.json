@@ -9,20 +9,17 @@
       "profile"
     ],
     "metadata": {
-      "provider": "ms8",
-      "mode": "local",
-      "version": "restored-connect"
-    }
-  },
-  "ms8_local_llm_adapter": {
-    "status": "active",
-    "capabilities": [
-      "status",
-      "context"
-    ],
-    "metadata": {
-      "provider": "ms8",
-      "mode": "adapter"
+      "ok": true,
+      "tools": {
+        "python": "/opt/homebrew/bin/python3",
+        "ollama": "/opt/homebrew/bin/ollama",
+        "git": "/usr/bin/git"
+      },
+      "available": {
+        "python": true,
+        "ollama": true,
+        "git": true
+      }
     }
   }
 }

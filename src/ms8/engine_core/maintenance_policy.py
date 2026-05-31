@@ -584,7 +584,11 @@ def gather_policy_stats(workspace_dir: Path, policy_cfg: dict[str, Any] | None =
         except (OSError, TypeError, ValueError, json.JSONDecodeError) as exc:
             print(f"[MaintenancePolicy] Failed reading write fail state {write_fail_file}: {exc}")
 
-    backup_manifest = Path.home() / ".shadow_backup" / "backup_manifest.json"
+    backup_manifest_candidates = [
+        memory_dir / "security" / "shadow_backup" / "backup_manifest.json",
+        Path.home() / ".shadow_backup" / "backup_manifest.json",
+    ]
+    backup_manifest = next((p for p in backup_manifest_candidates if p.exists()), backup_manifest_candidates[0])
     if backup_manifest.exists():
         try:
             rows = json.loads(backup_manifest.read_text(encoding="utf-8"))

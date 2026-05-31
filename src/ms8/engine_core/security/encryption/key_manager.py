@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 try:
@@ -174,7 +175,7 @@ class KeyManager:
         wrapped = _unb64(str(wrapped_bundle["wrapped_dek"]))
         try:
             return AESGCM(key).decrypt(nonce, wrapped, b"openclaw-memory-dek")
-        except (TypeError, ValueError) as exc:
+        except (TypeError, ValueError, InvalidTag) as exc:
             raise KeyManagerError("invalid_master_password") from exc
 
     def validate_master_password(self, wrapped_bundle: dict[str, Any], master_password: str) -> bool:
