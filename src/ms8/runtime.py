@@ -1396,7 +1396,7 @@ def detect_llm_providers() -> dict[str, Any]:
         ollama_ready = resp.status_code == 200
         if not ollama_ready:
             ollama_error = f"http_{resp.status_code}"
-    except (requests.RequestException, OSError) as exc:
+    except (requests.RequestException, OSError, RuntimeError) as exc:
         ollama_error = str(exc)
 
     openai_key = str(os.environ.get("OPENAI_API_KEY", "")).strip()
@@ -2116,6 +2116,31 @@ def get_governance_report() -> dict[str, Any]:
         retrieval_safety_health = "red"
         overall_reasons.append("retrieval_safety_high_risk")
 
+    # Optional policy attack-sample monitor (produced by scripts/policy_attack_sample_report.py).
+    policy_attack_report: dict[str, Any] = {}
+    policy_attack_file = paths["health"] / "policy_attack_samples_latest.json"
+    if policy_attack_file.exists():
+        try:
+            loaded = json.loads(policy_attack_file.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                policy_attack_report = loaded
+        except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+            logger.debug("Failed to parse policy attack sample report: %s", exc)
+            policy_attack_report = {}
+    attack_total = int(policy_attack_report.get("total_cases", 0) or 0)
+    attack_failed = int(policy_attack_report.get("failed_cases", 0) or 0)
+    attack_ok = bool(policy_attack_report.get("ok", False))
+    attack_age_h = float(policy_attack_report.get("age_hours", 0.0) or 0.0)
+    if attack_total > 0 and attack_failed > 0:
+        retrieval_safety_health = "red"
+        overall_reasons.append("policy_attack_samples_failed")
+    elif policy_attack_report and not attack_ok:
+        retrieval_safety_health = "yellow" if retrieval_safety_health == "green" else retrieval_safety_health
+        overall_reasons.append("policy_attack_samples_unhealthy")
+    if policy_attack_report and attack_age_h >= 168:
+        security_integrity_health = "yellow" if security_integrity_health == "green" else security_integrity_health
+        overall_reasons.append("policy_attack_samples_stale")
+
     def _combine(*vals: str) -> str:
         if "red" in vals:
             return "red"
@@ -2146,6 +2171,16 @@ def get_governance_report() -> dict[str, Any]:
         "v2_eligible_events": v2_eligible_events,
         "v2_min_eligible_events": v2_min_eligible_events,
         "authority": authority,
+    }
+    report["policy_attack_samples"] = {
+        "present": bool(policy_attack_report),
+        "file": str(policy_attack_file),
+        "ok": bool(policy_attack_report.get("ok", False)) if policy_attack_report else False,
+        "total_cases": attack_total,
+        "passed_cases": int(policy_attack_report.get("passed_cases", 0) or 0) if policy_attack_report else 0,
+        "failed_cases": attack_failed,
+        "age_hours": attack_age_h if policy_attack_report else None,
+        "updated_at": policy_attack_report.get("updated_at", "") if policy_attack_report else "",
     }
     _persist_governance_report(report=report, health_dir=paths["health"])
     report["trend"] = _governance_trend(health_dir=paths["health"])

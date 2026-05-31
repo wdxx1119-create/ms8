@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from ...policy_engine_loader import get_policy_engine
 from .repair_policies import get_policy
 from .repair_schema import RepairPlanItem, utc_now_iso
+
+logger = logging.getLogger(__name__)
 
 
 def _load_latest_check(memory_dir: Path) -> dict[str, Any]:
@@ -126,6 +130,41 @@ def build_repair_plan(
         plan.append(op)
 
     plan = _topo_sort(plan)
+    # Policy-engine hook (Phase 2): allow backend to adjust/replace plan rows.
+    # Open backend returns noop and keeps local plan unchanged.
+    try:
+        engine = get_policy_engine()
+        env = engine.plan_self_repair(
+            {
+                "mode": mode,
+                "filters": {
+                    "only_risk": target_risk,
+                    "domain": target_domain,
+                    "check_id": target_check,
+                },
+                "source_report_status": report.get("status", "ok"),
+                "source_report_level": report.get("requested_level", ""),
+                "plan": [p.to_dict() for p in plan],
+            }
+        )
+        data = env.get("data", {}) if isinstance(env.get("data", {}), dict) else {}
+        override = data.get("plan", []) if isinstance(data.get("plan", []), list) else []
+        if override:
+            # Keep this resilient: only accept list-of-dict rows.
+            safe_rows = [row for row in override if isinstance(row, dict)]
+            if safe_rows:
+                return {
+                    "status": "ok",
+                    "mode": mode,
+                    "source_report_status": report.get("status", "ok"),
+                    "source_report_level": report.get("requested_level", ""),
+                    "total_candidates": len(rows),
+                    "plan_count": len(safe_rows),
+                    "plan": safe_rows,
+                }
+    except (RuntimeError, OSError, TypeError, ValueError, KeyError) as exc:
+        logger.debug("policy_engine self_repair override fallback to local plan: %s", exc)
+
     return {
         "status": "ok",
         "mode": mode,

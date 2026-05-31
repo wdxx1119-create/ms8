@@ -74,6 +74,7 @@ from .memory_blocks import MemoryBlocks
 from .meta_cognition import MetaCognitionSystem
 from .monitoring import MemoryMonitoring
 from .pattern_recognition import PatternRecognition
+from .policy_engine_loader import get_policy_engine
 from .record_gateway import append_memory_record, normalize_memory_records
 from .response_mode_router import choose_cognitive_phrase, route_response
 from .response_mode_types import RouterDecision
@@ -118,6 +119,11 @@ class MemoryCore:
             llm_config: LLM configuration (uses defaults if None)
         """
         self.config = get_config()
+        self.policy_engine: Any | None = None
+        try:
+            self.policy_engine = get_policy_engine()
+        except (RuntimeError, OSError, TypeError, ValueError, KeyError):
+            self.policy_engine = None
         self.fast_start = str(os.environ.get("OPENCLAW_MEMORY_FAST_START", "")).strip().lower() in {
             "1",
             "true",
@@ -1069,6 +1075,44 @@ class MemoryCore:
 
     def _evaluate_admission(self, text: str, source: str = "core_write") -> dict[str, Any]:
         try:
+            policy_engine = getattr(self, "policy_engine", None)
+            if policy_engine is not None:
+                env = policy_engine.evaluate_admission(
+                    {
+                        "text": str(text or ""),
+                        "source": str(source or "core_write"),
+                    }
+                )
+                data = env.get("data", {}) if isinstance(env.get("data", {}), dict) else {}
+                route = str(data.get("route", "") or "").strip()
+                if route in {"accepted", "rejected", "short_term_only", "pending_review", "redacted_accept"}:
+                    return {
+                        "normalized_text": str(data.get("normalized_text", text)).strip(),
+                        "route": route,
+                        "reasons": list(data.get("reasons", []))
+                        if isinstance(data.get("reasons", []), list)
+                        else ["policy_engine_route"],
+                        "privacy_flags": list(data.get("privacy_flags", []))
+                        if isinstance(data.get("privacy_flags", []), list)
+                        else [],
+                        "conflict_flags": list(data.get("conflict_flags", []))
+                        if isinstance(data.get("conflict_flags", []), list)
+                        else [],
+                        "risk_scores": dict(data.get("risk_scores", {}))
+                        if isinstance(data.get("risk_scores", {}), dict)
+                        else {},
+                        "should_persist_main": bool(data.get("should_persist_main", route != "rejected")),
+                        "should_index": bool(data.get("should_index", route in {"accepted", "redacted_accept"})),
+                        "should_write_memory_md": bool(
+                            data.get("should_write_memory_md", route in {"accepted", "redacted_accept"})
+                        ),
+                        "redacted": bool(data.get("redacted", route == "redacted_accept")),
+                        "replace_old": bool(data.get("replace_old", False)),
+                        "raw": dict(data.get("raw", {})) if isinstance(data.get("raw", {}), dict) else {},
+                    }
+        except (RuntimeError, OSError, TypeError, ValueError, KeyError) as exc:
+            logger.debug("policy_engine admission fallback to local evaluator: %s", exc)
+        try:
             from .admission_compat import evaluate_candidate
 
             decision = evaluate_candidate(str(text or ""), metadata={"source": source})
@@ -1686,6 +1730,26 @@ class MemoryCore:
                 "low_trust_ratio": 0.0,
                 "topic_state": "continue",
             }
+        try:
+            policy_engine = getattr(self, "policy_engine", None)
+            if policy_engine is not None:
+                env = policy_engine.rank_retrieval(
+                    {
+                        "query": str(message or ""),
+                        "candidates": ranked_all,
+                        "candidate_profiles": candidate_profiles,
+                        "budget": budget,
+                    }
+                )
+                data = env.get("data", {}) if isinstance(env.get("data", {}), dict) else {}
+                items = data.get("items", []) if isinstance(data.get("items", []), list) else []
+                if items and all(isinstance(x, dict) for x in items):
+                    ranked_all = items
+                budget_overrides = data.get("budget", {}) if isinstance(data.get("budget", {}), dict) else {}
+                if budget_overrides:
+                    budget.update({k: v for k, v in budget_overrides.items() if v is not None})
+        except (RuntimeError, OSError, TypeError, ValueError, KeyError) as exc:
+            logger.debug("policy_engine retrieval ranking fallback to local ranking: %s", exc)
         top_k = int(budget.get("budget_top_k", base_top_k))
         budget_chars = int(budget.get("budget_chars", base_max_chars))
         low_cap_count = int(budget.get("low_trust_cap_count", max(1, int(top_k * 0.3))))

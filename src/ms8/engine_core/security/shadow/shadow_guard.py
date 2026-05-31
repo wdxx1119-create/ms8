@@ -4,6 +4,7 @@ import base64
 import hashlib
 import inspect
 import json
+import logging
 import os
 import shutil
 from collections.abc import Callable
@@ -11,6 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, cast
 
+from ...policy_engine_loader import get_policy_engine
 from .shadow_audit import ShadowAudit
 from .shadow_capacity_guard import ShadowCapacityGuard
 from .shadow_checkpoint_guard import ShadowCheckpointGuard
@@ -23,6 +25,8 @@ from .shadow_recovery import ShadowRecovery
 from .shadow_recovery_guard import ShadowRecoveryGuard
 from .shadow_seal import ShadowSeal
 from .shadow_tokens import ShadowTokenManager
+
+logger = logging.getLogger(__name__)
 
 
 class _NoCrypto:
@@ -87,7 +91,11 @@ class ShadowSystem:
         self.minimal_survival_exit_pct = float(sec_cfg.get("minimal_survival_exit_pct", 0.80))
         self.minimal_survival_read_sample_every = int(sec_cfg.get("minimal_survival_read_sample_every", 10) or 10)
         default_backup_dir = str(self.shadow_dir.parent / "shadow_backup")
-        self.backup_dir = Path(sec_cfg.get("backup_dir", default_backup_dir)).expanduser()
+        backup_raw = Path(str(sec_cfg.get("backup_dir", default_backup_dir))).expanduser()
+        if backup_raw.is_absolute():
+            self.backup_dir = backup_raw
+        else:
+            self.backup_dir = (memory_dir / backup_raw).resolve()
         shadow_dir_str = str(self.shadow_dir)
         default_immutable = not (shadow_dir_str.startswith("/tmp") or shadow_dir_str.startswith("/var/folders/"))
         self.immutable_enabled = bool(sec_cfg.get("immutable_enabled", default_immutable))
@@ -141,6 +149,21 @@ class ShadowSystem:
 
         def _admission_check(text: str, metadata: dict[str, Any]) -> dict[str, Any]:
             try:
+                if self._policy_engine is not None:
+                    env = self._policy_engine.shadow_decide(
+                        {
+                            "kind": "recovery_admission",
+                            "text": str(text or ""),
+                            "metadata": dict(metadata or {}),
+                        }
+                    )
+                    data = env.get("data", {}) if isinstance(env.get("data", {}), dict) else {}
+                    route = str(data.get("route", "") or "").strip()
+                    if route in {"accepted", "rejected", "pending_review"}:
+                        return {"route": route}
+            except (RuntimeError, OSError, TypeError, ValueError, KeyError) as exc:
+                logger.debug("policy_engine shadow admission fallback to local admission: %s", exc)
+            try:
                 from ...admission_compat import evaluate_candidate
                 decision = evaluate_candidate(text=str(text or ""), metadata=dict(metadata or {}))
                 if hasattr(decision, "to_dict"):
@@ -189,6 +212,11 @@ class ShadowSystem:
                 ttl_seconds=86400,
             ),
         }
+        self._policy_engine: Any | None = None
+        try:
+            self._policy_engine = get_policy_engine()
+        except (RuntimeError, OSError, TypeError, ValueError, KeyError):
+            self._policy_engine = None
         # Target registry: no external write_func injection.
         self._bound_targets: dict[str, bool] = {}
         self._startup_findings: list[str] = []
@@ -751,6 +779,21 @@ class ShadowSystem:
             return False
         level = self._seal.seal_level()
         risk_norm = str(risk or "high").lower()
+        try:
+            if self._policy_engine is not None:
+                env = self._policy_engine.shadow_decide(
+                    {
+                        "kind": "write_takeover",
+                        "sealed": True,
+                        "seal_level": str(level or "soft"),
+                        "risk": risk_norm,
+                    }
+                )
+                data = env.get("data", {}) if isinstance(env.get("data", {}), dict) else {}
+                if isinstance(data.get("takeover"), bool):
+                    return bool(data.get("takeover"))
+        except (RuntimeError, OSError, TypeError, ValueError, KeyError) as exc:
+            logger.debug("policy_engine shadow takeover fallback to local rule: %s", exc)
         if level == "hard":
             return True
         # soft seal: only divert high-risk writes
