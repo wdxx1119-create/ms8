@@ -7,6 +7,7 @@ import os
 from dataclasses import dataclass
 from typing import Any, cast
 
+from .license import PolicyLicenseStatus, validate_policy_license
 from .policy_engine_iface import PolicyEngine
 from .policy_engine_open import OpenPolicyEngine
 
@@ -16,10 +17,16 @@ class PolicyBackendStatus:
     backend: str
     version: str
     fallback_reason: str
+    license: PolicyLicenseStatus | None = None
 
 
 _ENGINE_SINGLETON: PolicyEngine | None = None
-_STATUS = PolicyBackendStatus(backend="open", version=OpenPolicyEngine.backend_version, fallback_reason="not_initialized")
+_STATUS = PolicyBackendStatus(
+    backend="open",
+    version=OpenPolicyEngine.backend_version,
+    fallback_reason="not_initialized",
+    license=None,
+)
 
 
 def _resolve_module_name() -> str:
@@ -68,9 +75,10 @@ def _is_strict_mode() -> bool:
 
 def _build_engine() -> PolicyEngine:
     global _STATUS
+    lic = validate_policy_license()
     backend = _resolve_backend_name()
     if backend == "open":
-        _STATUS = PolicyBackendStatus("open", OpenPolicyEngine.backend_version, "")
+        _STATUS = PolicyBackendStatus("open", OpenPolicyEngine.backend_version, "", lic)
         return OpenPolicyEngine()
     if backend == "closed":
         try:
@@ -79,13 +87,24 @@ def _build_engine() -> PolicyEngine:
                 getattr(engine, "backend_name", "closed"),
                 getattr(engine, "backend_version", "unknown"),
                 "",
+                lic,
             )
             return engine
         except (ImportError, AttributeError, TypeError, ValueError) as exc:
             if _is_strict_mode():
-                _STATUS = PolicyBackendStatus("error", "unknown", f"strict_closed_load_failed:{exc}")
+                _STATUS = PolicyBackendStatus(
+                    "error",
+                    "unknown",
+                    f"strict_closed_load_failed:{exc}",
+                    lic,
+                )
                 raise RuntimeError(f"strict policy backend load failed: {exc}") from exc
-            _STATUS = PolicyBackendStatus("open", OpenPolicyEngine.backend_version, f"closed_load_failed:{exc}")
+            _STATUS = PolicyBackendStatus(
+                "open",
+                OpenPolicyEngine.backend_version,
+                f"closed_load_failed:{exc}",
+                lic,
+            )
             return OpenPolicyEngine()
     # auto
     try:
@@ -94,13 +113,24 @@ def _build_engine() -> PolicyEngine:
             getattr(engine, "backend_name", "closed"),
             getattr(engine, "backend_version", "unknown"),
             "",
+            lic,
         )
         return engine
     except (ImportError, AttributeError, TypeError, ValueError) as exc:
         if _is_strict_mode():
-            _STATUS = PolicyBackendStatus("error", "unknown", f"strict_auto_closed_unavailable:{exc}")
+            _STATUS = PolicyBackendStatus(
+                "error",
+                "unknown",
+                f"strict_auto_closed_unavailable:{exc}",
+                lic,
+            )
             raise RuntimeError(f"strict policy backend unavailable: {exc}") from exc
-        _STATUS = PolicyBackendStatus("open", OpenPolicyEngine.backend_version, f"auto_closed_unavailable:{exc}")
+        _STATUS = PolicyBackendStatus(
+            "open",
+            OpenPolicyEngine.backend_version,
+            f"auto_closed_unavailable:{exc}",
+            lic,
+        )
         return OpenPolicyEngine()
 
 
@@ -114,19 +144,27 @@ def get_policy_engine() -> PolicyEngine:
 def reset_policy_engine_for_tests() -> None:
     global _ENGINE_SINGLETON, _STATUS
     _ENGINE_SINGLETON = None
-    _STATUS = PolicyBackendStatus("open", OpenPolicyEngine.backend_version, "not_initialized")
+    _STATUS = PolicyBackendStatus(
+        "open",
+        OpenPolicyEngine.backend_version,
+        "not_initialized",
+        None,
+    )
 
 
 def get_policy_backend_status() -> dict[str, Any]:
     # ensure singleton initialized so status is meaningful
     _ = get_policy_engine()
-    return {
+    out: dict[str, Any] = {
         "policy_backend": _STATUS.backend,
         "policy_engine_version": _STATUS.version,
         "policy_fallback_reason": _STATUS.fallback_reason,
         "policy_module": _resolve_module_name(),
         "policy_strict_mode": _is_strict_mode(),
     }
+    if _STATUS.license is not None:
+        out["policy_license"] = _STATUS.license.to_dict()
+    return out
 
 
 def classify_intent_with_policy(text: str) -> str:

@@ -352,6 +352,16 @@ def run_doctor() -> int:
     fallback_reason = str(policy_backend.get("policy_fallback_reason", "") or "")
     if fallback_reason:
         print(f" ⚠️ policy engine fallback: {fallback_reason}")
+    lic = policy_backend.get("policy_license", {})
+    if isinstance(lic, dict) and lic:
+        lic_status = str(lic.get("status", "unknown"))
+        lic_reason = str(lic.get("reason_code", ""))
+        lic_enabled = bool(lic.get("enabled", False))
+        print(
+            " ✅ policy license: "
+            f"status={lic_status} enabled={lic_enabled}"
+            + (f" reason={lic_reason}" if lic_reason else "")
+        )
     gov = get_governance_report()
     print(
         " ✅ governance: "
