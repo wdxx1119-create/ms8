@@ -4,6 +4,8 @@ SQLite-based structured memory storage
 
 import hashlib
 import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
@@ -29,6 +31,24 @@ class SQLiteMemoryStore:
     def _canonical_key(self, value: str) -> str:
         return hashlib.sha1(value.strip().lower().encode("utf-8")).hexdigest()
 
+    @contextmanager
+    def _connect_db(self) -> Iterator[sqlite3.Connection]:
+        conn = sqlite3.connect(self.db_path)
+        try:
+            yield conn
+        finally:
+            conn.close()
+
+    @contextmanager
+    def _connect_kg(self) -> Iterator[sqlite3.Connection]:
+        if not self.kg_db_path:
+            raise sqlite3.Error("Knowledge graph database path is not configured")
+        conn = sqlite3.connect(self.kg_db_path)
+        try:
+            yield conn
+        finally:
+            conn.close()
+
     def _mirror_entity_to_kg(self, name: str, entity_type: str = "unknown") -> None:
         if not self._kg_bridge_enabled or not self.kg_db_path:
             return
@@ -38,7 +58,7 @@ class SQLiteMemoryStore:
             return
         name_key = self._canonical_key(canonical)
         try:
-            with sqlite3.connect(self.kg_db_path) as conn:
+            with self._connect_kg() as conn:
                 cur = conn.cursor()
                 cur.execute(
                     """
@@ -74,7 +94,7 @@ class SQLiteMemoryStore:
         try:
             self._mirror_entity_to_kg(subject_name, "unknown")
             self._mirror_entity_to_kg(object_name, "unknown")
-            with sqlite3.connect(self.kg_db_path) as conn:
+            with self._connect_kg() as conn:
                 cur = conn.cursor()
                 cur.execute(
                     "SELECT id FROM entities WHERE name_key = ?",
@@ -141,7 +161,7 @@ class SQLiteMemoryStore:
 
     def _init_database(self):
         """Initialize SQLite database with required tables."""
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect_db() as conn:
             cursor = conn.cursor()
 
             # Create entities table
@@ -176,7 +196,7 @@ class SQLiteMemoryStore:
 
     def add_entity(self, name: str, entity_type: str = "unknown") -> int:
         """Add an entity to the database, return its ID."""
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect_db() as conn:
             cursor = conn.cursor()
             try:
                 cursor.execute(
@@ -203,7 +223,7 @@ class SQLiteMemoryStore:
         if subject_id == -1 or object_id == -1:
             return False
 
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect_db() as conn:
             cursor = conn.cursor()
             try:
                 # Check if relation already exists
@@ -238,7 +258,7 @@ class SQLiteMemoryStore:
     def get_entity_relations(self, entity_name: str) -> list[tuple[str, str, float]]:
         """Get all relations for an entity."""
         aggregated: list[tuple[str, str, float]] = []
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect_db() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -262,7 +282,7 @@ class SQLiteMemoryStore:
 
         if self._kg_bridge_enabled and self.kg_db_path:
             try:
-                with sqlite3.connect(self.kg_db_path) as conn:
+                with self._connect_kg() as conn:
                     cursor = conn.cursor()
                     key = self._canonical_key(entity_name)
                     cursor.execute(
@@ -294,7 +314,7 @@ class SQLiteMemoryStore:
 
     def update_entity_access_time(self, entity_name: str) -> bool:
         """Update the last_accessed timestamp for an entity."""
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect_db() as conn:
             cursor = conn.cursor()
             try:
                 cursor.execute(
@@ -304,7 +324,7 @@ class SQLiteMemoryStore:
                 conn.commit()
                 if self._kg_bridge_enabled and self.kg_db_path:
                     try:
-                        with sqlite3.connect(self.kg_db_path) as kg_conn:
+                        with self._connect_kg() as kg_conn:
                             kg_cur = kg_conn.cursor()
                             kg_cur.execute(
                                 (
@@ -325,7 +345,7 @@ class SQLiteMemoryStore:
         """Remove entities that haven't been accessed in retention_days."""
         cutoff_date = datetime.now().timestamp() - (retention_days * 24 * 3600)
 
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect_db() as conn:
             cursor = conn.cursor()
             try:
                 # Delete old relations first (to maintain referential integrity)

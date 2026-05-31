@@ -736,7 +736,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
                 "spool_archive_cold_days": 180,
                 "immutable_enabled": True,
                 "stack_guard_enabled": True,
-                "backup_dir": "~/.shadow_backup",
+                # Keep shadow backup colocated with runtime by default to avoid
+                # cross-home permission issues in sandboxed environments.
+                "backup_dir": "memory/security/shadow_backup",
             },
         },
         "monitoring": {
@@ -1125,6 +1127,13 @@ def get_config() -> dict[str, Any]:
     shadow_cfg = security_cfg.get("shadow", {})
     if isinstance(shadow_cfg, dict) and shadow_cfg.get("shadow_dir"):
         shadow_cfg["shadow_dir"] = str(_resolve_path(workspace_dir, str(shadow_cfg["shadow_dir"])))
+    if isinstance(shadow_cfg, dict) and shadow_cfg.get("backup_dir"):
+        backup_raw = str(shadow_cfg.get("backup_dir", "") or "").strip()
+        if backup_raw:
+            legacy_home_backup = str((Path.home() / ".shadow_backup").expanduser())
+            if backup_raw in {"~/.shadow_backup", legacy_home_backup}:
+                backup_raw = "memory/security/shadow_backup"
+            shadow_cfg["backup_dir"] = str(_resolve_path(workspace_dir, backup_raw))
     if security_cfg.get("encrypted_targets"):
         resolved_targets = []
         for raw in security_cfg.get("encrypted_targets", []):

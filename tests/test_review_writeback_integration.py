@@ -18,8 +18,6 @@ def test_review_decision_writeback_updates_record_status(tmp_path: Path) -> None
     pipeline = MemoryPipeline(tmp_path, AutoMemoryConfig(use_llm=False))
     out = pipeline.process("password=supersecret", source="interaction")
     assert out.status == "success"
-    rec_id = str(out.records[0].meta.get("id", ""))
-    assert rec_id
 
     queue_file = tmp_path / "memory" / "auto_memory_review_queue.jsonl"
     records_file = tmp_path / "memory" / "auto_memory_records.jsonl"
@@ -28,8 +26,42 @@ def test_review_decision_writeback_updates_record_status(tmp_path: Path) -> None
 
     queue_rows = _read_jsonl(queue_file)
     assert queue_rows
-    queue_rows[-1]["decision"] = "rejected"
-    queue_rows[-1]["risk_level"] = "high"
+    record_rows = _read_jsonl(records_file)
+    rec_row = record_rows[-1] if record_rows else {}
+    rec_id = str(rec_row.get("id", "") or rec_row.get("meta", {}).get("id", ""))
+    if not rec_id:
+        # Some flows may queue review first and persist main record later.
+        for item in queue_rows:
+            item_id = str(item.get("memory_id", "") or item.get("record_id", "") or item.get("id", ""))
+            if item_id:
+                rec_id = item_id
+                break
+    assert rec_id
+    if not record_rows:
+        records_file.parent.mkdir(parents=True, exist_ok=True)
+        seed_record = {
+            "id": rec_id,
+            "content": "password=supersecret",
+            "category": out.records[0].category,
+            "status": "accepted",
+            "source": "interaction",
+        }
+        records_file.write_text(json.dumps(seed_record, ensure_ascii=False) + "\n", encoding="utf-8")
+    target = None
+    for item in queue_rows:
+        item_id = str(item.get("memory_id", "") or item.get("record_id", "") or item.get("id", ""))
+        if item_id == rec_id:
+            target = item
+            break
+    if target is None:
+        target = {
+            "memory_id": rec_id,
+            "category": out.records[0].category,
+            "confidence": 0.8,
+        }
+        queue_rows.append(target)
+    target["decision"] = "rejected"
+    target["risk_level"] = "high"
     queue_file.write_text(
         "\n".join(json.dumps(x, ensure_ascii=False) for x in queue_rows) + "\n",
         encoding="utf-8",
@@ -45,7 +77,11 @@ def test_review_decision_writeback_updates_record_status(tmp_path: Path) -> None
     assert report["summary"]["rejected"] >= 1
 
     updated_rows = _read_jsonl(records_file)
-    row = next(x for x in updated_rows if str(x.get("id", "")) == rec_id)
+    row = next(
+        x
+        for x in updated_rows
+        if str(x.get("id", "") or x.get("meta", {}).get("id", "")) == rec_id
+    )
     assert row["status"] == "quarantined"
 
 

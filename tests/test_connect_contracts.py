@@ -337,6 +337,70 @@ def test_connect_rollback_force_delete_full_config(monkeypatch, tmp_path: Path) 
     assert not target.exists()
 
 
+def test_connect_rollback_skips_missing_target(monkeypatch, tmp_path: Path) -> None:
+    target = tmp_path / "missing.json"
+    monkeypatch.setattr(
+        "ms8.connect.scripts.rollback_client_configs.target_paths",
+        lambda _target="all": {"claude_desktop": target},
+    )
+    out = rollback_client_configs(target="claude_desktop")
+    assert out["ok"] is True
+    assert out["modified"] == []
+    assert out["removed"] == []
+    assert any(item.get("action") == "skip_missing" for item in out["preview"])
+
+
+def test_connect_rollback_skips_when_no_ms8_entry(monkeypatch, tmp_path: Path) -> None:
+    target = tmp_path / "config.json"
+    monkeypatch.setattr(
+        "ms8.connect.scripts.rollback_client_configs.target_paths",
+        lambda _target="all": {"cursor": target},
+    )
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps({"mcpServers": {"other": {"command": "node"}}}), encoding="utf-8")
+    out = rollback_client_configs(target="cursor")
+    assert out["ok"] is True
+    assert out["modified"] == []
+    assert any(item.get("action") == "skip_no_ms8_entry" for item in out["preview"])
+
+
+def test_connect_rollback_invalid_json_marks_failed(monkeypatch, tmp_path: Path) -> None:
+    target = tmp_path / "broken.json"
+    monkeypatch.setattr(
+        "ms8.connect.scripts.rollback_client_configs.target_paths",
+        lambda _target="all": {"windsurf": target},
+    )
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("{broken", encoding="utf-8")
+    out = rollback_client_configs(target="windsurf", force_delete_full_config=True)
+    assert out["ok"] is True
+    # invalid json still allows full-delete path; file is removed
+    assert str(target) in out["removed"]
+
+
+def test_connect_rollback_write_failure_restores_from_backup(monkeypatch, tmp_path: Path) -> None:
+    from ms8.connect.scripts import rollback_client_configs as rcc
+
+    target = tmp_path / "restore.json"
+    monkeypatch.setattr(
+        "ms8.connect.scripts.rollback_client_configs.target_paths",
+        lambda _target="all": {"claude_desktop": target},
+    )
+    target.parent.mkdir(parents=True, exist_ok=True)
+    original = {"mcpServers": {"ms8-memory": {"command": "python"}, "other": {"command": "node"}}}
+    target.write_text(json.dumps(original, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def _boom(_path, _payload):
+        raise OSError("write boom")
+
+    monkeypatch.setattr(rcc, "_write_json", _boom)
+    out = rollback_client_configs(target="claude_desktop")
+    assert out["ok"] is False
+    assert len(out["failed"]) == 1
+    restored = json.loads(target.read_text(encoding="utf-8"))
+    assert restored == original
+
+
 def test_bootstrap_dry_run_creates_report(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("OPENCLAW_MEMORY_AUTO_ROOT", str(tmp_path / "connect_root"))
     out = run_bootstrap(target="claude_desktop", dry_run=True)
