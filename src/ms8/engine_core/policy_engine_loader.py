@@ -76,11 +76,25 @@ def _is_strict_mode() -> bool:
 def _build_engine() -> PolicyEngine:
     global _STATUS
     lic = validate_policy_license()
+
+    def _license_allows_closed() -> bool:
+        if not lic.enabled:
+            return True
+        return lic.status in {"valid", "grace", "warn"}
+
     backend = _resolve_backend_name()
     if backend == "open":
         _STATUS = PolicyBackendStatus("open", OpenPolicyEngine.backend_version, "", lic)
         return OpenPolicyEngine()
     if backend == "closed":
+        if not _license_allows_closed():
+            _STATUS = PolicyBackendStatus(
+                "open",
+                OpenPolicyEngine.backend_version,
+                f"license_denied:{lic.reason_code}",
+                lic,
+            )
+            return OpenPolicyEngine()
         try:
             engine = _load_closed_backend()
             _STATUS = PolicyBackendStatus(
@@ -107,6 +121,14 @@ def _build_engine() -> PolicyEngine:
             )
             return OpenPolicyEngine()
     # auto
+    if not _license_allows_closed():
+        _STATUS = PolicyBackendStatus(
+            "open",
+            OpenPolicyEngine.backend_version,
+            f"license_denied:{lic.reason_code}",
+            lic,
+        )
+        return OpenPolicyEngine()
     try:
         engine = _load_closed_backend()
         _STATUS = PolicyBackendStatus(
