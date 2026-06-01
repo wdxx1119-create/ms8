@@ -29,6 +29,16 @@ dev = [
   "mypy",
   "build"
 ]
+policy = [
+  "ms8-policy-engine>=0.1.1"
+]
+llm = [
+  "ollama>=0.4.0"
+]
+full = [
+  "ms8-policy-engine>=0.1.1",
+  "ollama>=0.4.0"
+]
 
 [project.scripts]
 ms8 = "ms8.cli:main"

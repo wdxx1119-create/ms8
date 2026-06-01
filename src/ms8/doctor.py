@@ -352,6 +352,8 @@ def run_doctor() -> int:
     fallback_reason = str(policy_backend.get("policy_fallback_reason", "") or "")
     if fallback_reason:
         print(f" ⚠️ policy engine fallback: {fallback_reason}")
+        print(" ⚠️ policy engine optional package missing or unavailable.")
+        print("    next: `pip install \"ms8[policy]\"` or `pip install ms8-policy-engine`.")
     lic = policy_backend.get("policy_license", {})
     if isinstance(lic, dict) and lic:
         lic_status = str(lic.get("status", "unknown"))

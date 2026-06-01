@@ -513,7 +513,12 @@ def gather_policy_stats(workspace_dir: Path, policy_cfg: dict[str, Any] | None =
         stats["shadow_corrupt_line_count"] = corrupt
     if manifest_file.exists():
         try:
-            obj = json.loads(manifest_file.read_text(encoding="utf-8"))
+            raw_manifest = manifest_file.read_text(encoding="utf-8")
+            if not raw_manifest.strip():
+                # First-run/empty manifest: treat as not initialized, not an error.
+                obj = {}
+            else:
+                obj = json.loads(raw_manifest)
             stats["shadow_sealed"] = bool(obj.get("sealed", False))
             sealed_at = str(obj.get("sealed_at", "") or "").strip()
             if sealed_at:
@@ -552,7 +557,14 @@ def gather_policy_stats(workspace_dir: Path, policy_cfg: dict[str, Any] | None =
                         continue
             stats["shadow_seal_events_24h"] = seal_count_24h
         except (OSError, TypeError, ValueError, json.JSONDecodeError) as exc:
-            print(f"[MaintenancePolicy] Failed reading shadow seal history {manifest_file}: {exc}")
+            # Keep warning surface low for startup; this is non-fatal maintenance telemetry.
+            size = 0
+            try:
+                size = manifest_file.stat().st_size
+            except OSError:
+                size = 0
+            if size > 0:
+                print(f"[MaintenancePolicy] Failed reading shadow seal history {manifest_file}: {exc}")
 
     verify_file = shadow_dir / "shadow_verify.jsonl"
     if verify_file.exists():
