@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import json
 import os
+from binascii import Error as BinasciiError
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
@@ -67,7 +69,8 @@ def _now_ts() -> int:
         try:
             return int(raw)
         except ValueError:
-            pass
+            # Ignore invalid override and fall back to wall clock time.
+            raw = ""
     import time
 
     return int(time.time())
@@ -87,17 +90,17 @@ def _verify_signature(raw: dict[str, Any], pubkey_pem: str) -> tuple[bool, str]:
         import base64
 
         sig_bytes = base64.b64decode(sig.encode("utf-8"))
-    except Exception:
+    except (BinasciiError, ValueError):
         return False, "license_signature_invalid_base64"
     try:
         pub = serialization.load_pem_public_key(pubkey_pem.encode("utf-8"))
-    except Exception:
+    except (TypeError, ValueError, UnsupportedAlgorithm):
         return False, "license_pubkey_invalid"
     if not isinstance(pub, Ed25519PublicKey):
         return False, "license_pubkey_not_ed25519"
     try:
         pub.verify(sig_bytes, _normalize_payload_for_signing(raw))
-    except Exception:
+    except (InvalidSignature, ValueError, TypeError):
         return False, "license_signature_invalid"
     return True, "ok"
 
