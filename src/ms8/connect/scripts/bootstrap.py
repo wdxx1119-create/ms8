@@ -113,7 +113,7 @@ def _repair_target_configs(target: str, verify: dict[str, Any]) -> dict[str, Any
     command = sys.executable
     args = ["-m", "ms8.connect.mcp_server.stdio_server", *expected_route_args(target)]
     py_src = str(Path(__file__).resolve().parents[3])
-    legacy_tokens = ("/Users/s/Documents/New project", "openclaw-memory-auto")
+    legacy_tokens = ("<PROJECT_ROOT>", "openclaw-memory-auto")
 
     for name, info in details.items():
         if not isinstance(info, dict):
