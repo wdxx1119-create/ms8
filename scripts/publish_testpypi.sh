@@ -25,8 +25,8 @@ if [[ ! -d "${ROOT_DIR}/dist" ]]; then
 fi
 
 ARTIFACTS=(
-  "${ROOT_DIR}/dist/ms8-0.2.0-py3-none-any.whl"
-  "${ROOT_DIR}/dist/ms8-0.2.0.tar.gz"
+  "${ROOT_DIR}/dist/ms8-0.2.1-py3-none-any.whl"
+  "${ROOT_DIR}/dist/ms8-0.2.1.tar.gz"
   "${ROOT_DIR}/dist/ms8_policy_engine-0.1.1-py3-none-any.whl"
 )
 
