@@ -9,7 +9,6 @@ from pathlib import Path
 
 from .. import __version__
 from ..paths import get_ms8_home
-
 from .permission import PROFILES, build_policy
 from .task_spec import TASK_FILE_MAP, TASK_VERSION
 from .task_templates import ABSORB_TASK, CHECK_TASK, INSTALL_TASK, OPS_TASK, README_AGENT, REPORT_TASK, USAGE_TASK

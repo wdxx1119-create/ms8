@@ -8,9 +8,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal, cast
 
-from ..integration_hooks.service_models import MemoryCandidate
-from ...engine_core.core import MemoryCore
 from ...engine import MemoryCoreEngine
+from ...engine_core.core import MemoryCore
 from ...engine_core.expression_preference_profile import (
     load_conversation_state,
     load_expression_profile,
@@ -25,6 +24,7 @@ from ...engine_core.response_mode_router import choose_cognitive_phrase, route_r
 from ...engine_core.response_mode_types import RouterDecision
 from ...engine_core.sticky_prompt_templates import GUARDRAIL_PROMPT_EXTRA, build_profile_hint, get_prompt_extra
 from ...paths import get_ms8_home
+from ..integration_hooks.service_models import MemoryCandidate
 
 ERR_CORE_UNAVAILABLE = "E_CORE_UNAVAILABLE"
 ERR_PROFILE_NOT_FOUND = "E_PROFILE_NOT_FOUND"
