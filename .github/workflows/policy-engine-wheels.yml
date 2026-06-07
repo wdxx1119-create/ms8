@@ -1,0 +1,75 @@
+name: Policy Core Wheels
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "policy-v*"
+      - "v*"
+    paths:
+      - "dist_src/ms8_policy_core/**"
+      - "scripts/check_policy_engine_wheel_binary.py"
+      - ".github/workflows/policy-engine-wheels.yml"
+
+jobs:
+  build-policy-wheels:
+    name: build policy core wheels (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            archs: x86_64
+          - os: windows-latest
+            archs: AMD64
+          - os: macos-15-intel
+            archs: x86_64
+          - os: macos-14
+            archs: arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cibuildwheel
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install cibuildwheel
+
+      - name: Build binary wheels
+        shell: bash
+        env:
+          CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-*"
+          CIBW_SKIP: "*musllinux*"
+          CIBW_ARCHS: "${{ matrix.archs }}"
+          MACOSX_DEPLOYMENT_TARGET: "10.12"
+          CIBW_BUILD_VERBOSITY: "1"
+          CIBW_TEST_COMMAND: >-
+            python -c "from ms8_policy_core.engine import ClosedPolicyEngine;
+            e=ClosedPolicyEngine();
+            r=e.evaluate_admission({'text':'ok'});
+            assert r['ok'] is True;
+            assert r['data']['route'] in {'rejected','short_term_only'}"
+        run: |
+          python -m cibuildwheel dist_src/ms8_policy_core --output-dir wheelhouse
+
+      - name: Validate wheel contents
+        shell: bash
+        run: |
+          python scripts/check_policy_engine_wheel_binary.py wheelhouse/*.whl
+
+      - name: Upload wheel artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: policy-core-wheels-${{ matrix.os }}
+          path: wheelhouse/*.whl
+          if-no-files-found: error

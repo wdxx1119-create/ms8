@@ -9,13 +9,13 @@ from typing import Any, cast
 
 import tomllib
 
-from ms8.connect.scripts.apply_client_configs import run as apply_client_configs
-from ms8.connect.scripts.client_config import expected_route_args, target_paths, target_profile
-from ms8.connect.scripts.common import connect_root, write_json
-from ms8.connect.scripts.connect import run_connect_flow
-from ms8.connect.scripts.generate_client_configs import run as generate_client_configs
-from ms8.connect.scripts.smoke_test import run_smoke_test
-from ms8.connect.scripts.verify_client_configs import run as verify_client_configs
+from .apply_client_configs import run as apply_client_configs
+from .client_config import expected_route_args, target_paths, target_profile
+from .common import connect_root, write_json
+from .connect import run_connect_flow
+from .generate_client_configs import run as generate_client_configs
+from .smoke_test import run_smoke_test
+from .verify_client_configs import run as verify_client_configs
 
 logger = logging.getLogger(__name__)
 
@@ -217,6 +217,7 @@ def _build_actionable_hints(
     ranked: list[tuple[int, str]] = []
     tool_priority = {
         "claude_desktop": 10,
+        "claude_code": 12,
         "cursor": 20,
         "codex": 25,
         "windsurf": 30,
@@ -238,7 +239,17 @@ def _build_actionable_hints(
         activation_detected = bool(activation.get("activation_detected", False))
         base = int(tool_priority.get(name, 80))
         status_bias = 0 if status == "degraded" else 20
-        if name in {"claude_desktop", "cursor", "windsurf", "codex", "cline", "roo", "continue", "cherry_studio"}:
+        if name in {
+            "claude_desktop",
+            "claude_code",
+            "cursor",
+            "windsurf",
+            "codex",
+            "cline",
+            "roo",
+            "continue",
+            "cherry_studio",
+        }:
             if not activation_detected:
                 ranked.append(
                     (
@@ -306,6 +317,11 @@ def run_bootstrap(
             hint = (
                 "Codex config not detected. Open Codex once (to create ~/.codex/config.toml), then run: "
                 "ms8 connect bootstrap --target codex"
+            )
+        elif normalized_target == "claude_code":
+            hint = (
+                "Claude Code config not detected. Open Claude Code once (to create ~/.claude.json), then run: "
+                "ms8 connect bootstrap --target claude_code"
             )
         elif normalized_target == "claude_desktop":
             hint = "Install/open Claude Desktop once, then run: ms8 connect bootstrap --target claude_desktop"

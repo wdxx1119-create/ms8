@@ -107,6 +107,51 @@ def test_l4_threshold_and_l5_notice(tmp_path: Path) -> None:
     assert out_l5["status"] == "warn"
 
 
+def test_l4_absorb_health_branches(tmp_path: Path, monkeypatch) -> None:
+    core = _Core(tmp_path, tmp_path)
+
+    monkeypatch.setattr(
+        "ms8.absorb.health.absorb_health_summary",
+        lambda: {
+            "risk": "green",
+            "authorized_roots": 1,
+            "pending_review": 0,
+            "quarantine": 0,
+            "auto_write_tier": "OFF",
+            "kg_extract": {"pending_candidates": 0, "applied_total": 0},
+        },
+    )
+    assert cs._check_l4_absorb_health(core, {})["status"] == "pass"
+
+    monkeypatch.setattr(
+        "ms8.absorb.health.absorb_health_summary",
+        lambda: {
+            "risk": "yellow",
+            "authorized_roots": 1,
+            "pending_review": 1,
+            "quarantine": 0,
+            "auto_write_tier": "OFF",
+            "kg_extract": {"pending_candidates": 1, "applied_total": 0},
+        },
+    )
+    out_warn = cs._check_l4_absorb_health(core, {})
+    assert out_warn["status"] == "warn"
+    assert out_warn["details"]["pending_review"] == 1
+
+    monkeypatch.setattr(
+        "ms8.absorb.health.absorb_health_summary",
+        lambda: {
+            "risk": "red",
+            "authorized_roots": 1,
+            "pending_review": 25,
+            "quarantine": 12,
+            "auto_write_tier": "OFF",
+            "kg_extract": {"pending_candidates": 2, "applied_total": 0},
+        },
+    )
+    assert cs._check_l4_absorb_health(core, {})["status"] == "fail"
+
+
 def test_m_domain_and_s_domain_branches(tmp_path: Path) -> None:
     ws = tmp_path / "ws"
     ws.mkdir(parents=True, exist_ok=True)
@@ -158,4 +203,3 @@ def test_m_domain_and_s_domain_branches(tmp_path: Path) -> None:
     assert cs._check_s7_locking_lease_health(core, {})["status"] == "pass"
     # s8 minimal survival healthy
     assert cs._check_s8_minimal_survival_trigger(core, {})["status"] == "pass"
-

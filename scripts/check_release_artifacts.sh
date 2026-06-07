@@ -4,9 +4,16 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+version="$(python3 - <<'PY'
+import tomllib
+from pathlib import Path
+print(tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"])
+PY
+)"
+
 shopt -s nullglob
-wheels=(dist/*.whl)
-sdists=(dist/*.tar.gz)
+wheels=(dist/ms8-"${version}"-py3-none-any.whl)
+sdists=(dist/ms8-"${version}".tar.gz)
 
 if [[ ${#wheels[@]} -eq 0 || ${#sdists[@]} -eq 0 ]]; then
   echo "[FAIL] Missing release artifacts in dist/. Run: python3 -m build --no-isolation"

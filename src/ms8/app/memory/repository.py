@@ -85,6 +85,7 @@ class MemoryRepository:
         return out
 
     def save(self, record: MemoryRecord) -> dict:
+        self._apply_repository_governance(record)
         payload = {
             "id": str(record.meta.get("id", "")),
             "text": record.text,
@@ -109,6 +110,33 @@ class MemoryRepository:
         }
         secure_append_text(self.store_path, json.dumps(payload, ensure_ascii=False) + "\n")
         return payload
+
+    @staticmethod
+    def _apply_repository_governance(record: MemoryRecord) -> None:
+        from ms8.app.pipeline.memory_admission_engine import evaluate_candidate
+
+        admission = evaluate_candidate(record.text, metadata={"source": record.source})
+        meta = record.meta if isinstance(record.meta, dict) else {}
+        meta["repository_admission"] = {
+            "route": admission.route,
+            "reasons": list(admission.reasons),
+            "privacy_flags": list(admission.privacy_flags),
+            "conflict_flags": list(admission.conflict_flags),
+        }
+        record.meta = meta
+
+        if admission.route == "rejected":
+            raise ValueError(f"repository_admission_blocked:{admission.route}")
+
+        if admission.redacted and admission.normalized_text:
+            record.text = admission.normalized_text
+            record.normalized_text = admission.normalized_text
+
+        if admission.route == "pending_review":
+            record.status = "pending_review"
+            record.needs_review = True
+            if not record.review_reason:
+                record.review_reason = "repository_admission_pending_review"
 
     def cleanup(self, excluded_source_prefixes: list[str] | None = None, drop_rejected: bool = True) -> dict:
         rows = secure_read_text(self.store_path).splitlines()

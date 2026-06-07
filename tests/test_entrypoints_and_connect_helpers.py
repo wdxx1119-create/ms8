@@ -55,7 +55,11 @@ def test_ask_write_and_search(monkeypatch, capsys):
         lambda: {"emit": True, "message": "LLM degraded"},
     )
     monkeypatch.setattr(ask, "write_memory", lambda text, source="ask": {"id": "m1", "text": text, "source": source})
-    monkeypatch.setattr(ask, "search_memories", lambda q: [{"id": "m2", "source": "ask", "text": f"hit:{q}"}])
+    monkeypatch.setattr(
+        ask,
+        "search_memories_detailed",
+        lambda q, limit=5: {"items": [{"id": "m2", "source": "ask", "text": f"hit:{q}"}], "trace": {"backend": "test"}},
+    )
 
     rc_write = ask.run_ask("记住: hello world")
     rc_search = ask.run_ask("hello")
@@ -74,7 +78,7 @@ def test_ask_search_no_matches_and_silent_notice(monkeypatch, capsys):
         "consume_llm_degraded_notice_runtime",
         lambda: {"emit": True, "message": "   "},
     )
-    monkeypatch.setattr(ask, "search_memories", lambda q: [])
+    monkeypatch.setattr(ask, "search_memories_detailed", lambda q, limit=5: {"items": [], "trace": {"backend": "test"}})
 
     rc = ask.run_ask("missing-topic")
     out = capsys.readouterr().out

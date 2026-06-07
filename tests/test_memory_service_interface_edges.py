@@ -66,11 +66,8 @@ def test_submit_empty_and_submit_exception() -> None:
 
 
 def test_query_and_context_exception_paths() -> None:
-    class _CoreQueryBoom(_CoreMinimal):
-        def retrieve_memories(self, query: str, top_k: int = 5):
-            raise RuntimeError("query boom")
-
-    qsvc = MemoryServiceInterface(config={}, core=_CoreQueryBoom())
+    qsvc = MemoryServiceInterface(config={}, core=_CoreMinimal())
+    qsvc._engine_adapter = lambda: (_ for _ in ()).throw(RuntimeError("query boom"))  # type: ignore[method-assign]
     qout = qsvc.query("abc", 2)
     assert qout["ok"] is False
     assert qout["error_code"] == "E_MCP_QUERY_FAILED"

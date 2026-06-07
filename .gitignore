@@ -19,9 +19,11 @@ ARTIFACT_*.md
 backups/project_runtime_snapshot_*/
 backups/
 artifacts/pyc_recovery/
-bin/ms8
 repo_public/
 .tmp*/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.coverage
+.coverage.*
+htmlcov/

@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from ms8.connect.scripts.common import connect_root
+from ..scripts.common import connect_root
 
 logger = logging.getLogger(__name__)
 

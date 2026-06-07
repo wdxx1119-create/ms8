@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from ms8.connect.mcp_server.memory_service_interface import MemoryServiceInterface
-from ms8.connect.scripts.common import connect_package_root, load_yaml
+from ..mcp_server.memory_service_interface import MemoryServiceInterface
+from ..scripts.common import connect_package_root, load_yaml
 
 
 def _load_cfg(config: dict[str, Any] | None = None) -> dict[str, Any]:

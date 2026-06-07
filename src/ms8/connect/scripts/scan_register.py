@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from ms8.connect.adapter_registry.registry import save_registry
-from ms8.connect.adapter_registry.scan_tools import scan_local_tools
-from ms8.connect.scripts.common import connect_package_root
+from ..adapter_registry.registry import save_registry
+from ..adapter_registry.scan_tools import scan_local_tools
+from .common import connect_package_root
 
 
 def run() -> dict:

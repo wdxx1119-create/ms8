@@ -1832,6 +1832,7 @@ class MemoryCore:
         sections: list[str] = []
         decision_reasons: list[str] = []
         fallback_usage_items: list[dict[str, Any]] = []
+        absorb_context_items: list[dict[str, Any]] = []
         injected = self.working_memory.build_injection_text(ranked, heading="Relevant Memories", max_chars=budget_chars)
         injection_reason = "ranked_memories"
         if injected:
@@ -1871,6 +1872,20 @@ class MemoryCore:
             else:
                 injection_reason = "no_candidates_forced_injection_miss"
                 decision_reasons.append("forced_fallback_miss")
+
+        absorb_context_items = self._get_absorb_context_items(
+            message,
+            limit=min(3, max(1, top_k)),
+            char_budget=self._remaining_context_budget(sections, budget_chars),
+        )
+        if absorb_context_items:
+            absorb_section = self._build_absorb_context_section(
+                absorb_context_items,
+                max_chars=self._remaining_context_budget(sections, budget_chars),
+            )
+            if absorb_section:
+                sections.append(absorb_section)
+                decision_reasons.append("absorb_local_documents_included")
 
         if topic_hits:
             decision_reasons.append("session_continuity_included")
@@ -1963,6 +1978,10 @@ class MemoryCore:
             "injection_context": injection_projection,
             "arbitration_context": arbitration_projection,
             "context_assist_signals": context_assist_signals,
+            "absorb_context": {
+                "items": absorb_context_items,
+                "count": len(absorb_context_items),
+            },
             "blocked_injection_count": blocked_injection,
             "decision_trace": {
                 "query": message,
@@ -1970,6 +1989,7 @@ class MemoryCore:
                 "ranked_total": len(ranked_all),
                 "allowed_total": len(ranked),
                 "blocked_total": blocked_injection,
+                "absorb_total": len(absorb_context_items),
                 "blocked_reasons": sorted(
                     list(
                         {
@@ -2007,10 +2027,71 @@ class MemoryCore:
             "hypothesis_ratio": round(low_used / max(1, final_injected_count), 4),
             "blocked_count": int(batch_profile.get("blocked_count", 0)),
             "fallback_used": bool("fallback" in injection_reason),
+            "absorb_injected_count": int(len(absorb_context_items)),
             "topic_state": str(budget.get("topic_state", "continue")),
             "source_diversity": int(batch_profile.get("source_diversity", 0)),
             "avg_query_coverage": float(batch_profile.get("avg_query_coverage", 0.0)),
             "recent_topic_consistency": float(recent_topic_consistency),
+        }
+        retrieval_reason_codes: list[str] = []
+        if blocked_injection > 0:
+            retrieval_reason_codes.append("policy_filtered")
+        if ranked_all:
+            retrieval_reason_codes.append("core_ranked")
+        if ranked:
+            retrieval_reason_codes.append("inject_selected")
+        if topic_hits:
+            retrieval_reason_codes.append("topic_hits_present")
+        if fallback_usage_items:
+            retrieval_reason_codes.append("memory_md_fallback")
+        if absorb_context_items:
+            retrieval_reason_codes.append("absorb_context")
+        if synthetic_bundle.get("text"):
+            retrieval_reason_codes.append("synthetic_context")
+        if errors:
+            retrieval_reason_codes.append("core_retrieval_errors")
+        if not sections:
+            retrieval_reason_codes.append("no_context_built")
+        payload["retrieval_gateway"] = {
+            "purpose": "inject",
+            "backend": "memory_core",
+            "reason_codes": retrieval_reason_codes,
+            "policy_trace": {
+                "candidate_total": int(len(candidates)),
+                "allowed_total": int(len(ranked)),
+                "blocked_total": int(blocked_injection),
+                "blocked_reasons": sorted(
+                    list(
+                        {
+                            str(p.get("blocked_reason", ""))
+                            for p in candidate_profiles
+                            if str(p.get("blocked_reason", ""))
+                        }
+                    )
+                ),
+            },
+            "ranking_trace": {
+                "strategy": "working_memory_rank_then_budget",
+                "query_type": str(budget.get("query_type", "direct")),
+                "topic_state": str(budget.get("topic_state", "continue")),
+                "ranked_total": int(len(ranked_all)),
+                "selected_total": int(len(ranked)),
+                "high_trust_used": int(high_used),
+                "low_trust_used": int(low_used),
+            },
+            "context_budget": {
+                "budget_top_k": int(top_k),
+                "budget_chars": int(budget_chars),
+                "used_chars": int(used_chars),
+            },
+            "health_signals": {
+                "error_count": int(len(errors)),
+                "topic_hits_count": int(len(topic_hits)),
+                "absorb_injected_count": int(len(absorb_context_items)),
+                "synthetic_included": bool(synthetic_bundle.get("text")),
+                "forced_injection_enabled": bool(force_injection_enabled),
+                "forced_injection_used": bool(fallback_usage_items),
+            },
         }
         payload["context_snapshot"] = snapshot
         self._append_context_snapshot(snapshot)
@@ -2044,6 +2125,69 @@ class MemoryCore:
         else:
             payload["context_with_expression"] = context_text
         return payload
+
+    def _remaining_context_budget(self, sections: list[str], budget_chars: int) -> int:
+        used = sum(len(str(section or "")) for section in sections)
+        return max(0, int(budget_chars) - used)
+
+    def _get_absorb_context_items(self, message: str, limit: int = 3, char_budget: int = 600) -> list[dict[str, Any]]:
+        """Return safe absorbed-document chunks for response context injection.
+
+        Absorb chunks remain local document context, not promoted long-term memory.
+        The search layer already filters quarantined/revoked/error chunks.
+        """
+        if int(limit) <= 0 or int(char_budget) < 160:
+            return []
+        try:
+            from ms8.absorb.search import search_chunks as search_absorb_chunks
+
+            matches = search_absorb_chunks(str(message or ""), limit=int(limit))
+        except (ImportError, OSError, RuntimeError, TypeError, ValueError, AttributeError) as exc:
+            logger.debug("absorb_context_search_skipped: %s", exc)
+            return []
+
+        items: list[dict[str, Any]] = []
+        for row in matches:
+            if not isinstance(row, dict):
+                continue
+            text = str(row.get("text_preview", "") or "").replace("\n", " ").strip()
+            if not text:
+                continue
+            path = str(row.get("canonical_path", "") or "")
+            items.append(
+                {
+                    "id": f"absorb:{row.get('chunk_id', '')}",
+                    "chunk_id": str(row.get("chunk_id", "") or ""),
+                    "file_id": str(row.get("file_id", "") or ""),
+                    "source": "absorb",
+                    "title": Path(path).name if path else "local_document",
+                    "canonical_path": path,
+                    "file_type": str(row.get("file_type", "") or ""),
+                    "status": str(row.get("status", "") or ""),
+                    "risk_level": str(row.get("risk_level", "") or ""),
+                    "score": float(row.get("score", 0.0) or 0.0),
+                    "search_backend": str(row.get("search_backend", "") or ""),
+                    "content": text,
+                }
+            )
+        return items
+
+    def _build_absorb_context_section(self, items: list[dict[str, Any]], max_chars: int = 600) -> str:
+        if not items or int(max_chars) < 160:
+            return ""
+        lines = ["## Local Documents"]
+        total = len(lines[0])
+        for idx, item in enumerate(items, start=1):
+            title = str(item.get("title", "") or "local_document")
+            ftype = str(item.get("file_type", "") or "file")
+            risk = str(item.get("risk_level", "") or "unknown")
+            snippet = str(item.get("content", "") or "").replace("\n", " ").strip()[:220]
+            row = f"{idx}. [absorb:{ftype} risk={risk} {title}] {snippet}"
+            if total + len(row) > int(max_chars):
+                break
+            lines.append(row)
+            total += len(row)
+        return "\n".join(lines) if len(lines) > 1 else ""
 
     def _maybe_generate_synthetic_candidates(self) -> dict[str, Any]:
         if not self.synthesizer:
@@ -2207,14 +2351,17 @@ class MemoryCore:
         try:
             write_out = self.write_gateway(
                 f"MEMORY.md::{key}\n{safe_content}",
-                source="memory_md_write",
+                source="memory_md",
                 category="general",
                 write_daily_log=False,
+                admission=safe.get("admission") if isinstance(safe.get("admission"), dict) else None,
             )
             if str(write_out.get("status", "")) != "accepted":
                 return
+            gateway_admission = write_out.get("admission", {}) if isinstance(write_out.get("admission", {}), dict) else {}
+            persisted_text = str(gateway_admission.get("normalized_text", safe_content) or safe_content).strip()
             assessment = self.governance.assess_memory_write(
-                safe_content,
+                persisted_text,
                 self.get_memory_blocks(),
                 {"MEMORY.md": self.file_store.read_memory_md()},
             )
@@ -2222,15 +2369,15 @@ class MemoryCore:
                 return
             # For now, just append to MEMORY.md
             current_content = self.file_store.read_memory_md()
-            new_content = f"{current_content}\n\n## {key}\n{safe_content}"
+            new_content = f"{current_content}\n\n## {key}\n{persisted_text}"
             self.file_store.write_memory_md(new_content)
 
             # Also extract entities from the saved content
-            self._extract_and_store_entities(safe_content)
+            self._extract_and_store_entities(persisted_text)
 
             # Reindex to include new content
             self.whoosh_search.reindex_all()
-            self._dispatch_knowledge_graph_ingest("MEMORY.md", key, safe_content, use_llm=True)
+            self._dispatch_knowledge_graph_ingest("MEMORY.md", key, persisted_text, use_llm=True)
 
             # Interval-gated maintenance (backup/sync/cleanup)
             self.maintenance.run_maintenance(force=False)
@@ -2302,6 +2449,7 @@ class MemoryCore:
         source: str,
         category: str = "general",
         write_daily_log: bool = False,
+        admission: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         def _audit(status: str, reason: str, record_id: str = "") -> None:
             try:
@@ -2325,21 +2473,26 @@ class MemoryCore:
         if not payload:
             _audit("rejected", "empty_text")
             return {"status": "rejected", "reason": "empty_text"}
-        admission = self.memory_admission.admit(payload, category=category)
-        if not bool(admission.get("allowed", False)):
-            reason = str(admission.get("reason", "admission_rejected"))
+        gateway_admission = admission if isinstance(admission, dict) else self._evaluate_admission(payload, source=str(source or "unknown"))
+        route = str(gateway_admission.get("route", "accepted") or "accepted")
+        if route in {"rejected", "short_term_only"} or not bool(gateway_admission.get("should_persist_main", route != "rejected")):
+            reasons = gateway_admission.get("reasons", [])
+            if isinstance(reasons, list) and reasons:
+                reason = ",".join(str(x) for x in reasons)
+            else:
+                reason = route or "admission_rejected"
             _audit("rejected", reason)
-            return {"status": "rejected", "reason": reason}
+            return {"status": "rejected", "reason": reason, "admission": gateway_admission}
         row = append_memory_record(
             memory_dir=Path(self.config["memory_dir"]),
-            text=payload,
+            text=str(gateway_admission.get("normalized_text", payload)).strip(),
             source=str(source or "unknown"),
             status="accepted",
         )
         if write_daily_log:
-            self.file_store.append_to_daily_log(payload)
+            self.file_store.append_to_daily_log(str(gateway_admission.get("normalized_text", payload)).strip())
         _audit("accepted", "ok", record_id=str(row.get("id", "")))
-        return {"status": "accepted", "record_id": str(row.get("id", ""))}
+        return {"status": "accepted", "record_id": str(row.get("id", "")), "admission": gateway_admission}
 
     # Backward-compatible alias during transition.
     def _ingest_via_gateway(

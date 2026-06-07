@@ -46,6 +46,13 @@ def test_templates_are_3b_friendly(tmp_path: Path, monkeypatch) -> None:
     assert 'EXAMPLE: python -m ms8 ask "release process"' in usage
     assert 'EXAMPLE: python -m ms8 ask "记住: 用户偏好中文日志输出"' in usage
 
+    absorb = show_task(tmp_path, "absorb")["content"]
+    assert "TASK use_ms8_absorb" in absorb
+    assert "ASK_USER:" in absorb
+    assert "python -m ms8 agent run absorb --mode setup --path <directory> --confirm" in absorb
+    assert "No autosubmit/apply command is allowed by this task." in absorb
+    assert "OUTPUT MS8_AGENT_RESULT" in absorb
+
     readme = (tmp_path / ".ms8" / "agent_native" / "README_AGENT.md").read_text(encoding="utf-8")
     assert "## 权限模式" in readme
     assert "## 快速开始" in readme
@@ -55,6 +62,7 @@ def test_templates_are_3b_friendly(tmp_path: Path, monkeypatch) -> None:
     assert "agent remove` 默认不会删除全局权限策略" in readme
     assert "python -m ms8 agent task show check" in readme
     assert "python -m ms8 agent task show report" in readme
+    assert "python -m ms8 agent task show absorb" in readme
     assert "## 安装环境前置" in readme
     assert "setuptools.build_meta" in readme
 

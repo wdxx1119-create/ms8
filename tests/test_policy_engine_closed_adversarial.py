@@ -1,15 +1,10 @@
 from __future__ import annotations
 
 import time
-import sys
-from pathlib import Path
 
 
 def _import_closed_engine():
-    root = Path(__file__).resolve().parents[1]
-    src = root / "dist_src" / "ms8_policy_engine" / "src"
-    sys.path.insert(0, str(src))
-    from ms8_policy_engine.engine import ClosedPolicyEngine
+    from ms8_policy_core.engine import ClosedPolicyEngine
 
     return ClosedPolicyEngine
 

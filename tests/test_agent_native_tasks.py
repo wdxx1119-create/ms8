@@ -15,7 +15,7 @@ def test_agent_task_list_and_show(tmp_path: Path, monkeypatch) -> None:
 
     listed = list_tasks(tmp_path)
     assert listed["status"] == "PASS"
-    assert set(listed["tasks"]) == {"install", "ops", "check", "report", "usage"}
+    assert set(listed["tasks"]) == {"install", "ops", "check", "report", "usage", "absorb"}
 
     shown = show_task(tmp_path, "usage")
     assert shown["status"] == "PASS"
@@ -28,3 +28,9 @@ def test_agent_task_list_and_show(tmp_path: Path, monkeypatch) -> None:
     shown_report = show_task(tmp_path, "report")
     assert shown_report["status"] == "PASS"
     assert "TASK ms8_daily_report" in shown_report["content"]
+
+    shown_absorb = show_task(tmp_path, "absorb")
+    assert shown_absorb["status"] == "PASS"
+    assert "TASK use_ms8_absorb" in shown_absorb["content"]
+    assert "MS8_AGENT_RESULT" in shown_absorb["content"]
+    assert "No autosubmit/apply command is allowed by this task." in shown_absorb["content"]

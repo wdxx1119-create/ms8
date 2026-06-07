@@ -66,6 +66,34 @@ def test_governance_report_includes_policy_attack_samples(monkeypatch, tmp_path:
     pas = report["policy_attack_samples"]
     assert pas["present"] is True
     assert pas["failed_cases"] == 1
+    assert pas["initialized"] is True
     assert report["health_domains"]["retrieval_safety_health"] == "red"
     assert "policy_attack_samples_failed" in report["health_domains"]["overall_reasons"]
 
+
+def test_governance_report_bootstraps_policy_attack_baseline(monkeypatch, tmp_path: Path) -> None:
+    paths = _stub_paths(tmp_path)
+
+    monkeypatch.setattr(runtime, "ensure_runtime_dirs", lambda: paths)
+    monkeypatch.setattr(runtime, "read_memories", lambda: [])
+    monkeypatch.setattr(runtime, "validate_record", lambda r: (True, ""))
+    monkeypatch.setattr(runtime, "run_engine_self_check", lambda level="L4": {"status": "ok"})
+    monkeypatch.setattr(
+        runtime,
+        "get_engine_monitoring_status",
+        lambda: {
+            "rates": {"capture_rate": 1.0, "auto_total_entries": 40},
+            "rates_v2": {"eligible_events": 40},
+            "slo": {"targets": {"capture_rate_min": 0.85, "capture_rate_min_samples": 30}},
+            "slo_v2_preview": {"all_ok": True},
+            "compression_freshness": {"hours_since_last": 1.0},
+        },
+    )
+
+    report = runtime.get_governance_report()
+    pas = report["policy_attack_samples"]
+    assert pas["present"] is True
+    assert pas["ok"] is True
+    assert pas["failed_cases"] == 0
+    assert pas["initialized"] is False
+    assert (paths["health"] / "policy_attack_samples_latest.json").exists()

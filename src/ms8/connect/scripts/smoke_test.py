@@ -3,9 +3,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from ms8.connect.mcp_server.memory_service_interface import MemoryServiceInterface
-from ms8.connect.scripts.client_config import selected_targets
-from ms8.connect.scripts.common import append_audit, connect_package_root, load_yaml
+from ..mcp_server.memory_service_interface import MemoryServiceInterface
+from .client_config import selected_targets
+from .common import append_audit, connect_package_root, load_yaml
 
 logger = logging.getLogger(__name__)
 

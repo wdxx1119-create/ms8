@@ -81,3 +81,28 @@ def test_context_injection_requires_can_inject(tmp_path: Path) -> None:
     assert "b1" not in ids
     trace = payload.get("retrieval_gateway", {})
     assert trace.get("purpose") == "inject"
+
+
+def test_retrieve_gateway_returns_trace_for_recall(tmp_path: Path) -> None:
+    eng = _build_engine(tmp_path)
+    rows = [
+        {
+            "id": "r1",
+            "text": "roadmap item",
+            "status": "accepted",
+            "scope": "personal",
+            "sensitivity": "private",
+            "can_recall": True,
+            "can_inject": True,
+        }
+    ]
+    eng._records_file.write_text(
+        "\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n",
+        encoding="utf-8",
+    )
+    out = eng.retrieve_gateway("roadmap", limit=10, purpose="recall")
+    assert [row["id"] for row in out["items"]] == ["r1"]
+    trace = out.get("trace", {})
+    assert trace.get("purpose") == "recall"
+    assert trace.get("ranking_trace", {}).get("merge_strategy") == "exact_first"
+    assert trace.get("policy_trace", {}).get("allowed_total", 0) >= 1

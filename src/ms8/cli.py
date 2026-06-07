@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
+from .absorb.cli import run_absorb_cli
 from .agent_native import run_agent_cli
 from .ask import run_ask
 from .dashboard import run_dashboard
@@ -114,7 +115,14 @@ from .runtime import (
     threshold_reject_runtime,
     uninstall_skill_runtime,
 )
-from .service import install_service, remove_service, service_status
+from .service import (
+    absorb_service_status,
+    install_absorb_service,
+    install_service,
+    remove_absorb_service,
+    remove_service,
+    service_status,
+)
 from .shortcut import ensure_shortcuts_once, install_shortcuts, remove_shortcuts, shortcut_status
 from .watch import run_watch
 
@@ -136,18 +144,18 @@ _LABS_EXPERIMENTAL_OPS_CMDS = {
 }
 
 _LABS_MIGRATION_HINTS = {
-    "synthetic": "ms8 synthetic <subcommand>",
-    "synthetic-generate": "ms8 ops synthetic-generate",
-    "advanced-insight-status": "ms8 ops advanced-insight-status",
-    "meta-status": "ms8 ops meta-status",
-    "meta-run": "ms8 ops meta-run",
-    "context-blocks": "ms8 ops context-blocks",
-    "augmented-context": "ms8 ops augmented-context",
-    "github-catalog": "ms8 ops github-catalog",
-    "subagent-spawn": "ms8 ops subagent-spawn",
-    "subagent-retry": "ms8 ops subagent-retry",
-    "skill-install-search": "ms8 ops skill-install-search",
-    "skill-index-refresh": "ms8 ops skill-index-refresh",
+    "synthetic": "ms8 labs synthetic <subcommand>",
+    "synthetic-generate": "ms8 labs synthetic generate",
+    "advanced-insight-status": "ms8 labs insight status",
+    "meta-status": "ms8 labs meta status",
+    "meta-run": "ms8 labs meta run",
+    "context-blocks": "ms8 labs context blocks",
+    "augmented-context": "ms8 labs context augment",
+    "github-catalog": "ms8 labs github catalog",
+    "subagent-spawn": "ms8 labs subagents spawn",
+    "subagent-retry": "ms8 labs subagents retry",
+    "skill-install-search": "ms8 labs skills install-search",
+    "skill-index-refresh": "ms8 labs skills index-refresh",
 }
 
 
@@ -193,7 +201,7 @@ def _write_labs_enabled(enabled: bool) -> dict:
 
 
 def _emit_usage_error(message: str) -> int:
-    logger.error(message)
+    logger.debug("usage_error: %s", message)
     print(message, file=sys.stderr)
     return 2
 
@@ -209,6 +217,149 @@ def _labs_gate_error(cmd_key: str) -> int:
         msg += f"\nmigration hint: this is an experimental command path (`{hint}`)."
     msg += "\nuse `ms8 labs status` to check gate state."
     return _emit_usage_error(msg)
+
+
+def _run_labs_command(args: argparse.Namespace) -> int:
+    if args.labs_cmd == "status":
+        print(
+            json.dumps(
+                {
+                    "status": "success",
+                    "labs_enabled": _read_labs_enabled(),
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 0
+    if args.labs_cmd == "enable":
+        print(json.dumps(_write_labs_enabled(True), ensure_ascii=False, indent=2))
+        return 0
+    if args.labs_cmd == "disable":
+        print(json.dumps(_write_labs_enabled(False), ensure_ascii=False, indent=2))
+        return 0
+    if not _read_labs_enabled():
+        key_map = {
+            "synthetic": "synthetic",
+            "meta": "meta-run",
+            "insight": "advanced-insight-status",
+            "context": "augmented-context" if getattr(args, "labs_context_cmd", "") == "augment" else "context-blocks",
+            "subagents": "subagent-spawn" if getattr(args, "labs_subagents_cmd", "") == "spawn" else "subagent-retry",
+            "github": "github-catalog",
+            "skills": "skill-install-search" if getattr(args, "labs_skills_cmd", "") == "install-search" else "skill-index-refresh",
+        }
+        return _labs_gate_error(key_map.get(str(args.labs_cmd), str(args.labs_cmd)))
+    if args.labs_cmd == "synthetic":
+        if args.labs_synthetic_cmd == "generate":
+            out = generate_synthetic_candidates_runtime(limit=args.limit)
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 0 if bool(out.get("ok", False)) else 1
+        if args.labs_synthetic_cmd == "rollback-auto":
+            since = max(1, int(args.since_hours))
+            out = (
+                preview_rollback_auto_approved_synthetic(since_hours=since)
+                if bool(args.preview)
+                else rollback_auto_approved_synthetic(since_hours=since)
+            )
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 0 if str(out.get("status", "")).lower() not in {"error", "failed"} else 1
+        if args.labs_synthetic_cmd == "list":
+            out = synthetic_list_runtime(status=args.status, limit=args.limit)
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 0 if bool(out.get("ok", False)) else 1
+        if args.labs_synthetic_cmd == "confirm":
+            ids = [x.strip() for x in str(args.ids or "").split(",") if x.strip()] or None
+            out = synthetic_confirm_runtime(candidate_ids=ids, min_score=args.min_score)
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 0 if bool(out.get("ok", False)) else 1
+        if args.labs_synthetic_cmd == "reject":
+            ids = [x.strip() for x in str(args.ids or "").split(",") if x.strip()]
+            out = synthetic_reject_runtime(candidate_ids=ids)
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 0 if bool(out.get("ok", False)) else 1
+        if args.labs_synthetic_cmd == "review":
+            raw = Path(args.file).read_text(encoding="utf-8")
+            data = json.loads(raw)
+            if not isinstance(data, list):
+                return _emit_usage_error("ms8 labs synthetic review: --file must contain a JSON list")
+            out = synthetic_review_runtime(decisions=data)
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 0 if bool(out.get("ok", False)) else 1
+        if args.labs_synthetic_cmd == "health":
+            out = synthetic_health_runtime()
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 0 if bool(out.get("ok", False)) else 1
+        if args.labs_synthetic_cmd == "rebalance":
+            out = synthetic_rebalance_runtime(
+                max_auto_accept=args.max_auto_accept,
+                apply_writeback=bool(args.apply_writeback),
+            )
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 0 if bool(out.get("ok", False)) else 1
+        return _emit_usage_error(
+            "ms8 labs synthetic: choose generate|rollback-auto|list|confirm|reject|review|health|rebalance"
+        )
+    if args.labs_cmd == "meta":
+        if args.labs_meta_cmd == "status":
+            out = meta_cognition_status_runtime()
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 0 if bool(out.get("ok", False)) else 1
+        if args.labs_meta_cmd == "run":
+            out = run_meta_cognition_runtime(period=args.period)
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 0 if bool(out.get("ok", False)) else 1
+        return _emit_usage_error("ms8 labs meta: choose status|run")
+    if args.labs_cmd == "insight":
+        if args.labs_insight_cmd == "status":
+            out = advanced_insight_status_runtime()
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 0 if bool(out.get("ok", False)) else 1
+        return _emit_usage_error("ms8 labs insight: choose status")
+    if args.labs_cmd == "context":
+        if args.labs_context_cmd == "blocks":
+            out = get_context_with_blocks_runtime()
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 0 if bool(out.get("ok", False)) else 1
+        if args.labs_context_cmd == "augment":
+            out = get_augmented_context_runtime(
+                message=args.message,
+                include_blocks=not bool(args.no_blocks),
+                graph_limit=args.graph_limit,
+            )
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 0 if bool(out.get("ok", False)) else 1
+        return _emit_usage_error("ms8 labs context: choose blocks|augment")
+    if args.labs_cmd == "subagents":
+        if args.labs_subagents_cmd == "spawn":
+            out = spawn_subagent_runtime(
+                subagent_name=args.name,
+                task=args.task,
+                background=bool(args.background),
+            )
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 0 if bool(out.get("ok", False)) else 1
+        if args.labs_subagents_cmd == "retry":
+            out = retry_background_subagent_task_runtime(task_id=args.task_id)
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 0 if bool(out.get("ok", False)) else 1
+        return _emit_usage_error("ms8 labs subagents: choose spawn|retry")
+    if args.labs_cmd == "github":
+        if args.labs_github_cmd == "catalog":
+            out = get_github_skill_catalog_runtime(org=args.org)
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 0 if bool(out.get("ok", False)) else 1
+        return _emit_usage_error("ms8 labs github: choose catalog")
+    if args.labs_cmd == "skills":
+        if args.labs_skills_cmd == "install-search":
+            out = install_skill_from_github_search_runtime(skill_name=args.name, repository=args.repository)
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 0 if bool(out.get("ok", False)) else 1
+        if args.labs_skills_cmd == "index-refresh":
+            out = refresh_skill_index_runtime()
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 0 if bool(out.get("ok", False)) else 1
+        return _emit_usage_error("ms8 labs skills: choose install-search|index-refresh")
+    return _emit_usage_error("ms8 labs: choose status|enable|disable|synthetic|meta|insight|context|subagents|github|skills")
 
 
 def _print_connect_bootstrap_summary(marker: dict | None) -> None:
@@ -288,6 +439,11 @@ def _print_connect_bootstrap_summary(marker: dict | None) -> None:
                             "[ms8] codex hint: run `ms8 connect apply --target codex` then "
                             "`ms8 connect verify --target codex`."
                         )
+                    if "claude_code" in manual:
+                        print(
+                            "[ms8] claude_code hint: run `ms8 connect apply --target claude_code` then "
+                            "`ms8 connect verify --target claude_code`."
+                        )
     except (ImportError, OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
         logger.debug("Failed to summarize connect runtime readiness: %s", exc)
     print("[ms8] connect quick-start:")
@@ -323,6 +479,79 @@ def _build_parser() -> argparse.ArgumentParser:
     p_ask.add_argument("query", help='search text, or save using "记住 xxx"/"save xxx"')
     p_ask.add_argument("--limit", type=int, default=5, help="max search results")
 
+    p_absorb = sub.add_parser("absorb", help="authorized local document absorption")
+    p_absorb_sub = p_absorb.add_subparsers(dest="absorb_cmd")
+    p_absorb_add = p_absorb_sub.add_parser("add", help="authorize one local directory")
+    p_absorb_add.add_argument("path")
+    p_absorb_add.add_argument("--confirm-high-risk", action="store_true", help="allow high-risk roots after confirmation")
+    p_absorb_remove = p_absorb_sub.add_parser("remove", help="remove one authorized directory")
+    p_absorb_remove.add_argument("path")
+    p_absorb_sub.add_parser("list", help="list authorized roots and excludes")
+    p_absorb_exclude = p_absorb_sub.add_parser("exclude", help="manage exclude patterns")
+    p_absorb_exclude_sub = p_absorb_exclude.add_subparsers(dest="exclude_cmd")
+    p_absorb_exclude_add = p_absorb_exclude_sub.add_parser("add", help="add exclude pattern")
+    p_absorb_exclude_add.add_argument("pattern")
+    p_absorb_sub.add_parser("rescan", help="discover authorized files without parsing them")
+    p_absorb_ingest = p_absorb_sub.add_parser("ingest", help="parse and locally index discovered files")
+    p_absorb_ingest.add_argument("--limit", type=int, default=100)
+    p_absorb_ingest.add_argument("--submit-summaries", action="store_true", help="opt-in document summary submission")
+    p_absorb_sub.add_parser("status", help="show absorb status")
+    p_absorb_review = p_absorb_sub.add_parser("review", help="manage pending review and quarantine items")
+    p_absorb_review_sub = p_absorb_review.add_subparsers(dest="review_cmd")
+    p_absorb_review_list = p_absorb_review_sub.add_parser("list", help="list review items")
+    p_absorb_review_list.add_argument("--limit", type=int, default=50)
+    p_absorb_review_approve = p_absorb_review_sub.add_parser("approve", help="approve one pending chunk")
+    p_absorb_review_approve.add_argument("chunk_id")
+    p_absorb_review_approve.add_argument("--submit", action="store_true", help="also submit approved summary to MS8")
+    p_absorb_review_reject = p_absorb_review_sub.add_parser("reject", help="reject one pending chunk")
+    p_absorb_review_reject.add_argument("chunk_id")
+    p_absorb_review_reject.add_argument("--reason", default="user_rejected")
+    p_absorb_review_restore = p_absorb_review_sub.add_parser("restore", help="restore one rejected chunk to pending review")
+    p_absorb_review_restore.add_argument("chunk_id")
+    p_absorb_review_submit = p_absorb_review_sub.add_parser("submit", help="submit one local indexed chunk summary to MS8")
+    p_absorb_review_submit.add_argument("chunk_id")
+    p_absorb_review_approve_all = p_absorb_review_sub.add_parser("approve-all", help="approve pending chunks in bulk; dry-run by default")
+    p_absorb_review_approve_all.add_argument("--risk", default="", help="optional risk_level filter")
+    p_absorb_review_approve_all.add_argument("--limit", type=int, default=50)
+    p_absorb_review_approve_all.add_argument("--submit", action="store_true", help="also submit approved chunks to MS8")
+    p_absorb_review_approve_all.add_argument("--apply", action="store_true", help="apply changes; without this only previews")
+    p_absorb_review_reject_all = p_absorb_review_sub.add_parser("reject-all", help="reject pending chunks in bulk; dry-run by default")
+    p_absorb_review_reject_all.add_argument("--reason", default="bulk_rejected")
+    p_absorb_review_reject_all.add_argument("--risk", default="", help="optional risk_level filter")
+    p_absorb_review_reject_all.add_argument("--limit", type=int, default=50)
+    p_absorb_review_reject_all.add_argument("--apply", action="store_true", help="apply changes; without this only previews")
+    p_absorb_review_export = p_absorb_review_sub.add_parser("export", help="export pending review items")
+    p_absorb_review_export.add_argument("--limit", type=int, default=100)
+    p_absorb_review_export.add_argument("--include-quarantine", action="store_true")
+    p_absorb_search = p_absorb_sub.add_parser("search", help="search local absorb index")
+    p_absorb_search.add_argument("query")
+    p_absorb_search.add_argument("--limit", type=int, default=10)
+    p_absorb_search.add_argument("--pretty", action="store_true", help="show a compact human-readable search report")
+    p_absorb_auto = p_absorb_sub.add_parser("autosubmit", help="manage low-risk summary auto-submission")
+    p_absorb_auto_sub = p_absorb_auto.add_subparsers(dest="autosubmit_cmd")
+    p_absorb_auto_sub.add_parser("enable")
+    p_absorb_auto_sub.add_parser("disable")
+    p_absorb_auto_tier = p_absorb_auto_sub.add_parser("tier", help="set auto-write tier")
+    p_absorb_auto_tier.add_argument("tier", choices=["OFF", "SUMMARY_ONLY", "LOW_RISK_CHUNKS", "REVIEWED_ONLY"])
+    p_absorb_auto_run = p_absorb_auto_sub.add_parser("run", help="run tiered auto-write preview or apply")
+    p_absorb_auto_run.add_argument("--limit", type=int, default=20)
+    p_absorb_auto_run.add_argument("--daily-cap", type=int, default=20)
+    p_absorb_auto_run.add_argument("--apply", action="store_true", help="apply auto-write; without this only previews")
+    p_absorb_auto_rollback = p_absorb_auto_sub.add_parser("rollback", help="rollback recent absorb auto-writes; dry-run by default")
+    p_absorb_auto_rollback.add_argument("--since-hours", type=int, default=1)
+    p_absorb_auto_rollback.add_argument("--limit", type=int, default=100)
+    p_absorb_auto_rollback.add_argument("--apply", action="store_true", help="apply rollback; without this only previews")
+    p_absorb_auto_rollback.add_argument("--source-system", default="absorb", help="rollback only records tagged with this source system")
+    p_absorb_auto_sub.add_parser("status")
+    p_absorb_kg = p_absorb_sub.add_parser("kg-extract", help="preview/apply KG extraction from safe absorb chunks")
+    p_absorb_kg.add_argument("--limit", type=int, default=50)
+    p_absorb_kg.add_argument("--force", action="store_true", help="force KG re-extraction for already processed chunks")
+    p_absorb_kg.add_argument("--apply", action="store_true", help="apply extraction; without this only previews")
+    p_absorb_start = p_absorb_sub.add_parser("start", help="watch authorized roots in foreground")
+    p_absorb_start.add_argument("--duration", type=float, default=None, help="seconds to run before exiting")
+    p_absorb_start.add_argument("--submit-summaries", action="store_true", help="opt-in document summary submission")
+    p_absorb_sub.add_parser("stop", help="stop watcher placeholder")
+
     p_watch = sub.add_parser("watch", help="periodic doctor+backup+cleanup")
     p_watch.add_argument("--interval", type=int, default=1800, help="seconds between checks")
     p_watch.add_argument("--once", action="store_true", help="run one cycle and exit")
@@ -333,6 +562,9 @@ def _build_parser() -> argparse.ArgumentParser:
     s_install.add_argument("--interval", type=int, default=1800, help="watch interval seconds")
     p_service_sub.add_parser("remove", help="unload and remove service")
     p_service_sub.add_parser("status", help="service status")
+    p_service_sub.add_parser("absorb-install", help="install and load absorb watcher service")
+    p_service_sub.add_parser("absorb-remove", help="unload and remove absorb watcher service")
+    p_service_sub.add_parser("absorb-status", help="absorb watcher service status")
 
     p_backup = sub.add_parser("backup", help="snapshot memories")
     p_backup.add_argument("--max-keep", type=int, default=20, help="keep latest N backups")
@@ -362,7 +594,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_shortcut_sub.add_parser("remove", help="remove desktop shortcuts")
     p_shortcut_sub.add_parser("status", help="show desktop shortcuts status")
 
-    p_synth = sub.add_parser("synthetic", help="synthetic memory operations")
+    p_synth = sub.add_parser("synthetic", help="legacy experimental synthetic commands (prefer `ms8 labs synthetic`)")
     p_synth_sub = p_synth.add_subparsers(dest="synthetic_cmd")
     p_synth_rb = p_synth_sub.add_parser("rollback-auto", help="rollback auto-approved synthetic memories")
     p_synth_rb.add_argument("--since-hours", type=int, default=1, help="rollback time window in hours")
@@ -391,7 +623,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_connect_run.add_argument(
         "--target",
         default="all",
-        help="target profile: all|claude_desktop|cursor|windsurf|openclaw|hermes|cline|roo|continue|cherry_studio|codex|generic_json",
+        help="target profile: all|claude_desktop|claude_code|cursor|windsurf|openclaw|hermes|cline|roo|continue|cherry_studio|codex|generic_json",
     )
     p_connect_bootstrap = p_connect_sub.add_parser(
         "bootstrap",
@@ -413,25 +645,25 @@ def _build_parser() -> argparse.ArgumentParser:
     p_connect_gen.add_argument(
         "--target",
         default="all",
-        help="target profile: all|claude_desktop|cursor|windsurf|openclaw|hermes|cline|roo|continue|cherry_studio|codex|generic_json",
+        help="target profile: all|claude_desktop|claude_code|cursor|windsurf|openclaw|hermes|cline|roo|continue|cherry_studio|codex|generic_json",
     )
     p_connect_apply = p_connect_sub.add_parser("apply", help="apply generated snippets to configured clients")
     p_connect_apply.add_argument(
         "--target",
         default="all",
-        help="target profile: all|claude_desktop|cursor|windsurf|openclaw|hermes|cline|roo|continue|cherry_studio|codex|generic_json",
+        help="target profile: all|claude_desktop|claude_code|cursor|windsurf|openclaw|hermes|cline|roo|continue|cherry_studio|codex|generic_json",
     )
     p_connect_verify = p_connect_sub.add_parser("verify", help="verify client configs and legacy-path migration")
     p_connect_verify.add_argument(
         "--target",
         default="all",
-        help="target profile: all|claude_desktop|cursor|windsurf|openclaw|hermes|cline|roo|continue|cherry_studio|codex|generic_json",
+        help="target profile: all|claude_desktop|claude_code|cursor|windsurf|openclaw|hermes|cline|roo|continue|cherry_studio|codex|generic_json",
     )
     p_connect_rollback = p_connect_sub.add_parser("rollback", help="remove client MCP config files")
     p_connect_rollback.add_argument(
         "--target",
         default="all",
-        help="target profile: all|claude_desktop|cursor|windsurf|openclaw|hermes|cline|roo|continue|cherry_studio|codex|generic_json",
+        help="target profile: all|claude_desktop|claude_code|cursor|windsurf|openclaw|hermes|cline|roo|continue|cherry_studio|codex|generic_json",
     )
     p_connect_rollback.add_argument("--dry-run", action="store_true", help="preview only, do not modify files")
     p_connect_rollback.add_argument(
@@ -443,13 +675,13 @@ def _build_parser() -> argparse.ArgumentParser:
     p_connect_status.add_argument(
         "--target",
         default="all",
-        help="target profile: all|claude_desktop|cursor|windsurf|openclaw|hermes|cline|roo|continue|cherry_studio|codex|generic_json",
+        help="target profile: all|claude_desktop|claude_code|cursor|windsurf|openclaw|hermes|cline|roo|continue|cherry_studio|codex|generic_json",
     )
     p_connect_smoke = p_connect_sub.add_parser("smoke", help="run connect smoke test")
     p_connect_smoke.add_argument(
         "--target",
         default="all",
-        help="target profile: all|claude_desktop|cursor|windsurf|openclaw|hermes|cline|roo|continue|cherry_studio|codex|generic_json",
+        help="target profile: all|claude_desktop|claude_code|cursor|windsurf|openclaw|hermes|cline|roo|continue|cherry_studio|codex|generic_json",
     )
     p_connect_list = p_connect_sub.add_parser("list-targets", help="list supported target profiles and resolved paths")
     p_connect_list.add_argument("--compact", action="store_true", help="compact view: target + resolved path + exists")
@@ -484,7 +716,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_agent_task_sub.add_parser("list", help="list available task templates")
     p_agent_task_sub.add_parser("verify", help="verify task template version/consistency")
     p_agent_task_show = p_agent_task_sub.add_parser("show", help="show one task template")
-    p_agent_task_show.add_argument("name", choices=["install", "ops", "check", "report", "usage"])
+    p_agent_task_show.add_argument("name", choices=["install", "ops", "check", "report", "usage", "absorb"])
     p_agent_sub.add_parser("remove", help="archive/remove project-level .ms8/agent_native")
     p_agent_migrate = p_agent_sub.add_parser(
         "migrate-policy-path",
@@ -512,6 +744,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p_agent_run_check.add_argument("--no-repair-preview", action="store_true", help="disable dry-run repair preview")
     p_agent_run_report = p_agent_run_sub.add_parser("report", help="run critical detection and bug-report on demand")
     p_agent_run_report.add_argument("--no-redact", action="store_true", help="disable redaction in bug-report bundle")
+    p_agent_run_absorb = p_agent_run_sub.add_parser("absorb", help="run safe absorb orchestration and output MS8_AGENT_RESULT")
+    p_agent_run_absorb.add_argument("--mode", default="status", choices=["status", "setup", "search", "review"])
+    p_agent_run_absorb.add_argument("--path", default="", help="directory to authorize when --mode setup")
+    p_agent_run_absorb.add_argument("--query", default="", help="query text when --mode search")
+    p_agent_run_absorb.add_argument("--confirm", action="store_true", help="explicitly confirm folder authorization for setup")
     p_agent_run_daily = p_agent_run_sub.add_parser("daily", help="run check then report in one command")
     p_agent_run_daily.add_argument("--no-repair-preview", action="store_true", help="disable dry-run repair preview")
     p_agent_run_daily.add_argument("--no-redact", action="store_true", help="disable redaction in bug-report bundle")
@@ -690,18 +927,18 @@ def _build_parser() -> argparse.ArgumentParser:
     p_ops_comp_run.add_argument("--dry-run", action="store_true", help="preview compression only")
     p_ops_comp_run.add_argument("--confirm", action="store_true", help="confirm execution when not dry-run")
     p_ops_sub.add_parser("compression-repair", help="repair compression duplicate/superseded links")
-    p_ops_sub.add_parser("advanced-insight-status", help="show advanced insight module status")
-    p_ops_sub.add_parser("meta-status", help="show meta-cognition status")
-    p_ops_meta = p_ops_sub.add_parser("meta-run", help="run one meta-cognition cycle")
+    p_ops_sub.add_parser("advanced-insight-status", help="experimental: show advanced insight status (prefer `ms8 labs insight status`)")
+    p_ops_sub.add_parser("meta-status", help="experimental: show meta-cognition status (prefer `ms8 labs meta status`)")
+    p_ops_meta = p_ops_sub.add_parser("meta-run", help="experimental: run one meta-cognition cycle (prefer `ms8 labs meta run`)")
     p_ops_meta.add_argument("--period", default=None, help="optional period (daily/weekly/monthly)")
-    p_ops_sub.add_parser("context-blocks", help="show context with memory blocks")
-    p_ops_aug = p_ops_sub.add_parser("augmented-context", help="build augmented context for a message")
+    p_ops_sub.add_parser("context-blocks", help="experimental: show context blocks (prefer `ms8 labs context blocks`)")
+    p_ops_aug = p_ops_sub.add_parser("augmented-context", help="experimental: build augmented context (prefer `ms8 labs context augment`)")
     p_ops_aug.add_argument("--message", required=True, help="input message")
     p_ops_aug.add_argument("--no-blocks", action="store_true", help="disable memory block prefix")
     p_ops_aug.add_argument("--graph-limit", type=int, default=5, help="graph context limit")
-    p_ops_syn_gen = p_ops_sub.add_parser("synthetic-generate", help="generate synthetic candidates")
+    p_ops_syn_gen = p_ops_sub.add_parser("synthetic-generate", help="experimental: generate synthetic candidates (prefer `ms8 labs synthetic generate`)")
     p_ops_syn_gen.add_argument("--limit", type=int, default=20, help="max candidates")
-    p_ops_gh = p_ops_sub.add_parser("github-catalog", help="fetch github skill catalog")
+    p_ops_gh = p_ops_sub.add_parser("github-catalog", help="experimental: fetch GitHub skill catalog (prefer `ms8 labs github catalog`)")
     p_ops_gh.add_argument("--org", default="openclaw", help="GitHub org")
     p_ops_git_hist = p_ops_sub.add_parser("git-history", help="show memory git history")
     p_ops_git_hist.add_argument("--max-count", type=int, default=10, help="max commits")
@@ -713,7 +950,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_ops_sf = p_ops_sub.add_parser("skill-install-file", help="install skill from local file/dir")
     p_ops_sf.add_argument("--path", required=True, help="file or dir path")
     p_ops_sf.add_argument("--scope", default="project", help="project/user/system")
-    p_ops_sg = p_ops_sub.add_parser("skill-install-search", help="install skill found by github search")
+    p_ops_sg = p_ops_sub.add_parser("skill-install-search", help="experimental: install skill from GitHub search (prefer `ms8 labs skills install-search`)")
     p_ops_sg.add_argument("--name", required=True, help="skill name")
     p_ops_sg.add_argument("--repository", default=None, help="optional owner/repo")
     p_ops_sr = p_ops_sub.add_parser("skill-install-registry", help="install skill from registry id")
@@ -733,15 +970,15 @@ def _build_parser() -> argparse.ArgumentParser:
     p_ops_sub.add_parser("purge-test-memory", help="purge test memory data")
     p_ops_fb = p_ops_sub.add_parser("feedback-rebalance", help="rebalance feedback distribution")
     p_ops_fb.add_argument("--window", type=int, default=None, help="optional recent window")
-    p_ops_sub.add_parser("skill-index-refresh", help="refresh local skill index from GitHub")
+    p_ops_sub.add_parser("skill-index-refresh", help="experimental: refresh local skill index (prefer `ms8 labs skills index-refresh`)")
     p_ops_sub.add_parser("learning-run-pending", help="run pending learning scheduled tasks")
     p_ops_sub.add_parser("shadow-archive-spool", help="archive shadow spool events")
     p_ops_restore = p_ops_sub.add_parser("short-term-restore", help="restore short-term items by topic")
     p_ops_restore.add_argument("--query", required=True, help="search query")
     p_ops_restore.add_argument("--limit", type=int, default=20, help="max rows")
-    p_ops_retry = p_ops_sub.add_parser("subagent-retry", help="retry one background subagent task")
+    p_ops_retry = p_ops_sub.add_parser("subagent-retry", help="experimental: retry one background subagent task (prefer `ms8 labs subagents retry`)")
     p_ops_retry.add_argument("--task-id", required=True, help="task id")
-    p_ops_spawn = p_ops_sub.add_parser("subagent-spawn", help="spawn a subagent task")
+    p_ops_spawn = p_ops_sub.add_parser("subagent-spawn", help="experimental: spawn a subagent task (prefer `ms8 labs subagents spawn`)")
     p_ops_spawn.add_argument("--name", required=True, help="subagent name")
     p_ops_spawn.add_argument("--task", required=True, help="task description")
     p_ops_spawn.add_argument("--background", action="store_true", help="run in background")
@@ -762,6 +999,60 @@ def _build_parser() -> argparse.ArgumentParser:
     p_labs_sub.add_parser("status", help="show labs gate status")
     p_labs_sub.add_parser("enable", help="enable labs commands")
     p_labs_sub.add_parser("disable", help="disable labs commands")
+    p_labs_syn = p_labs_sub.add_parser("synthetic", help="experimental synthetic memory workflows")
+    p_labs_syn_sub = p_labs_syn.add_subparsers(dest="labs_synthetic_cmd")
+    p_labs_syn_gen = p_labs_syn_sub.add_parser("generate", help="generate synthetic candidates")
+    p_labs_syn_gen.add_argument("--limit", type=int, default=20, help="max candidates")
+    p_labs_syn_rb = p_labs_syn_sub.add_parser("rollback-auto", help="rollback auto-approved synthetic memories")
+    p_labs_syn_rb.add_argument("--since-hours", type=int, default=1, help="rollback time window in hours")
+    p_labs_syn_rb.add_argument("--preview", action="store_true", help="preview rollback target only")
+    p_labs_syn_list = p_labs_syn_sub.add_parser("list", help="list synthetic candidates")
+    p_labs_syn_list.add_argument("--status", default="review", help="candidate status")
+    p_labs_syn_list.add_argument("--limit", type=int, default=20, help="max candidates")
+    p_labs_syn_confirm = p_labs_syn_sub.add_parser("confirm", help="confirm synthetic candidates")
+    p_labs_syn_confirm.add_argument("--ids", default="", help="comma-separated candidate ids")
+    p_labs_syn_confirm.add_argument("--min-score", type=float, default=None, help="minimum score")
+    p_labs_syn_reject = p_labs_syn_sub.add_parser("reject", help="reject synthetic candidates")
+    p_labs_syn_reject.add_argument("--ids", required=True, help="comma-separated candidate ids")
+    p_labs_syn_review = p_labs_syn_sub.add_parser("review", help="batch review synthetic candidates from json file")
+    p_labs_syn_review.add_argument("--file", required=True, help="json file with decisions list")
+    p_labs_syn_sub.add_parser("health", help="show synthetic subsystem health")
+    p_labs_syn_rebalance = p_labs_syn_sub.add_parser("rebalance", help="rebalance synthetic review queue")
+    p_labs_syn_rebalance.add_argument("--max-auto-accept", type=int, default=40, help="max auto accept count")
+    p_labs_syn_rebalance.add_argument("--apply-writeback", action="store_true", help="persist rebalance statuses")
+    p_labs_meta = p_labs_sub.add_parser("meta", help="experimental meta-cognition workflows")
+    p_labs_meta_sub = p_labs_meta.add_subparsers(dest="labs_meta_cmd")
+    p_labs_meta_sub.add_parser("status", help="show meta-cognition status")
+    p_labs_meta_run = p_labs_meta_sub.add_parser("run", help="run meta-cognition cycle")
+    p_labs_meta_run.add_argument("--period", default="daily", help="period hint")
+    p_labs_insight = p_labs_sub.add_parser("insight", help="experimental advanced insight status")
+    p_labs_insight_sub = p_labs_insight.add_subparsers(dest="labs_insight_cmd")
+    p_labs_insight_sub.add_parser("status", help="show advanced insight status")
+    p_labs_ctx = p_labs_sub.add_parser("context", help="experimental context helpers")
+    p_labs_ctx_sub = p_labs_ctx.add_subparsers(dest="labs_context_cmd")
+    p_labs_ctx_sub.add_parser("blocks", help="show context blocks")
+    p_labs_ctx_aug = p_labs_ctx_sub.add_parser("augment", help="show augmented context")
+    p_labs_ctx_aug.add_argument("--message", required=True, help="query text")
+    p_labs_ctx_aug.add_argument("--no-blocks", action="store_true", help="disable block augmentation")
+    p_labs_ctx_aug.add_argument("--graph-limit", type=int, default=8, help="graph relation limit")
+    p_labs_subagents = p_labs_sub.add_parser("subagents", help="experimental subagent workflows")
+    p_labs_subagents_sub = p_labs_subagents.add_subparsers(dest="labs_subagents_cmd")
+    p_labs_sub_spawn = p_labs_subagents_sub.add_parser("spawn", help="spawn a subagent task")
+    p_labs_sub_spawn.add_argument("--name", required=True, help="subagent name")
+    p_labs_sub_spawn.add_argument("--task", required=True, help="task description")
+    p_labs_sub_spawn.add_argument("--background", action="store_true", help="run in background")
+    p_labs_sub_retry = p_labs_subagents_sub.add_parser("retry", help="retry one background subagent task")
+    p_labs_sub_retry.add_argument("--task-id", required=True, help="task id")
+    p_labs_git = p_labs_sub.add_parser("github", help="experimental GitHub skill catalog helpers")
+    p_labs_git_sub = p_labs_git.add_subparsers(dest="labs_github_cmd")
+    p_labs_git_catalog = p_labs_git_sub.add_parser("catalog", help="fetch GitHub skill catalog")
+    p_labs_git_catalog.add_argument("--org", required=True, help="GitHub org name")
+    p_labs_skills = p_labs_sub.add_parser("skills", help="experimental skill ingestion helpers")
+    p_labs_skills_sub = p_labs_skills.add_subparsers(dest="labs_skills_cmd")
+    p_labs_skill_search = p_labs_skills_sub.add_parser("install-search", help="install one skill from GitHub search")
+    p_labs_skill_search.add_argument("--name", required=True, help="skill name")
+    p_labs_skill_search.add_argument("--repository", default=None, help="optional repository hint")
+    p_labs_skills_sub.add_parser("index-refresh", help="refresh local skill index from GitHub")
     return parser
 
 
@@ -770,6 +1061,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
+    if not args.verbose:
+        logging.getLogger("httpx").setLevel(logging.WARNING)
+        logging.getLogger("httpcore").setLevel(logging.WARNING)
 
     if args.command is None:
         return run_dashboard()
@@ -781,7 +1075,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.command != "shortcut":
             if not onboarding_status().get("done"):
                 onboarding_result = run_onboarding()
-                _print_connect_bootstrap_summary(onboarding_result.get("marker", {}))
+                suppress_bootstrap_summary = args.command == "agent" and getattr(args, "agent_cmd", "") == "run"
+                if not suppress_bootstrap_summary:
+                    _print_connect_bootstrap_summary(onboarding_result.get("marker", {}))
             ensure_shortcuts_once()
         if args.command == "engine":
             if args.engine_cmd == "status":
@@ -830,26 +1126,10 @@ def main(argv: list[str] | None = None) -> int:
             return run_doctor_with_hint()
         if args.command == "ask":
             return run_ask(query=args.query, limit=args.limit)
+        if args.command == "absorb":
+            return run_absorb_cli(args)
         if args.command == "labs":
-            if args.labs_cmd == "status":
-                print(
-                    json.dumps(
-                        {
-                            "status": "success",
-                            "labs_enabled": _read_labs_enabled(),
-                        },
-                        ensure_ascii=False,
-                        indent=2,
-                    )
-                )
-                return 0
-            if args.labs_cmd == "enable":
-                print(json.dumps(_write_labs_enabled(True), ensure_ascii=False, indent=2))
-                return 0
-            if args.labs_cmd == "disable":
-                print(json.dumps(_write_labs_enabled(False), ensure_ascii=False, indent=2))
-                return 0
-            return _emit_usage_error("ms8 labs: choose status|enable|disable")
+            return _run_labs_command(args)
         if args.command == "watch":
             return run_watch(interval_seconds=args.interval, once=args.once)
         if args.command == "service":
@@ -868,13 +1148,32 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"installed: {'yes' if out['installed'] else 'no'}")
                 print(f"running: {'yes' if out['running'] else 'no'}")
                 print(f"plist: {out['plist']}")
+                print(f"absorb_installed: {'yes' if out.get('absorb_installed') else 'no'}")
+                print(f"absorb_running: {'yes' if out.get('absorb_running') else 'no'}")
+                print(f"absorb_plist: {out.get('absorb_plist', '')}")
                 oc = out.get("openclaw_services", {})
                 if isinstance(oc, dict) and oc:
                     print("openclaw:")
                     for label, ok in oc.items():
                         print(f" - {label}: {'running' if ok else 'stopped'}")
                 return 0
-            return _emit_usage_error("ms8 service: choose install|remove|status")
+            if args.service_cmd == "absorb-install":
+                out = install_absorb_service()
+                print(f"absorb service install: {'ok' if out['ok'] else 'fail'}")
+                if out.get("stderr"):
+                    print(f"stderr: {out['stderr']}")
+                return 0 if out["ok"] else 1
+            if args.service_cmd == "absorb-remove":
+                out = remove_absorb_service()
+                print(f"absorb service removed: {out['plist']}")
+                return 0
+            if args.service_cmd == "absorb-status":
+                out = absorb_service_status()
+                print(f"installed: {'yes' if out['installed'] else 'no'}")
+                print(f"running: {'yes' if out['running'] else 'no'}")
+                print(f"plist: {out['plist']}")
+                return 0
+            return _emit_usage_error("ms8 service: choose install|remove|status|absorb-install|absorb-remove|absorb-status")
         if args.command == "backup":
             return run_backup_and_cleanup(max_keep=args.max_keep)
         if args.command == "cleanup":

@@ -46,6 +46,7 @@ def test_c15_agent_template_semantics_warn_when_tokens_missing(monkeypatch) -> N
     out = cs._check_c15_agent_native_template_semantics(None, {})
     assert out["status"] == "warn"
     assert "STOP NEEDS_CONFIRM" in out["details"]["missing_tokens"]
+    assert "TASK use_ms8_absorb" in out["details"]["missing_tokens"]
 
 
 def test_c15_agent_template_semantics_pass_when_tokens_present(monkeypatch) -> None:
@@ -53,7 +54,16 @@ def test_c15_agent_template_semantics_pass_when_tokens_present(monkeypatch) -> N
 
     def _fake_read_text(self: Path, encoding: str = "utf-8", errors: str = "ignore") -> str:
         if str(self).endswith("agent_native/task_templates.py"):
-            return "ASK_USER:\nSTOP NEEDS_CONFIRM\nALLOWED_COMMANDS\nMS8_FIRST_INSTALL_REPORT\n"
+            return (
+                "ASK_USER:\n"
+                "STOP NEEDS_CONFIRM\n"
+                "ALLOWED_COMMANDS\n"
+                "MS8_FIRST_INSTALL_REPORT\n"
+                "TASK use_ms8_absorb\n"
+                "MS8_AGENT_RESULT\n"
+                "python -m ms8 agent run absorb --mode setup --path <directory> --confirm\n"
+                "No autosubmit/apply command is allowed by this task.\n"
+            )
         return original_read_text(self, encoding=encoding, errors=errors)
 
     monkeypatch.setattr(cs.Path, "read_text", _fake_read_text)

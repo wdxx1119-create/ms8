@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ms8"
-version = "0.2.1"
+version = "0.2.11"
 description = "MS8 — local memory system. Memory belongs to you, not to tools."
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.15"
 dependencies = [
   "whoosh>=2.7.4",
   "PyYAML>=6.0.0",
@@ -19,7 +19,8 @@ dependencies = [
   "jieba>=0.42.1",
   "ollama>=0.4.0",
   "cryptography>=44.0.0",
-  "argon2-cffi>=25.0.0"
+  "argon2-cffi>=25.0.0",
+  "ms8-policy-core>=0.1.0,<0.2"
 ]
 
 [project.optional-dependencies]
@@ -30,14 +31,27 @@ dev = [
   "build"
 ]
 policy = [
-  "ms8-policy-engine>=0.1.1"
+  "ms8-policy-core>=0.1.0,<0.2"
 ]
 llm = [
   "ollama>=0.4.0"
 ]
+absorb = [
+  "watchdog>=4.0.0",
+  "pypdf>=4.0.0",
+  "python-docx>=1.1.0"
+]
+absorb-ocr = [
+  "pytesseract>=0.3.10",
+  "pdf2image>=1.17.0",
+  "pillow>=10.0.0"
+]
 full = [
-  "ms8-policy-engine>=0.1.1",
-  "ollama>=0.4.0"
+  "ms8-policy-core>=0.1.0,<0.2",
+  "ollama>=0.4.0",
+  "watchdog>=4.0.0",
+  "pypdf>=4.0.0",
+  "python-docx>=1.1.0"
 ]
 
 [project.scripts]
@@ -45,6 +59,10 @@ ms8 = "ms8.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+exclude = ["ms8.engine_core.tests*"]
+
+[tool.setuptools.package-data]
+ms8 = ["connect/*.md"]
 
 [tool.ruff]
 line-length = 120

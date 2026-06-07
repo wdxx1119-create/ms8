@@ -12,6 +12,7 @@ def test_ops_meta_run_blocked_when_labs_disabled(tmp_path: Path, monkeypatch, ca
     assert rc == 2
     assert "labs command disabled by default" in captured.err
     assert "migration hint:" in captured.err
+    assert "ms8 labs meta run" in captured.err
     assert "ms8 labs status" in captured.err
 
 
@@ -22,4 +23,5 @@ def test_synthetic_command_blocked_when_labs_disabled(tmp_path: Path, monkeypatc
     assert rc == 2
     assert "labs command disabled by default" in captured.err
     assert "migration hint:" in captured.err
+    assert "ms8 labs synthetic <subcommand>" in captured.err
     assert "ms8 labs status" in captured.err

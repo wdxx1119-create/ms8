@@ -5,11 +5,13 @@ Lightweight semantic recall for memory documents.
 from __future__ import annotations
 
 import json
+import logging
 import math
 import os
 import re
 import urllib.request
 from datetime import datetime
+from pathlib import Path
 from types import ModuleType
 from typing import Any
 
@@ -17,6 +19,8 @@ from .config import get_config
 from .file_store import FileMemoryStore
 from .file_write_guard import atomic_write_json
 from .utils import list_daily_log_files
+
+logger = logging.getLogger(__name__)
 
 _ollama: ModuleType | None
 try:
@@ -200,6 +204,50 @@ class SemanticMemorySearch:
                 )
             except OSError:
                 continue
+        docs.extend(self._absorb_documents())
+        return docs
+
+    def _absorb_documents(self, limit: int = 300) -> list[dict[str, Any]]:
+        """Return safe local-document chunks as semantic-search documents.
+
+        Absorb chunks are only included after the absorb governance layer marks
+        them searchable. Quarantined, pending-review, deleted, and non-low-risk
+        chunks are intentionally excluded from semantic caching and ranking.
+        """
+        try:
+            from ms8.absorb.repository import SEARCHABLE_CHUNK_STATUSES, list_chunks_by_status
+        except ImportError as exc:
+            logger.debug("semantic_absorb_import_unavailable: %s", exc)
+            return []
+
+        try:
+            chunks = list_chunks_by_status(SEARCHABLE_CHUNK_STATUSES, limit=limit)
+        except (OSError, RuntimeError, TypeError, ValueError) as exc:
+            logger.debug("semantic_absorb_documents_unavailable: %s", exc)
+            return []
+
+        docs: list[dict[str, Any]] = []
+        for chunk in chunks:
+            if not isinstance(chunk, dict):
+                continue
+            if str(chunk.get("risk_level", "")).lower() != "low":
+                continue
+            text = str(chunk.get("text_preview", "") or "").strip()
+            if not text:
+                continue
+            chunk_id = str(chunk.get("chunk_id", "") or "")
+            path = str(chunk.get("canonical_path", "") or "")
+            docs.append(
+                {
+                    "id": f"absorb:{chunk_id}",
+                    "source": f"absorb:{path}",
+                    "title": Path(path).name or "Local Document Chunk",
+                    "content": text,
+                    "date": datetime.now(),
+                    "absorb_chunk_id": chunk_id,
+                    "risk_level": "low",
+                }
+            )
         return docs
 
     def search(self, query: str, top_k: int = 5) -> list[dict]:
@@ -227,6 +275,7 @@ class SemanticMemorySearch:
                 continue
             matches.append(
                 {
+                    "id": doc.get("id", doc["source"]),
                     "content": doc["content"],
                     "source": doc["source"],
                     "date": doc["date"],

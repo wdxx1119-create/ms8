@@ -72,10 +72,29 @@ def test_service_submit_query_context_status_success() -> None:
     assert core.last_write["content"] == "hello"
     assert core.last_write["category"] == "preference"
 
+    class _Engine:
+        @staticmethod
+        def retrieve_gateway(query: str, limit: int = 5, purpose: str = "recall", allow_semantic: bool = False, allow_graph: bool = False):
+            return {
+                "items": [
+                    {
+                        "id": "m1",
+                        "text": f"hit:{query}",
+                        "source": "user",
+                        "category": "note",
+                        "status": "accepted",
+                        "created_at": "2026-01-01T00:00:00Z",
+                    }
+                ][:limit],
+                "trace": {"purpose": purpose, "backend": "test_gateway"},
+            }
+
+    svc._engine_adapter = lambda: _Engine()  # type: ignore[method-assign]
     query = svc.query("hello", top_k=1)
     assert query["ok"] is True
     assert query["count"] == 1
     assert query["results"][0]["text"] == "hit:hello"
+    assert query["retrieval_gateway"]["backend"] == "test_gateway"
 
     ctx = svc.context("hello", limit=1)
     assert ctx["ok"] is True
@@ -103,6 +122,11 @@ def test_context_prefers_core_expression_mode_payload() -> None:
         def get_response_memory_context(self, query: str):
             return {
                 "memories": [{"text": f"ctx:{query}"}],
+                "retrieval_gateway": {
+                    "purpose": "inject",
+                    "backend": "memory_core",
+                    "reason_codes": ["core_ranked"],
+                },
                 "expression_mode": {
                     "mode": "light",
                     "confidence": 0.66,
@@ -118,6 +142,8 @@ def test_context_prefers_core_expression_mode_payload() -> None:
     assert expr["mode"] == "light"
     assert expr["prompt_extra"] == "from-core"
     assert expr["decision"]["reason"] == "core_provided"
+    assert out["retrieval_gateway"]["purpose"] == "inject"
+    assert out["retrieval_gateway"]["backend"] == "memory_core"
 
 
 def test_profile_error_codes(tmp_path: Path) -> None:

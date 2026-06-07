@@ -101,3 +101,42 @@ def test_ops_labs_gate_blocks_experimental_cmd(monkeypatch, tmp_path: Path, caps
     err = capsys.readouterr().err
     assert rc == 2
     assert "labs command disabled by default" in err
+    assert "ms8 labs synthetic generate" in err
+
+
+def test_labs_synthetic_generate_success(monkeypatch, tmp_path: Path, capsys) -> None:
+    _set_env(monkeypatch, tmp_path)
+    monkeypatch.setattr(cli, "_read_labs_enabled", lambda: True)
+    monkeypatch.setattr(cli, "generate_synthetic_candidates_runtime", lambda limit=20: {"ok": True, "limit": limit})
+    rc = cli.main(["labs", "synthetic", "generate", "--limit", "3"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    payload = _last_json_payload(out)
+    assert payload["limit"] == 3
+
+
+def test_labs_meta_run_success(monkeypatch, tmp_path: Path, capsys) -> None:
+    _set_env(monkeypatch, tmp_path)
+    monkeypatch.setattr(cli, "_read_labs_enabled", lambda: True)
+    monkeypatch.setattr(cli, "run_meta_cognition_runtime", lambda period="daily": {"ok": True, "period": period})
+    rc = cli.main(["labs", "meta", "run", "--period", "weekly"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    payload = _last_json_payload(out)
+    assert payload["period"] == "weekly"
+
+
+def test_labs_subagents_spawn_success(monkeypatch, tmp_path: Path, capsys) -> None:
+    _set_env(monkeypatch, tmp_path)
+    monkeypatch.setattr(cli, "_read_labs_enabled", lambda: True)
+    monkeypatch.setattr(
+        cli,
+        "spawn_subagent_runtime",
+        lambda **kwargs: {"ok": True, "name": kwargs["subagent_name"], "background": kwargs["background"]},
+    )
+    rc = cli.main(["labs", "subagents", "spawn", "--name", "explore", "--task", "check", "--background"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    payload = _last_json_payload(out)
+    assert payload["name"] == "explore"
+    assert payload["background"] is True

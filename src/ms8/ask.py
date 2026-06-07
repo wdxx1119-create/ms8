@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from .runtime import consume_llm_degraded_notice_runtime, search_memories, write_memory
+from .absorb.search import search_chunks
+from .runtime import consume_llm_degraded_notice_runtime, search_memories_detailed, write_memory
 
 REMEMBER_PREFIXES = ("记住", "保存", "save", "remember")
 
@@ -31,11 +32,17 @@ def run_ask(query: str, limit: int = 5) -> int:
         print(f"saved memory: {rec['id']}")
         return 0
 
-    matches = search_memories(q)
-    print(f"matches: {len(matches)}")
+    memory_search = search_memories_detailed(q, limit=limit)
+    matches = memory_search.get("items", []) if isinstance(memory_search.get("items", []), list) else []
+    absorb_matches = search_chunks(q, limit=limit)
+    print(f"matches: {len(matches) + len(absorb_matches)}")
     for idx, m in enumerate(matches[:limit], start=1):
         text = str(m.get("text", "")).replace("\n", " ")[:100]
         print(f"{idx}. [{m.get('source', 'unknown')}] {text}")
-    if not matches:
+    offset = min(len(matches), limit)
+    for idx, m in enumerate(absorb_matches[: max(0, limit - offset)], start=offset + 1):
+        text = str(m.get("text_preview", "")).replace("\n", " ")[:100]
+        print(f"{idx}. [absorb:{m.get('file_type', 'file')}] {text}")
+    if not matches and not absorb_matches:
         print("no match found. Tip: use 'ms8 ask \"记住 xxx\"' to save.")
     return 0

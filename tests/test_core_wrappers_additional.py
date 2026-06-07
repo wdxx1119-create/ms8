@@ -99,3 +99,110 @@ def test_run_async_thread_runtime_error_raises(monkeypatch) -> None:
             coro.close()
         except RuntimeError:
             pass
+
+
+def test_write_gateway_uses_core_admission(monkeypatch, tmp_path) -> None:
+    c = _core_stub()
+    c.config["memory_dir"] = str(tmp_path)
+    c.file_store = SimpleNamespace(append_to_daily_log=lambda value: None)
+
+    monkeypatch.setattr(
+        c,
+        "_evaluate_admission",
+        lambda text, source="x": {
+            "route": "redacted_accept",
+            "reasons": ["privacy_hit"],
+            "normalized_text": "[REDACTED]",
+            "should_persist_main": True,
+        },
+    )
+
+    captured: dict[str, str] = {}
+
+    def _fake_append_memory_record(*, memory_dir, text, source, status="accepted"):  # noqa: ANN001
+        captured["text"] = text
+        captured["source"] = source
+        return {"id": "rec-1"}
+
+    monkeypatch.setattr(core_mod, "append_memory_record", _fake_append_memory_record)
+    out = c.write_gateway("secret payload", source="unit", category="general")
+    assert out["status"] == "accepted"
+    assert out["admission"]["route"] == "redacted_accept"
+    assert captured["text"] == "[REDACTED]"
+
+
+def test_write_gateway_rejects_when_core_admission_blocks(monkeypatch, tmp_path) -> None:
+    c = _core_stub()
+    c.config["memory_dir"] = str(tmp_path)
+
+    monkeypatch.setattr(
+        c,
+        "_evaluate_admission",
+        lambda text, source="x": {
+            "route": "rejected",
+            "reasons": ["blocked"],
+            "normalized_text": text,
+            "should_persist_main": False,
+        },
+    )
+
+    out = c.write_gateway("blocked payload", source="unit", category="general")
+    assert out["status"] == "rejected"
+    assert out["admission"]["route"] == "rejected"
+
+
+def test_write_gateway_uses_provided_admission_without_re_evaluating(monkeypatch, tmp_path) -> None:
+    c = _core_stub()
+    c.config["memory_dir"] = str(tmp_path)
+    c.file_store = SimpleNamespace(append_to_daily_log=lambda value: None)
+
+    monkeypatch.setattr(c, "_evaluate_admission", lambda text, source="x": (_ for _ in ()).throw(RuntimeError("should not run")))
+
+    captured: dict[str, str] = {}
+
+    def _fake_append_memory_record(*, memory_dir, text, source, status="accepted"):  # noqa: ANN001
+        captured["text"] = text
+        return {"id": "rec-2"}
+
+    monkeypatch.setattr(core_mod, "append_memory_record", _fake_append_memory_record)
+    out = c.write_gateway(
+        "raw payload",
+        source="unit",
+        category="general",
+        admission={"route": "accepted", "normalized_text": "provided-normalized", "should_persist_main": True},
+    )
+    assert out["status"] == "accepted"
+    assert captured["text"] == "provided-normalized"
+
+
+def test_core_save_uses_gateway_normalized_text(monkeypatch, tmp_path) -> None:
+    c = _core_stub()
+    c.config["memory_dir"] = str(tmp_path)
+    writes: list[str] = []
+    entity_hits: list[str] = []
+    kg_hits: list[str] = []
+    c.file_store = SimpleNamespace(read_memory_md=lambda: "ROOT", write_memory_md=lambda value: writes.append(value))
+    c.get_memory_blocks = lambda: {}  # type: ignore[method-assign]
+    c.governance = SimpleNamespace(assess_memory_write=lambda text, blocks, files: {"is_duplicate": False, "text": text})
+    c._extract_and_store_entities = lambda text: entity_hits.append(text)  # type: ignore[method-assign]
+    c.whoosh_search = SimpleNamespace(reindex_all=lambda: None)
+    c._dispatch_knowledge_graph_ingest = lambda path, key, text, use_llm=True: kg_hits.append(text)  # type: ignore[method-assign]
+    c.maintenance = SimpleNamespace(run_maintenance=lambda force=False: None)
+    c._mark_write_success = lambda source: None  # type: ignore[method-assign]
+    c._run_maintenance_policy = lambda force=False: None  # type: ignore[method-assign]
+    c._maybe_generate_synthetic_candidates = lambda: {"status": "ok"}  # type: ignore[method-assign]
+    c.monitoring = SimpleNamespace(status=lambda: None)
+    c.git_manager = SimpleNamespace(commit_if_needed=lambda: None)
+    c.shadow = None
+    c.config["settings"] = {"memory": {"git": {"auto_commit": False}}}
+    c._safe_text_for_memory_md = lambda text: {"allowed": True, "text": text, "admission": {"normalized_text": "safe-admission"}}  # type: ignore[method-assign]  # noqa: E501
+    c.write_gateway = lambda text, source, category, write_daily_log=False, admission=None: {  # type: ignore[method-assign]
+        "status": "accepted",
+        "record_id": "rec-1",
+        "admission": {"normalized_text": "gateway-normalized"},
+    }
+
+    c.save("MyKey", "raw-input")
+    assert writes[-1].endswith("## MyKey\ngateway-normalized")
+    assert entity_hits == ["gateway-normalized"]
+    assert kg_hits == ["gateway-normalized"]

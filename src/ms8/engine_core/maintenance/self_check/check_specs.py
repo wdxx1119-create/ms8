@@ -526,11 +526,13 @@ def _check_c6_client_config_presence(core: Any, _ctx: dict[str, Any]) -> dict[st
     root = _connect_root(core)
     targets = {
         "claude_desktop": Path.home() / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json",
+        "claude_code": Path.home() / ".claude.json",
         "cursor": Path.home() / ".cursor" / "mcp.json",
         "windsurf": Path.home() / ".windsurf" / "mcp.json",
     }
     snippets = {
         "claude_desktop": root / "runtime" / "client_snippets" / "claude_desktop_config.json",
+        "claude_code": root / "runtime" / "client_snippets" / "claude_code_mcp.json",
         "cursor": root / "runtime" / "client_snippets" / "cursor_mcp.json",
         "windsurf": root / "runtime" / "client_snippets" / "windsurf_mcp.json",
     }
@@ -760,7 +762,15 @@ def _check_c15_agent_native_template_semantics(_core: Any, _ctx: dict[str, Any])
     # - older templates used ASK_USER_REQUIRED
     # - current templates use structured ASK_USER block
     ask_user_ok = ("ASK_USER_REQUIRED" in text) or ("ASK_USER:" in text)
-    required_tokens = ["STOP NEEDS_CONFIRM", "ALLOWED_COMMANDS", "MS8_FIRST_INSTALL_REPORT"]
+    required_tokens = [
+        "STOP NEEDS_CONFIRM",
+        "ALLOWED_COMMANDS",
+        "MS8_FIRST_INSTALL_REPORT",
+        "TASK use_ms8_absorb",
+        "MS8_AGENT_RESULT",
+        "python -m ms8 agent run absorb --mode setup --path <directory> --confirm",
+        "No autosubmit/apply command is allowed by this task.",
+    ]
     missing = [t for t in required_tokens if t not in text]
     if not ask_user_ok:
         missing.append("ASK_USER_REQUIRED|ASK_USER:")
@@ -1869,6 +1879,46 @@ def _check_l4_capacity_projection(core: Any, _ctx: dict[str, Any]) -> dict[str, 
     return _ok("capacity projection healthy", details)
 
 
+def _check_l4_absorb_health(_core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
+    try:
+        from ms8.absorb.health import absorb_health_summary
+    except ImportError as exc:
+        return _warn("absorb health unavailable", {"error": str(exc)})
+    try:
+        summary = absorb_health_summary()
+    except (OSError, sqlite3.Error, json.JSONDecodeError, TypeError, ValueError) as exc:
+        return _warn("absorb health unreadable", {"error": str(exc)})
+    kg = summary.get("kg_extract", {}) if isinstance(summary.get("kg_extract", {}), dict) else {}
+    repo = summary.get("repository", {}) if isinstance(summary.get("repository", {}), dict) else {}
+    index = summary.get("index_consistency", {}) if isinstance(summary.get("index_consistency", {}), dict) else {}
+    risk = str(summary.get("risk", "unknown") or "unknown").lower()
+    details = {
+        "risk": risk,
+        "authorized_roots": int(summary.get("authorized_roots", 0) or 0),
+        "pending_review": int(summary.get("pending_review", 0) or 0),
+        "quarantine": int(summary.get("quarantine", 0) or 0),
+        "auto_write_tier": str(summary.get("auto_write_tier", "OFF") or "OFF"),
+        "kg_pending": int(kg.get("pending_candidates", 0) or 0),
+        "kg_applied": int(kg.get("applied_total", 0) or 0),
+        "db_readable": bool(repo.get("db_readable", False)),
+        "db_writable": bool(repo.get("db_writable", False)),
+        "journal_mode": str(repo.get("journal_mode", "")),
+        "integrity_check": str(repo.get("integrity_check", "")),
+        "events_jsonl_bytes": int(repo.get("events_jsonl_bytes", 0) or 0),
+        "events_growth_risk": str(repo.get("events_growth_risk", "unknown")),
+        "quarantine_writable": bool(repo.get("quarantine_writable", False)),
+        "index_risk": str(index.get("risk", "unknown")),
+        "searchable_chunks": int(index.get("searchable_chunks", 0) or 0),
+    }
+    if risk == "red":
+        return _fail("absorb governance backlog high", details)
+    if risk == "yellow":
+        return _warn("absorb has pending review or quarantine items", details)
+    if risk == "green":
+        return _ok("absorb health healthy", details)
+    return _warn("absorb health risk unknown", details)
+
+
 def _check_l5_llm_notice_state_health(core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
     memory_dir = Path(core.config["memory_dir"])
     state_file = memory_dir / "health" / "llm_notice_state.json"
@@ -2878,6 +2928,14 @@ def build_check_specs(level: str = "L1") -> list[CheckSpec]:
             300,
             "Plan cleanup/archival or storage expansion",
             _check_l4_capacity_projection,
+            domain="memory",
+        ),
+        CheckSpec(
+            "l4_absorb_health",
+            "L4",
+            120,
+            "Review absorb pending/quarantine/KG extraction health",
+            _check_l4_absorb_health,
             domain="memory",
         ),
         CheckSpec(

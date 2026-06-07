@@ -207,6 +207,72 @@ RUN python -m ms8 ask "记住: <summary>" -> memory_write_result
 EXAMPLE: python -m ms8 ask "记住: 用户偏好中文日志输出"
 """
 
+ABSORB_TASK = """TASK_VERSION: 1
+TASK use_ms8_absorb
+ROLE local_document_agent
+TARGET_MODEL 3B_coding_model+
+SAFETY_LEVEL S1
+PERMISSION user_confirmed_before_execution
+REQUIRES terminal,ms8
+GOAL help the user safely connect local files to MS8 memory without learning commands
+
+RULES:
+- ask_user_before_execution
+- use_ms8_commands_only
+- no_direct_file_edit
+- no_database_edit
+- no_memory_rewrite
+- no_memory_delete
+- no_sudo
+- no_shell_rc_modify
+- no_shadow_system_access
+- no_upload_without_user_confirm
+- stop_on_unknown
+
+ALLOWED_COMMANDS:
+- python -m ms8 agent run absorb --mode status
+- python -m ms8 agent run absorb --mode setup --path <directory> --confirm
+- python -m ms8 agent run absorb --mode search --query <query>
+- python -m ms8 agent run absorb --mode review
+- python -m ms8 absorb status
+- python -m ms8 absorb add <directory>
+- python -m ms8 absorb rescan
+- python -m ms8 absorb ingest
+- python -m ms8 absorb search <query> --pretty
+- python -m ms8 absorb review list
+
+ASK_USER:
+  "你要让 MS8 读取哪个本地文件夹？我会先检查并进入待审，不会默认自动写入长期记忆。是否继续？"
+  REQUIRED_FOR: setup
+  -> user_authorized_directory
+
+FLOW:
+1. If user asks to check absorb status:
+   RUN python -m ms8 agent run absorb --mode status -> absorb_status
+2. If user asks to connect a folder:
+   ASK_USER first.
+   If user did not confirm -> STOP NEEDS_CONFIRM.
+   RUN python -m ms8 agent run absorb --mode setup --path <directory> --confirm -> absorb_setup
+3. If user asks to search absorbed files:
+   RUN python -m ms8 agent run absorb --mode search --query <query> -> absorb_search
+4. If user asks to review pending absorbed chunks:
+   RUN python -m ms8 agent run absorb --mode review -> absorb_review
+
+OUTPUT MS8_AGENT_RESULT:
+- action=absorb
+- mode=status|setup|search|review
+- status=PASS|FAIL|NEEDS_CONFIRM
+- executed_commands=
+- summary=
+- next_action=
+
+SAFETY_NOTES:
+- Default mode is read-only/status/search/review listing.
+- Folder setup requires explicit user confirmation.
+- No autosubmit/apply command is allowed by this task.
+- No raw file content is printed unless the user explicitly searches and reviews previews.
+"""
+
 README_AGENT = """# MS8 Agent-native Onboarding
 
 Agent executes. MS8 controls. User authorizes.
@@ -229,9 +295,10 @@ Agent executes. MS8 controls. User authorizes.
 1. `python -m ms8 agent init --profile DEFAULT_SAFE`
 2. `python -m ms8 agent task show install`
 3. `python -m ms8 agent task show usage`
-4. `python -m ms8 agent task show check`
-5. `python -m ms8 agent task show report`
-6. `python -m ms8 doctor`
+4. `python -m ms8 agent task show absorb`
+5. `python -m ms8 agent task show check`
+6. `python -m ms8 agent task show report`
+7. `python -m ms8 doctor`
 
 ## 安装环境前置
 

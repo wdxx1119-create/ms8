@@ -484,7 +484,7 @@ def test_nocrypto_and_seal_view_helpers() -> None:
     assert view.seal_level() == "hard"
 
 
-def test_init_handles_startup_self_heal_and_integrity_scan_errors(tmp_path: Path, monkeypatch, capsys) -> None:
+def test_init_handles_startup_self_heal_and_integrity_scan_errors(tmp_path: Path, monkeypatch, caplog) -> None:
     cfg = _config(tmp_path)
     cfg["memory_dir"].mkdir(parents=True, exist_ok=True)
     cfg["workspace_dir"].mkdir(parents=True, exist_ok=True)
@@ -496,10 +496,11 @@ def test_init_handles_startup_self_heal_and_integrity_scan_errors(tmp_path: Path
         "_startup_integrity_scan",
         lambda self: (_ for _ in ()).throw(OSError("scan boom")),
     )
+    caplog.set_level("WARNING")
     _ = ShadowSystem(cfg)
-    out = capsys.readouterr().out
-    assert "Startup self-heal failed" in out
-    assert "Startup integrity scan failed" in out
+    joined = "\n".join(rec.getMessage() for rec in caplog.records)
+    assert "Startup self-heal failed" in joined
+    assert "Startup integrity scan failed" in joined
 
 
 def test_init_uses_relative_backup_and_nocrypto_fallback_without_workspace(tmp_path: Path) -> None:

@@ -106,3 +106,24 @@ def test_cleanup_tolerates_bad_json_lines(tmp_path: Path):
     assert report["after"] == 1
     rows = [json.loads(x) for x in store.read_text(encoding="utf-8").splitlines() if x.strip()]
     assert len(rows) == 1
+
+
+def test_repository_save_blocks_rejected_content(tmp_path: Path):
+    repo = MemoryRepository(tmp_path / "m.jsonl")
+    blocked = _mk_record(text="!!!!!", rec_id="blocked", dedupe_key="blocked")
+    try:
+        repo.save(blocked)
+    except ValueError as exc:
+        assert "repository_admission_blocked:rejected" in str(exc)
+    else:
+        raise AssertionError("expected repository admission to reject noisy content")
+
+
+def test_repository_save_marks_pending_review_for_sensitive_content(tmp_path: Path):
+    repo = MemoryRepository(tmp_path / "m.jsonl")
+    rec = _mk_record(text="-----BEGIN ENCRYPTED PRIVATE KEY-----abc-----END ENCRYPTED PRIVATE KEY-----")
+    saved = repo.save(rec)
+    assert saved["status"] == "pending_review"
+    assert saved["needs_review"] is True
+    assert saved["review_reason"] == "repository_admission_pending_review"
+    assert saved["meta"]["repository_admission"]["route"] == "pending_review"

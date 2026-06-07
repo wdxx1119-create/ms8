@@ -198,6 +198,120 @@ def _run_report_flow(*, redact: bool = True) -> dict:
     }
 
 
+def _run_absorb_flow(*, mode: str = "status", path: str = "", query: str = "", confirm: bool = False) -> dict:
+    """Run the small, safe Agent-native absorb orchestration layer."""
+    chosen = str(mode or "status").strip().lower()
+    executed: list[str] = []
+
+    def _base(status: str, **extra: object) -> dict:
+        return {
+            "ok": status == "PASS",
+            "status": status,
+            "error_code": "" if status == "PASS" else str(extra.pop("error_code", "E_AGENT_ABSORB")),
+            "action": "absorb",
+            "mode": chosen,
+            "executed_commands": executed,
+            **extra,
+        }
+
+    if chosen == "status":
+        from ..absorb.health import absorb_health_summary
+
+        executed.append("python -m ms8 absorb status")
+        summary = absorb_health_summary()
+        return _base(
+            "PASS",
+            summary=f"risk={summary.get('risk', 'unknown')} roots={summary.get('authorized_roots', 0)} pending={summary.get('pending_review', 0)}",
+            absorb_status=summary,
+            next_action="Ask user for a folder, then run: python -m ms8 agent run absorb --mode setup --path <directory> --confirm",
+        )
+
+    if chosen == "setup":
+        if not path:
+            return _base(
+                "NEEDS_CONFIRM",
+                error_code="E_ABSORB_PATH_REQUIRED",
+                summary="A directory path is required before absorb setup.",
+                next_action="Ask the user which local folder should be authorized.",
+            )
+        if not confirm:
+            return _base(
+                "NEEDS_CONFIRM",
+                error_code="E_NEEDS_CONFIRM",
+                summary="Folder authorization requires explicit user confirmation.",
+                next_action="Re-run with --confirm after the user authorizes this folder.",
+            )
+        from ..absorb.incremental_processor import process_pending
+        from ..absorb.scope import add_allowed_root
+        from ..absorb.spotlight_bootstrap import bootstrap_authorized_roots
+
+        executed.append(f"python -m ms8 absorb add {path}")
+        add_out = add_allowed_root(path)
+        if not bool(add_out.get("ok", False)):
+            return _base(
+                "FAIL",
+                error_code=str(add_out.get("error_code", "E_ABSORB_ADD_FAILED")),
+                summary=str(add_out.get("error", add_out.get("reason", "failed to authorize folder"))),
+                absorb_add=add_out,
+                next_action="Verify the path and ask the user to confirm a safe, readable folder.",
+            )
+        executed.append("python -m ms8 absorb rescan")
+        scan = bootstrap_authorized_roots()
+        executed.append("python -m ms8 absorb ingest")
+        ingest = process_pending(submit_summaries=None, limit=100)
+        ok = bool(scan.get("ok", False)) and bool(ingest.get("ok", False))
+        return _base(
+            "PASS" if ok else "FAIL",
+            error_code="" if ok else "E_ABSORB_SETUP_PARTIAL",
+            summary="Folder authorized, scanned, and ingested into local absorb index." if ok else "Folder setup partially failed.",
+            absorb_add=add_out,
+            scan=scan,
+            ingest=ingest,
+            next_action="Run: python -m ms8 agent run absorb --mode review",
+        )
+
+    if chosen == "search":
+        if not query:
+            return _base(
+                "NEEDS_CONFIRM",
+                error_code="E_ABSORB_QUERY_REQUIRED",
+                summary="A search query is required.",
+                next_action="Ask the user what to search in absorbed files.",
+            )
+        from ..absorb.search import search_chunks
+
+        executed.append(f"python -m ms8 absorb search {query} --pretty")
+        matches = search_chunks(query, limit=10)
+        return _base(
+            "PASS",
+            summary=f"matches={len(matches)}",
+            query=query,
+            matches=matches,
+            next_action="If the result matters long-term, ask user before submitting a reviewed summary.",
+        )
+
+    if chosen == "review":
+        from ..absorb.reviewer import list_review_chunks
+
+        executed.append("python -m ms8 absorb review list")
+        review = list_review_chunks(limit=20)
+        pending = len(list(review.get("pending_review", []) or []))
+        quarantine = len(list(review.get("quarantine", []) or []))
+        return _base(
+            "PASS",
+            summary=f"pending={pending} quarantine={quarantine}",
+            review=review,
+            next_action="Ask the user which pending item to approve/reject; do not bulk apply without confirmation.",
+        )
+
+    return _base(
+        "FAIL",
+        error_code="E_UNKNOWN_ABSORB_MODE",
+        summary=f"Unknown absorb mode: {mode}",
+        next_action="Choose one mode: status, setup, search, review.",
+    )
+
+
 def _run_install_flow(*, profile: str = "DEFAULT_SAFE", confirm: bool = False) -> dict:
     from ..doctor import run_doctor
     from ..runtime import engine_status
@@ -383,6 +497,14 @@ def run_agent_cli(args) -> int:
             out = _run_report_flow(redact=not bool(getattr(args, "no_redact", False)))
             out["next_action"] = "If critical_issue=true, share bug bundle path with maintainer."
             return _emit("MS8_AGENT_RUN_REPORT", out, bool(out.get("ok", False)))
+        if sub == "absorb":
+            out = _run_absorb_flow(
+                mode=str(getattr(args, "mode", "status") or "status"),
+                path=str(getattr(args, "path", "") or ""),
+                query=str(getattr(args, "query", "") or ""),
+                confirm=bool(getattr(args, "confirm", False)),
+            )
+            return _emit("MS8_AGENT_RESULT", out, bool(out.get("ok", False)))
         if sub == "daily":
             check = _run_check_flow(allow_repair_preview=not bool(getattr(args, "no_repair_preview", False)))
             report = _run_report_flow(redact=not bool(getattr(args, "no_redact", False)))
@@ -434,7 +556,7 @@ def run_agent_cli(args) -> int:
                 "next_action": "If report.critical_issue=true, share bug bundle path with maintainer.",
             }
             return _emit("MS8_AGENT_RUN_DAILY", out, ok)
-        print("ms8 agent run: choose install|check|report|daily")
+        print("ms8 agent run: choose install|check|report|daily|absorb")
         return 2
 
     if cmd == "task":

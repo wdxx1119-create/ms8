@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -11,6 +12,8 @@ from typing import Any
 
 from .shadow_fs_guard import set_immutable, set_mutable
 from .shadow_schema import utc_now_iso
+
+logger = logging.getLogger(__name__)
 
 
 class ShadowManifestGuard:
@@ -92,7 +95,7 @@ class ShadowManifestGuard:
                 if self.key_file.exists():
                     self.key_file.unlink(missing_ok=True)
             except OSError as exc:
-                print(f"[ShadowManifestGuard] Failed removing legacy key file {self.key_file}: {exc}")
+                logger.warning("Failed removing legacy key file %s: %s", self.key_file, exc)
             return kc
         if self.key_file.exists():
             try:
@@ -101,7 +104,7 @@ class ShadowManifestGuard:
                 if len(raw) == 32:
                     return raw
             except OSError as exc:
-                print(f"[ShadowManifestGuard] Failed reading key file {self.key_file}: {exc}")
+                logger.warning("Failed reading key file %s: %s", self.key_file, exc)
         key = os.urandom(32)
         if self._save_key_to_keychain(key):
             self._key_source = "keychain"
@@ -113,7 +116,7 @@ class ShadowManifestGuard:
         try:
             os.chmod(self.key_file, 0o400)
         except OSError as exc:
-            print(f"[ShadowManifestGuard] Failed chmod key file {self.key_file}: {exc}")
+            logger.warning("Failed chmod key file %s: %s", self.key_file, exc)
         set_immutable(self.key_file, enabled=self.immutable_enabled)
         self._key_source = "file"
         return key
@@ -149,7 +152,7 @@ class ShadowManifestGuard:
             try:
                 shutil.copy2(path, snap)
             except OSError as exc:
-                print(f"[ShadowManifestGuard] Failed snapshotting manifest {path}: {exc}")
+                logger.warning("Failed snapshotting manifest %s: %s", path, exc)
         signed = self.sign_manifest(payload)
         tmp = path.with_suffix(".tmp")
         tmp.write_text(json.dumps(signed, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -158,7 +161,7 @@ class ShadowManifestGuard:
         try:
             os.chmod(path, 0o600)
         except OSError as exc:
-            print(f"[ShadowManifestGuard] Failed chmod manifest {path}: {exc}")
+            logger.warning("Failed chmod manifest %s: %s", path, exc)
         set_immutable(path, enabled=self.immutable_enabled)
         if self.backup_dir is not None:
             try:
@@ -169,7 +172,7 @@ class ShadowManifestGuard:
                 os.replace(mt, mirror)
                 os.chmod(mirror, 0o600)
             except OSError as exc:
-                print(f"[ShadowManifestGuard] Failed mirroring manifest to backup dir {self.backup_dir}: {exc}")
+                logger.warning("Failed mirroring manifest to backup dir %s: %s", self.backup_dir, exc)
         return signed
 
     def read_manifest(self, path: Path) -> tuple[dict[str, Any], bool, str]:
@@ -181,7 +184,7 @@ class ShadowManifestGuard:
                         path.parent.mkdir(parents=True, exist_ok=True)
                         shutil.copy2(mirror, path)
                 except OSError as exc:
-                    print(f"[ShadowManifestGuard] Failed recovering manifest from backup {mirror}: {exc}")
+                    logger.warning("Failed recovering manifest from backup %s: %s", mirror, exc)
         if not path.exists():
             return {}, True, "missing"
         try:
@@ -199,12 +202,12 @@ class ShadowManifestGuard:
                     try:
                         self.key_file.unlink(missing_ok=True)
                     except OSError as exc:
-                        print(f"[ShadowManifestGuard] Failed removing migrated legacy key file {self.key_file}: {exc}")
+                        logger.warning("Failed removing migrated legacy key file %s: %s", self.key_file, exc)
                     self._key_source = "keychain"
                     return obj if isinstance(obj, dict) else {}, True, "ok_legacy_key_migrated"
                 self._key = old_key
             except OSError as exc:
-                print(f"[ShadowManifestGuard] Legacy key migration read failed: {exc}")
+                logger.warning("Legacy key migration read failed: %s", exc)
         if not ok:
             return obj if isinstance(obj, dict) else {}, False, "manifest_signature_invalid"
         return obj, True, "ok"
@@ -240,5 +243,5 @@ class ShadowManifestGuard:
         try:
             os.chmod(live_path, 0o600)
         except OSError as exc:
-            print(f"[ShadowManifestGuard] Failed chmod restored live manifest {live_path}: {exc}")
+            logger.warning("Failed chmod restored live manifest %s: %s", live_path, exc)
         return {"status": "success", "restored_from": str(p), "live_path": str(live_path)}

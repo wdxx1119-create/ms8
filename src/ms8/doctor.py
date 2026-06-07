@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
+from .absorb.health import absorb_health_summary
 from .engine_core.policy_engine_loader import get_policy_backend_status
 from .paths import detect_install_mode, get_config_dir, get_data_dir, get_log_dir, get_ms8_home
 from .runtime import (
@@ -34,6 +35,15 @@ from .runtime import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _nested_int(payload: dict, keys: list[str], default: int = 0) -> int:
+    value: object = payload
+    for key in keys:
+        if not isinstance(value, dict):
+            return default
+        value = value.get(key)
+    return int(value) if isinstance(value, (int, float)) else default
 
 
 def _agent_native_status() -> dict[str, str]:
@@ -90,6 +100,18 @@ def _normalize_self_check_payload(raw: dict) -> dict:
             "maturity_gate": {},
             "reason": "invalid_payload_type",
         }
+    # Runtime helpers return an execution envelope:
+    # {"ok": true, "ran": true, "method": "...", "result": <self-check-report>}.
+    # Doctor must judge the inner report, not the wrapper, or L4 warnings are
+    # misreported as "fail (0 checks)".
+    wrapped = raw.get("result")
+    if isinstance(wrapped, dict) and (
+        "summary" in wrapped
+        or "results" in wrapped
+        or "schema_version" in wrapped
+        or "maturity_gate" in wrapped
+    ):
+        raw = wrapped
     raw_status = str(raw.get("status", "unknown")).strip().lower()
     status_map = {
         "ok": "pass",
@@ -353,7 +375,7 @@ def run_doctor() -> int:
     if fallback_reason:
         print(f" ⚠️ policy engine fallback: {fallback_reason}")
         print(" ⚠️ policy engine optional package missing or unavailable.")
-        print("    next: `pip install \"ms8[policy]\"` or `pip install ms8-policy-engine`.")
+        print("    next: `pip install \"ms8[policy]\"` or `pip install ms8-policy-core`.")
     lic = policy_backend.get("policy_license", {})
     if isinstance(lic, dict) and lic:
         lic_status = str(lic.get("status", "unknown"))
@@ -364,12 +386,37 @@ def run_doctor() -> int:
             f"status={lic_status} enabled={lic_enabled}"
             + (f" reason={lic_reason}" if lic_reason else "")
         )
+    absorb = absorb_health_summary()
+    print(
+        " ✅ absorb: "
+        f"risk={absorb.get('risk')} "
+        f"roots={absorb.get('authorized_roots', 0)} "
+        f"pending={absorb.get('pending_review', 0)} "
+        f"quarantine={absorb.get('quarantine', 0)} "
+        f"autosubmit={absorb.get('auto_submit_summaries', False)} "
+        f"tier={absorb.get('auto_write_tier', 'OFF')} "
+        f"kg_pending={_nested_int(absorb, ['kg_extract', 'pending_candidates'])} "
+        f"kg_applied={_nested_int(absorb, ['kg_extract', 'applied_total'])}"
+    )
+    absorb_actions: list[str] = []
+    if int(absorb.get("authorized_roots", 0) or 0) <= 0:
+        absorb_actions.append("ms8 absorb add <directory>")
+    if int(absorb.get("pending_review", 0) or 0) > 0:
+        absorb_actions.append("ms8 absorb review list")
+    if int(absorb.get("quarantine", 0) or 0) > 0:
+        absorb_actions.append("ms8 absorb review export --include-quarantine")
+    if str(absorb.get("risk", "green")) != "green" and not absorb_actions:
+        absorb_actions.append("ms8 absorb status")
+    if absorb_actions:
+        print(f"    ↳ absorb next: {absorb_actions[0]}")
     gov = get_governance_report()
     print(
         " ✅ governance: "
         f"noncanonical={gov.get('noncanonical_records', 0)} "
         f"schema_invalid={gov.get('schema_invalid_count', 0)} "
         f"fallback_write={gov.get('fallback_write_count', 0)} "
+        f"fallback_active={gov.get('fallback_active_count', 0)} "
+        f"fallback_recent={gov.get('fallback_recent_count', 0)} "
         f"fallback_total={gov.get('fallback_total_count', 0)} "
         f"dup_groups={gov.get('duplicate_groups', 0)} "
         f"pending_review={gov.get('pending_review', 0)}"
@@ -392,7 +439,8 @@ def run_doctor() -> int:
         age_text = f"{float(pa_age):.1f}h" if isinstance(pa_age, (int, float)) else "n/a"
         print(
             " ✅ policy-attack-samples: "
-            f"present={pa_present} ok={pa_ok} failed={pa_failed}/{pa_total} age={age_text}"
+            f"present={pa_present} ok={pa_ok} failed={pa_failed}/{pa_total} age={age_text} "
+            f"initialized={bool(policy_attack.get('initialized', True))}"
         )
         if pa_present and (not pa_ok or pa_failed > 0):
             print(" ⚠️ policy-attack-samples gate unhealthy: investigate closed policy regression")
@@ -499,14 +547,24 @@ def run_doctor() -> int:
         elif capture_warn or compression_warn:
             memory_quality_health = "warn"
 
-    # security/governance: integrity + policy boundary + self-check signal
+    # security/governance: integrity + policy boundary + self-check signal.
+    # L4 warnings are often memory-quality signals (for example capture trend)
+    # and should not make the security layer look unhealthy unless the security
+    # domain itself has warnings/failures.
     self_check_status = str(gov.get("self_check_status", "unknown")).strip().lower()
     schema_invalid = int(gov.get("schema_invalid_count", 0) or 0)
     fallback_write = int(gov.get("fallback_write_count", 0) or 0)
     baseline_pending = bool(gov.get("baseline_update_pending", False))
-    if self_check_status in {"fail", "error"} or schema_invalid > 0:
+    security_domain = domain_rows.get("security") if isinstance(domain_rows, dict) else {}
+    security_warn = int(security_domain.get("warn", 0) or 0) if isinstance(security_domain, dict) else 0
+    security_fail = int(security_domain.get("fail", 0) or 0) if isinstance(security_domain, dict) else 0
+    security_error = int(security_domain.get("error", 0) or 0) if isinstance(security_domain, dict) else 0
+    has_security_domain = bool(isinstance(security_domain, dict) and int(security_domain.get("total", 0) or 0) > 0)
+    self_check_security_degraded = security_fail > 0 or security_error > 0
+    self_check_security_warn = security_warn > 0
+    if (self_check_status in {"fail", "error"} and not has_security_domain) or self_check_security_degraded or schema_invalid > 0:
         security_governance_health = "degraded"
-    elif self_check_status in {"warn", "warning"} or fallback_write > 0 or baseline_pending:
+    elif self_check_security_warn or fallback_write > 0 or baseline_pending:
         security_governance_health = "warn"
 
     print("\n--- Health Layers ---")

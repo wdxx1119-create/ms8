@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 
-from ms8.connect.scripts.client_config import payload_for_target, snippet_paths, target_profile
-from ms8.connect.scripts.common import connect_root
+from .client_config import payload_for_target, snippet_paths, target_profile
+from .common import connect_root
 
 
 def run(target: str = "all") -> dict:

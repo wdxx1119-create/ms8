@@ -40,6 +40,19 @@ def test_dashboard_runs_and_prints_key_sections(monkeypatch, capsys, tmp_path: P
         },
     )
     monkeypatch.setattr(dashboard, "get_engine_monitoring_status", lambda: {"enabled": True, "alerts": [], "compression_freshness": {}})
+    monkeypatch.setattr(
+        dashboard,
+        "absorb_health_summary",
+        lambda: {
+            "risk": "green",
+            "authorized_roots": 1,
+            "pending_review": 0,
+            "quarantine": 0,
+            "auto_submit_summaries": False,
+            "auto_write_tier": "OFF",
+            "kg_extract": {"pending_candidates": 0, "applied_total": 0},
+        },
+    )
     monkeypatch.setattr(dashboard, "get_expression_router_status", lambda: {"mode_counts": {}, "total_samples": 0, "strong_ratio": 0.0})
     monkeypatch.setattr(dashboard, "get_capability_reachability_report", lambda top_unreachable=10: {"reachable_ratio": 1.0, "referenced_methods": 1, "public_methods_total": 1, "unreachable_methods": 0})
     monkeypatch.setattr(dashboard, "run_engine_self_check", lambda level="L4": {"status": "ok", "results": []})
@@ -65,6 +78,7 @@ def test_dashboard_runs_and_prints_key_sections(monkeypatch, capsys, tmp_path: P
     assert rc == 0
     assert "MS8 Dashboard" in out
     assert "Engine:" in out
+    assert "absorb: risk=green roots=1 pending=0 quarantine=0 autosubmit=False tier=OFF kg_pending=0 kg_applied=0" in out
     assert "Sources:" in out
 
 
@@ -79,6 +93,7 @@ def test_watch_once_recent_activity_skips_backup(monkeypatch, capsys) -> None:
     monkeypatch.setattr(watch, "run_reflection", lambda: {"ran": True})
     monkeypatch.setattr(watch, "run_synthetic_auto_confirm", lambda: {"ran": True})
     monkeypatch.setattr(watch, "run_engine_self_check", lambda level="L2": {"status": "ok"})
+    monkeypatch.setattr(watch, "absorb_health_summary", lambda: {"risk": "green", "pending_review": 1, "quarantine": 0})
     monkeypatch.setattr(watch, "run_maintenance_now", lambda force=True: {"ok": True, "ran": True})
     monkeypatch.setattr(watch, "run_maintenance_policy", lambda: {"ran": False})
     monkeypatch.setattr(watch, "repair_compression_if_stale", lambda: {"ran": False})
@@ -91,6 +106,7 @@ def test_watch_once_recent_activity_skips_backup(monkeypatch, capsys) -> None:
     out = capsys.readouterr().out
     assert rc == 0
     assert "backup=skipped" in out
+    assert "absorb_risk=green absorb_pending=1 absorb_quarantine=0" in out
 
 
 def test_watch_once_no_recent_activity_runs_backup(monkeypatch, capsys) -> None:
@@ -104,6 +120,7 @@ def test_watch_once_no_recent_activity_runs_backup(monkeypatch, capsys) -> None:
     monkeypatch.setattr(watch, "run_reflection", lambda: {"ran": False})
     monkeypatch.setattr(watch, "run_synthetic_auto_confirm", lambda: {"ran": False})
     monkeypatch.setattr(watch, "run_engine_self_check", lambda level="L2": {"status": "ok"})
+    monkeypatch.setattr(watch, "absorb_health_summary", lambda: {"risk": "green", "pending_review": 0, "quarantine": 0})
     monkeypatch.setattr(watch, "run_maintenance_now", lambda force=True: {"ok": True, "ran": True})
     monkeypatch.setattr(watch, "run_maintenance_policy", lambda: {"ran": False})
     monkeypatch.setattr(watch, "repair_compression_if_stale", lambda: {"ran": True})
@@ -130,6 +147,7 @@ def test_watch_fallback_to_maintenance_policy_when_now_fails(monkeypatch, capsys
     monkeypatch.setattr(watch, "run_reflection", lambda: {"ran": True})
     monkeypatch.setattr(watch, "run_synthetic_auto_confirm", lambda: {"ran": True})
     monkeypatch.setattr(watch, "run_engine_self_check", lambda level="L2": {"status": "ok"})
+    monkeypatch.setattr(watch, "absorb_health_summary", lambda: {"risk": "green", "pending_review": 0, "quarantine": 0})
     monkeypatch.setattr(watch, "run_maintenance_now", lambda force=True: {"ok": False, "ran": False})
     monkeypatch.setattr(watch, "run_maintenance_policy", lambda: {"ran": True, "source": "policy"})
     monkeypatch.setattr(watch, "repair_compression_if_stale", lambda: {"ran": False})
@@ -155,6 +173,7 @@ def test_watch_non_once_enforces_min_interval_and_sleeps(monkeypatch) -> None:
     monkeypatch.setattr(watch, "run_reflection", lambda: {"ran": False})
     monkeypatch.setattr(watch, "run_synthetic_auto_confirm", lambda: {"ran": False})
     monkeypatch.setattr(watch, "run_engine_self_check", lambda level="L2": {"status": "ok"})
+    monkeypatch.setattr(watch, "absorb_health_summary", lambda: {"risk": "green", "pending_review": 0, "quarantine": 0})
     monkeypatch.setattr(watch, "run_maintenance_now", lambda force=True: {"ok": True, "ran": True})
     monkeypatch.setattr(watch, "run_maintenance_policy", lambda: {"ran": False})
     monkeypatch.setattr(watch, "repair_compression_if_stale", lambda: {"ran": False})
@@ -193,6 +212,7 @@ def test_service_install_status_remove(monkeypatch, tmp_path: Path) -> None:
 
     monkeypatch.setattr(service, "_plist_path", lambda: plist)
     monkeypatch.setattr(service, "get_runtime_dir", lambda: runtime)
+    monkeypatch.setattr(service.shutil, "which", lambda name: None)
     monkeypatch.setattr(service.subprocess, "run", _fake_run)
 
     installed = service.install_service(interval_seconds=60)
@@ -205,6 +225,38 @@ def test_service_install_status_remove(monkeypatch, tmp_path: Path) -> None:
     assert status["running"] is True
 
     removed = service.remove_service()
+    assert removed["ok"] is True
+    assert not plist.exists()
+    assert any("load" in c for c in calls)
+
+
+def test_absorb_service_install_status_remove(monkeypatch, tmp_path: Path) -> None:
+    plist = tmp_path / "LaunchAgents" / "com.ms8.absorb.watch.plist"
+    runtime = tmp_path / "runtime"
+    runtime.mkdir(parents=True, exist_ok=True)
+
+    calls: list[list[str]] = []
+
+    def _fake_run(cmd: list[str], capture_output: bool = True, text: bool = True):
+        calls.append(cmd)
+        return SimpleNamespace(returncode=0, stdout=f"{service.ABSORB_LABEL}\n", stderr="")
+
+    monkeypatch.setattr(service, "_absorb_plist_path", lambda: plist)
+    monkeypatch.setattr(service, "get_runtime_dir", lambda: runtime)
+    monkeypatch.setattr(service.shutil, "which", lambda name: None)
+    monkeypatch.setattr(service.subprocess, "run", _fake_run)
+
+    installed = service.install_absorb_service()
+    assert installed["ok"] is True
+    assert plist.exists()
+    assert "absorb" in plist.read_text(encoding="utf-8")
+
+    status = service.absorb_service_status()
+    assert status["ok"] is True
+    assert status["installed"] is True
+    assert status["running"] is True
+
+    removed = service.remove_absorb_service()
     assert removed["ok"] is True
     assert not plist.exists()
     assert any("load" in c for c in calls)
@@ -223,4 +275,9 @@ def test_service_remove_when_plist_missing(monkeypatch, tmp_path: Path) -> None:
 
     removed = service.remove_service()
     assert removed["ok"] is True
-    assert calls == []
+
+
+def test_program_arguments_prefers_ms8_binary(monkeypatch) -> None:
+    monkeypatch.setattr(service.shutil, "which", lambda name: "/usr/local/bin/ms8" if name == "ms8" else None)
+    args = service._program_arguments("watch", "--interval", "60")
+    assert args == ["/usr/local/bin/ms8", "watch", "--interval", "60"]

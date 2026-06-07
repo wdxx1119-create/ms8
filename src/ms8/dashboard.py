@@ -6,6 +6,7 @@ import shutil
 from collections import Counter
 
 from . import __version__
+from .absorb.health import absorb_health_summary
 from .runtime import (
     count_memories,
     engine_status,
@@ -21,6 +22,15 @@ from .runtime import (
     read_memories,
     run_engine_self_check,
 )
+
+
+def _nested_int(payload: dict, keys: list[str], default: int = 0) -> int:
+    value: object = payload
+    for key in keys:
+        if not isinstance(value, dict):
+            return default
+        value = value.get(key)
+    return int(value) if isinstance(value, (int, float)) else default
 
 
 def _format_trend_delta(window: dict) -> str:
@@ -95,6 +105,18 @@ def run_dashboard(limit: int = 5) -> int:
             hrs = freshness.get("hours_since_last")
             if isinstance(hrs, (int, float)):
                 print(f" - compression freshness(h): {hrs:.1f}")
+    absorb = absorb_health_summary()
+    print(
+        " - absorb: "
+        f"risk={absorb.get('risk')} "
+        f"roots={absorb.get('authorized_roots', 0)} "
+        f"pending={absorb.get('pending_review', 0)} "
+        f"quarantine={absorb.get('quarantine', 0)} "
+        f"autosubmit={absorb.get('auto_submit_summaries', False)} "
+        f"tier={absorb.get('auto_write_tier', 'OFF')} "
+        f"kg_pending={_nested_int(absorb, ['kg_extract', 'pending_candidates'])} "
+        f"kg_applied={_nested_int(absorb, ['kg_extract', 'applied_total'])}"
+    )
     expr = get_expression_router_status()
     if isinstance(expr, dict):
         mode_counts = expr.get("mode_counts", {})
@@ -161,6 +183,8 @@ def run_dashboard(limit: int = 5) -> int:
         f"noncanonical={gov.get('noncanonical_records', 0)} "
         f"schema_invalid={gov.get('schema_invalid_count', 0)} "
         f"fallback_write={gov.get('fallback_write_count', 0)} "
+        f"fallback_active={gov.get('fallback_active_count', 0)} "
+        f"fallback_recent={gov.get('fallback_recent_count', 0)} "
         f"fallback_total={gov.get('fallback_total_count', 0)} "
         f"dup_groups={gov.get('duplicate_groups', 0)} "
         f"pending_review={gov.get('pending_review', 0)}"
@@ -184,7 +208,8 @@ def run_dashboard(limit: int = 5) -> int:
         age_text = f"{float(pa_age):.1f}h" if isinstance(pa_age, (int, float)) else "n/a"
         print(
             " - policy-attack-samples: "
-            f"present={pa_present} ok={pa_ok} failed={pa_failed}/{pa_total} age={age_text}"
+            f"present={pa_present} ok={pa_ok} failed={pa_failed}/{pa_total} age={age_text} "
+            f"initialized={bool(policy_attack.get('initialized', True))}"
         )
         if pa_present and (not pa_ok or pa_failed > 0):
             print(" - policy-attack-samples alert: closed policy regression suspected")

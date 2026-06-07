@@ -9,7 +9,7 @@ import json
 import os
 import time
 from dataclasses import asdict, dataclass
-from typing import Any
+from typing import Any, cast
 
 import requests
 
@@ -542,7 +542,7 @@ class LocalLLM:
             raise RuntimeError("provider disabled")
         if not key:
             raise RuntimeError("provider api key missing")
-        payload = {
+        payload: dict[str, Any] = {
             "model": model,
             "messages": messages,
             "temperature": float(temperature),
@@ -555,7 +555,7 @@ class LocalLLM:
         resp = requests.post(
             f"{base.rstrip('/')}/chat/completions",
             headers=headers,
-            json=payload,
+            json=cast(Any, payload),
             timeout=max(5, int(self.config.llm_timeout_seconds)),
         )
         resp.raise_for_status()

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from datetime import datetime
 from pathlib import Path
 
@@ -81,6 +80,40 @@ def test_documents_load_memory_and_daily_logs(tmp_path, monkeypatch):
     docs = searcher._documents()
     assert any(doc["id"] == "MEMORY.md" for doc in docs)
     assert any(doc["source"].startswith("daily_log:") for doc in docs)
+
+
+def test_documents_include_only_low_risk_absorb_chunks(tmp_path, monkeypatch):
+    from ms8.absorb import repository as absorb_repo
+
+    cfg = _cfg(tmp_path)
+    monkeypatch.setattr(mod, "get_config", lambda: cfg)
+    monkeypatch.setattr(mod, "FileMemoryStore", _DummyStore)
+    monkeypatch.setattr(mod, "list_daily_log_files", lambda *a, **k: [])
+    monkeypatch.setattr(
+        absorb_repo,
+        "list_chunks_by_status",
+        lambda statuses, limit=300: [
+            {
+                "chunk_id": "c1",
+                "canonical_path": "/docs/safe.md",
+                "text_preview": "safe absorb semantic bridge",
+                "risk_level": "low",
+            },
+            {
+                "chunk_id": "c2",
+                "canonical_path": "/docs/pii.md",
+                "text_preview": "pending sensitive text",
+                "risk_level": "medium",
+            },
+        ],
+    )
+
+    searcher = mod.SemanticMemorySearch()
+    docs = searcher._documents()
+    absorb_docs = [doc for doc in docs if str(doc["id"]).startswith("absorb:")]
+    assert len(absorb_docs) == 1
+    assert absorb_docs[0]["source"] == "absorb:/docs/safe.md"
+    assert "safe absorb semantic bridge" in absorb_docs[0]["content"]
 
 
 def test_search_fallback_scoring_without_dense(tmp_path, monkeypatch):

@@ -4,14 +4,14 @@ import json
 from pathlib import Path
 from typing import Any
 
-from ms8.connect.adapter_registry.registry import load_registry
-from ms8.connect.mcp_server.mcp_server import list_resources, list_tools
-from ms8.connect.scripts.apply_client_configs import run as apply_client_configs
-from ms8.connect.scripts.client_config import payload_for_target, snippet_paths, target_discovery
-from ms8.connect.scripts.common import connect_package_root, connect_root, load_yaml, utc_now, write_json
-from ms8.connect.scripts.generate_client_configs import run as generate_client_configs
-from ms8.connect.scripts.smoke_test import run_smoke_test
-from ms8.connect.scripts.verify_client_configs import run as verify_client_configs
+from ..adapter_registry.registry import load_registry
+from ..mcp_server.mcp_server import list_resources, list_tools
+from .apply_client_configs import run as apply_client_configs
+from .client_config import payload_for_target, snippet_paths, target_discovery
+from .common import connect_package_root, connect_root, load_yaml, utc_now, write_json
+from .generate_client_configs import run as generate_client_configs
+from .smoke_test import run_smoke_test
+from .verify_client_configs import run as verify_client_configs
 
 
 def _now() -> str:

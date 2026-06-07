@@ -6,8 +6,8 @@ from pathlib import Path
 
 import tomllib
 
-from ms8.connect.scripts.client_config import LEGACY_PATH_HINT, snippet_paths, target_paths, target_profile
-from ms8.connect.scripts.common import connect_root
+from .client_config import LEGACY_PATH_HINT, snippet_paths, target_paths, target_profile
+from .common import connect_root
 
 logger = logging.getLogger(__name__)
 

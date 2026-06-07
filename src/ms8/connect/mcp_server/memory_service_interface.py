@@ -8,9 +8,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal, cast
 
-from ms8.connect.integration_hooks.service_models import MemoryCandidate
-from ms8.engine_core.core import MemoryCore
-from ms8.engine_core.expression_preference_profile import (
+from ..integration_hooks.service_models import MemoryCandidate
+from ...engine_core.core import MemoryCore
+from ...engine import MemoryCoreEngine
+from ...engine_core.expression_preference_profile import (
     load_conversation_state,
     load_expression_profile,
     prepare_profile_for_round,
@@ -20,10 +21,10 @@ from ms8.engine_core.expression_preference_profile import (
     update_conversation_state_with_policy,
     update_profile_from_decision,
 )
-from ms8.engine_core.response_mode_router import choose_cognitive_phrase, route_response
-from ms8.engine_core.response_mode_types import RouterDecision
-from ms8.engine_core.sticky_prompt_templates import GUARDRAIL_PROMPT_EXTRA, build_profile_hint, get_prompt_extra
-from ms8.paths import get_ms8_home
+from ...engine_core.response_mode_router import choose_cognitive_phrase, route_response
+from ...engine_core.response_mode_types import RouterDecision
+from ...engine_core.sticky_prompt_templates import GUARDRAIL_PROMPT_EXTRA, build_profile_hint, get_prompt_extra
+from ...paths import get_ms8_home
 
 ERR_CORE_UNAVAILABLE = "E_CORE_UNAVAILABLE"
 ERR_PROFILE_NOT_FOUND = "E_PROFILE_NOT_FOUND"
@@ -98,6 +99,9 @@ class MemoryServiceInterface:
         core_cfg = self.config.get("memory_core", {}) if isinstance(self.config.get("memory_core", {}), dict) else {}
         return self._resolve_workspace(str(core_cfg.get("workspace", os.environ.get("MS8_HOME", str(get_ms8_home())))))
 
+    def _engine_adapter(self) -> MemoryCoreEngine:
+        return MemoryCoreEngine(self._workspace())
+
     def available(self) -> bool:
         return self.core is not None
 
@@ -143,11 +147,23 @@ class MemoryServiceInterface:
         if not self.available():
             return self._core_unavailable()
         query = str(text or "").strip()
-        assert self.core is not None
         try:
-            rows = self.core.retrieve_memories(query, top_k=int(max(1, top_k)))
+            gateway = self._engine_adapter().retrieve_gateway(
+                query=query,
+                limit=int(max(1, top_k)),
+                purpose="recall",
+                allow_semantic=False,
+                allow_graph=False,
+            )
+            rows = gateway.get("items", []) if isinstance(gateway.get("items", []), list) else []
             normalized = [self._normalize_result_row(r) for r in rows if isinstance(r, dict)]
-            return {"ok": True, "query": query, "count": len(normalized), "results": normalized}
+            return {
+                "ok": True,
+                "query": query,
+                "count": len(normalized),
+                "results": normalized,
+                "retrieval_gateway": gateway.get("trace", {}),
+            }
         except (OSError, RuntimeError, TypeError, ValueError) as exc:
             logger.warning("mcp_query_failed query=%s err=%s", query, exc)
             return {
@@ -207,10 +223,14 @@ class MemoryServiceInterface:
                     else:
                         out["context_with_expression"] = context_text
             recommended_actions = self._recommended_actions_from_query(query)
+            retrieval_gateway = {}
+            if isinstance(out, dict) and isinstance(out.get("retrieval_gateway"), dict):
+                retrieval_gateway = dict(out.get("retrieval_gateway", {}))
             return {
                 "ok": True,
                 "query": query,
                 "context": out,
+                "retrieval_gateway": retrieval_gateway,
                 "expression_mode": expression,
                 "system_prompt_extra": prompt_extra,
                 "context_with_expression": (out.get("context_with_expression") if isinstance(out, dict) else ""),

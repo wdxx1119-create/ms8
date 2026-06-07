@@ -166,6 +166,15 @@ def _dry_self_check_l1(_core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
     return _ok(action="run_self_check", level="L1")
 
 
+def _dry_agent_native_template_regen(_core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
+    return _ok(
+        action="regenerate_agent_native_templates",
+        command="ms8 agent init --profile DEFAULT_SAFE --force",
+        impact="project_agent_native_templates_only",
+        note="dry-run only; do not overwrite user task files without explicit user confirmation",
+    )
+
+
 def _dry_shadow_replay(core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
     try:
         st = core.shadow_status()
@@ -448,6 +457,33 @@ def _reload_short_term(core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
 
 def _repair_semantic_cache(core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
     return core.repair_semantic_cache(limit=80)
+
+
+def _inspect_absorb_health(_core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
+    try:
+        from ms8.absorb.health import absorb_health_summary
+    except ImportError as exc:
+        return {"status": "blocked", "reason": "absorb_unavailable", "error": str(exc)}
+    try:
+        summary = absorb_health_summary()
+    except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+        return {"status": "blocked", "reason": "absorb_health_unreadable", "error": str(exc)}
+    pending = int(summary.get("pending_review", 0) or 0)
+    quarantine = int(summary.get("quarantine", 0) or 0)
+    actions: list[str] = []
+    if pending:
+        actions.append("ms8 absorb review list")
+    if quarantine:
+        actions.append("ms8 absorb review export --include-quarantine")
+    if not actions:
+        actions.append("ms8 absorb status")
+    return _ok(
+        action="inspect_absorb_health",
+        risk=str(summary.get("risk", "unknown")),
+        pending_review=pending,
+        quarantine=quarantine,
+        suggested_commands=actions,
+    )
 
 
 def _run_self_check_l1(core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
@@ -838,7 +874,7 @@ POLICIES: dict[str, RepairPolicy] = {
     ),
     "c15_agent_native_template_semantics": RepairPolicy(
         "c15_agent_native_template_semantics",
-        "run_self_check_l1",
+        "regenerate_agent_native_templates",
         "connect",
         "R1",
         target="connect:agent_native_templates",
@@ -891,6 +927,9 @@ POLICIES: dict[str, RepairPolicy] = {
     "l4_capacity_projection": RepairPolicy(
         "l4_capacity_projection", "cleanup_disk", "memory", "R1", target="memory:capacity"
     ),
+    "l4_absorb_health": RepairPolicy(
+        "l4_absorb_health", "inspect_absorb_health", "memory", "R1", target="memory:absorb"
+    ),
     "l5_llm_notice_state_health": RepairPolicy(
         "l5_llm_notice_state_health",
         "reinit_llm_notice_state",
@@ -920,6 +959,12 @@ HOOKS: dict[str, PolicyHooks] = {
     ),
     "refresh_health_card": PolicyHooks(_noop, _dry_ok, _refresh_health_card, _rollback_manual("refresh_health_card")),
     "run_self_check_l1": PolicyHooks(_noop, _dry_self_check_l1, _run_self_check_l1, _noop),
+    "regenerate_agent_native_templates": PolicyHooks(
+        _noop,
+        _dry_agent_native_template_regen,
+        _dry_agent_native_template_regen,
+        _noop,
+    ),
     "resolve_baseline_update_request": PolicyHooks(
         _noop,
         _dry_resolve_baseline_update_request,
@@ -974,6 +1019,12 @@ HOOKS: dict[str, PolicyHooks] = {
         _dry_write_then_search_probe,
         _probe_write_then_search,
         _rollback_manual("probe_write_then_search"),
+    ),
+    "inspect_absorb_health": PolicyHooks(
+        _noop,
+        _inspect_absorb_health,
+        _inspect_absorb_health,
+        _noop,
     ),
 }
 
