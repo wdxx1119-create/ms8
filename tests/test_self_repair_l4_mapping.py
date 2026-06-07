@@ -25,6 +25,20 @@ def _write_l4_report(memory_dir: Path, check_id: str, status: str = "fail") -> N
     (reports / "self_check_latest.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def _write_l2_report(memory_dir: Path, check_id: str, status: str = "warn") -> None:
+    reports = memory_dir / "reports"
+    reports.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "requested_level": "L2",
+        "status": "failed",
+        "summary": {"total": 1, "pass": 0, "warn": 1, "fail": 0, "error": 0, "exit_code": 1},
+        "results": [
+            {"check_id": check_id, "status": status, "message": "mock l2 warn", "details": {}},
+        ],
+    }
+    (reports / "self_check_latest.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 def test_l4_capture_trend_has_repair_policy(tmp_path: Path) -> None:
     memory_dir = tmp_path / "memory"
     _write_l4_report(memory_dir, "l4_capture_trend")
@@ -47,3 +61,24 @@ def test_l4_capacity_projection_maps_to_cleanup_disk(tmp_path: Path) -> None:
     actions = [row.get("action") for row in out["plan"]]
     assert "cleanup_disk" in actions
 
+
+def test_l4_absorb_health_maps_to_inspection(tmp_path: Path) -> None:
+    memory_dir = tmp_path / "memory"
+    _write_l4_report(memory_dir, "l4_absorb_health", status="warn")
+    core = _FakeCore(memory_dir)
+    out = build_repair_plan(core, mode="dry-run")
+    assert out["status"] == "ok"
+    assert out["plan_count"] >= 1
+    actions = [row.get("action") for row in out["plan"]]
+    assert "inspect_absorb_health" in actions
+
+
+def test_c15_agent_native_template_maps_to_dry_regen_hint(tmp_path: Path) -> None:
+    memory_dir = tmp_path / "memory"
+    _write_l2_report(memory_dir, "c15_agent_native_template_semantics", status="warn")
+    core = _FakeCore(memory_dir)
+    out = build_repair_plan(core, mode="dry-run")
+    assert out["status"] == "ok"
+    assert out["plan_count"] >= 1
+    actions = [row.get("action") for row in out["plan"]]
+    assert "regenerate_agent_native_templates" in actions

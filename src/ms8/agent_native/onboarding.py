@@ -7,12 +7,12 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ms8 import __version__
-from ms8.paths import get_ms8_home
+from .. import __version__
+from ..paths import get_ms8_home
 
 from .permission import PROFILES, build_policy
 from .task_spec import TASK_FILE_MAP, TASK_VERSION
-from .task_templates import CHECK_TASK, INSTALL_TASK, OPS_TASK, README_AGENT, REPORT_TASK, USAGE_TASK
+from .task_templates import ABSORB_TASK, CHECK_TASK, INSTALL_TASK, OPS_TASK, README_AGENT, REPORT_TASK, USAGE_TASK
 
 
 def _now() -> str:
@@ -124,6 +124,7 @@ def init_agent_native(
                 str(project_dir / TASK_FILE_MAP["check"]),
                 str(project_dir / TASK_FILE_MAP["report"]),
                 str(project_dir / TASK_FILE_MAP["usage"]),
+                str(project_dir / TASK_FILE_MAP["absorb"]),
                 str(project_dir / "README_AGENT.md"),
             ],
         }
@@ -145,6 +146,7 @@ def init_agent_native(
         TASK_FILE_MAP["check"]: CHECK_TASK,
         TASK_FILE_MAP["report"]: REPORT_TASK,
         TASK_FILE_MAP["usage"]: USAGE_TASK,
+        TASK_FILE_MAP["absorb"]: ABSORB_TASK,
         "README_AGENT.md": README_AGENT,
     }
     for rel, content in mapping.items():

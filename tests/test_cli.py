@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import ms8
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -35,7 +37,7 @@ def test_import_ms8() -> None:
     env["PYTHONPATH"] = str(PROJECT_ROOT / "src")
     cp = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env)
     assert cp.returncode == 0
-    assert "0.2.0" in cp.stdout
+    assert ms8.__version__ in cp.stdout
 
 
 def test_help_and_version(tmp_path) -> None:
@@ -45,7 +47,7 @@ def test_help_and_version(tmp_path) -> None:
 
     cp = _run(["version"], env=env)
     assert cp.returncode == 0
-    assert "ms8 0.2.0" in cp.stdout
+    assert f"ms8 {ms8.__version__}" in cp.stdout
 
 
 def test_demo_default_and_minimal(tmp_path) -> None:
@@ -126,6 +128,16 @@ def test_first_run_prints_connect_bootstrap_summary(tmp_path) -> None:
     assert "[ms8] auto-connect:" in cp.stdout
 
 
+def test_agent_run_install_first_run_keeps_output_machine_friendly(tmp_path) -> None:
+    env = _env(tmp_path)
+    cp = _run(["agent", "run", "install", "--profile", "DEFAULT_SAFE"], env=env)
+    assert cp.returncode == 0
+    assert "MS8_FIRST_INSTALL_REPORT" in cp.stdout
+    assert "[ms8] first-run setup completed." not in cp.stdout
+    assert "[ms8] auto-connect:" not in cp.stdout
+    assert "INFO:httpx:" not in cp.stdout
+
+
 def test_doctor_set_risk_thresholds(tmp_path) -> None:
     env = _env(tmp_path)
     cp = _run(
@@ -184,5 +196,14 @@ def test_synthetic_rollback_auto_preview(tmp_path) -> None:
     cp = _run(["labs", "enable"], env=env)
     assert cp.returncode == 0
     cp = _run(["synthetic", "rollback-auto", "--since-hours", "1", "--preview"], env=env)
+    assert cp.returncode == 0
+    assert '"status"' in cp.stdout
+
+
+def test_labs_namespace_synthetic_rollback_auto_preview(tmp_path) -> None:
+    env = _env(tmp_path)
+    cp = _run(["labs", "enable"], env=env)
+    assert cp.returncode == 0
+    cp = _run(["labs", "synthetic", "rollback-auto", "--since-hours", "1", "--preview"], env=env)
     assert cp.returncode == 0
     assert '"status"' in cp.stdout

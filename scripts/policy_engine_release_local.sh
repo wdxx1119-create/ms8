@@ -27,6 +27,6 @@ MS8_POLICY_BACKEND=closed \
 MS8_HOME="${ROOT_DIR}/.tmp_runtime_probe_policy_attack" \
 "${VENV_PY}" "${ROOT_DIR}/scripts/policy_attack_sample_report.py"
 
-LATEST_WHEEL="$(ls -1t "${DIST_DIR}"/ms8_policy_engine-*.whl | head -n 1)"
+LATEST_WHEEL="$(ls -1t "${DIST_DIR}"/ms8_policy_core-*.whl | head -n 1)"
 echo "[DONE] Local policy-engine release validation passed."
 echo "[INFO] Wheel ready: ${LATEST_WHEEL}"

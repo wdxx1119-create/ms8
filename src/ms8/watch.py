@@ -6,6 +6,7 @@ import logging
 import time
 from datetime import datetime, timezone
 
+from .absorb.health import absorb_health_summary
 from .doctor import run_doctor
 from .runtime import (
     backup_memories,
@@ -46,6 +47,7 @@ def run_watch(interval_seconds: int = 1800, once: bool = False) -> int:
         reflection = run_reflection()
         synth_auto = run_synthetic_auto_confirm()
         self_check = run_engine_self_check(level="L2")
+        absorb = absorb_health_summary()
         maintenance = run_maintenance_now(force=True)
         if not maintenance.get("ok", False):
             maintenance = run_maintenance_policy()
@@ -67,6 +69,8 @@ def run_watch(interval_seconds: int = 1800, once: bool = False) -> int:
             f"kg_extract={kg_extract.get('ran')} tiering={tiering.get('ran')} "
             f"graph_maint={graph_maint.get('ran')} reflection={reflection.get('ran')} "
             f"synth_auto={synth_auto.get('ran')} self_check={self_check.get('status', 'n/a')} "
+            f"absorb_risk={absorb.get('risk')} absorb_pending={absorb.get('pending_review')} "
+            f"absorb_quarantine={absorb.get('quarantine')} "
             f"compression_repair={compression.get('ran')} duplicate_cluster={dedupe_status}"
         )
         if has_recent_activity(window_seconds=active_window):

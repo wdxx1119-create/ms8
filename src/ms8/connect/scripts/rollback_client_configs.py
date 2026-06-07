@@ -5,7 +5,7 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ms8.connect.scripts.client_config import SERVER_NAME, target_paths
+from .client_config import SERVER_NAME, target_paths
 
 logger = logging.getLogger(__name__)
 

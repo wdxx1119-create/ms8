@@ -7,7 +7,7 @@ from pathlib import Path
 
 import tomllib
 
-from ms8.connect.scripts.client_config import (
+from .client_config import (
     LEGACY_PATH_HINT,
     SERVER_NAME,
     expected_command_signature,

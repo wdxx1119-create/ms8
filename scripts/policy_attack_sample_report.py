@@ -74,6 +74,7 @@ def main() -> int:
 
     payload = _run_cases()
     payload["updated_at"] = _utc_now()
+    payload["initialized"] = True
 
     if latest.exists():
         try:
@@ -97,4 +98,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

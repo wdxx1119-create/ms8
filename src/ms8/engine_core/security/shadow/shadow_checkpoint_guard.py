@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 from .shadow_ledger import ShadowLedger
+
+logger = logging.getLogger(__name__)
 
 
 class ShadowCheckpointGuard:
@@ -30,9 +33,7 @@ class ShadowCheckpointGuard:
                     obj = json.loads(raw)
                     last_cp_seq = max(last_cp_seq, int(obj.get("upto_seq", 0) or 0))
             except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
-                print(
-                    f"[ShadowCheckpointGuard] Failed parsing checkpoint line in {self.ledger.checkpoints_file}: {exc}"
-                )
+                logger.warning("Failed parsing checkpoint line in %s: %s", self.ledger.checkpoints_file, exc)
         truncated = last_cp_seq > max_seq and max_seq > 0
         return {"truncated": truncated, "max_seq": max_seq, "last_checkpoint_seq": last_cp_seq}
 

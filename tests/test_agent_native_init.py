@@ -23,6 +23,7 @@ def test_agent_init_default_safe(tmp_path: Path, monkeypatch) -> None:
     assert (project_dir / "check.task").exists()
     assert (project_dir / "report.task").exists()
     assert (project_dir / "usage.task").exists()
+    assert (project_dir / "absorb.task").exists()
     assert (project_dir / "README_AGENT.md").exists()
 
     perm = read_permission()

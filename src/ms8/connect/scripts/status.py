@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ms8.connect.mcp_server.memory_service_interface import MemoryServiceInterface
-from ms8.connect.scripts.client_config import selected_targets, target_discovery, target_paths
-from ms8.connect.scripts.common import connect_package_root, connect_root, load_yaml
+from ..mcp_server.memory_service_interface import MemoryServiceInterface
+from .client_config import selected_targets, target_discovery, target_paths
+from .common import connect_package_root, connect_root, load_yaml
 
 
 def run_status() -> dict:

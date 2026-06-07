@@ -11,7 +11,7 @@ from typing import Any
 
 import yaml
 
-from ms8.paths import get_ms8_home
+from ...paths import get_ms8_home
 
 logger = logging.getLogger(__name__)
 

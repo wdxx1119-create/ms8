@@ -83,3 +83,24 @@ def test_cluster_duplicate_records_collapse_and_archive(tmp_path: Path) -> None:
     rows = [json.loads(x) for x in records.read_text(encoding="utf-8").splitlines() if x.strip()]
     assert len(rows) == 1
     assert archive.exists()
+
+
+def test_cluster_duplicate_records_marks_same_id_duplicates_superseded(tmp_path: Path) -> None:
+    records = tmp_path / "records.jsonl"
+    report = tmp_path / "report.json"
+    _write_jsonl(
+        records,
+        [
+            {"id": "same-id", "text": "dup", "normalized_text": "dup", "status": "accepted", "meta": {}},
+            {"id": "same-id", "text": "dup", "normalized_text": "dup", "status": "accepted", "meta": {}},
+        ],
+    )
+    out = cluster_duplicate_records(records_file=records, report_file=report)
+    assert out["status"] == "success"
+    assert out["duplicate_clusters"] == 1
+    assert out["superseded_records"] == 1
+    rows = [json.loads(x) for x in records.read_text(encoding="utf-8").splitlines() if x.strip()]
+    assert len(rows) == 2
+    assert rows[0]["status"] == "accepted"
+    assert rows[1]["status"] == "superseded"
+    assert rows[1]["superseded_by"] == "same-id"

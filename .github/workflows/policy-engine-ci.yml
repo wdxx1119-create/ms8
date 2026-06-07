@@ -4,7 +4,7 @@ on:
   push:
     branches: ["main", "master"]
     paths:
-      - "dist_src/ms8_policy_engine/**"
+      - "dist_src/ms8_policy_core/**"
       - "src/ms8/engine_core/policy_engine_*.py"
       - "scripts/build_policy_engine_wheel.sh"
       - "scripts/verify_policy_backend_contract.py"
@@ -14,7 +14,7 @@ on:
   pull_request:
     branches: ["main", "master"]
     paths:
-      - "dist_src/ms8_policy_engine/**"
+      - "dist_src/ms8_policy_core/**"
       - "src/ms8/engine_core/policy_engine_*.py"
       - "scripts/build_policy_engine_wheel.sh"
       - "scripts/verify_policy_backend_contract.py"
@@ -34,6 +34,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install project dev deps
         run: |

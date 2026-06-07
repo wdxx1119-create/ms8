@@ -7,7 +7,7 @@ import sys
 
 
 def main() -> int:
-    module_name = os.getenv("MS8_POLICY_MODULE", "ms8_policy_engine")
+    module_name = os.getenv("MS8_POLICY_MODULE", "ms8_policy_core")
     os.environ.setdefault("MS8_POLICY_BACKEND", "closed")
     try:
         from ms8.engine_core.policy_engine_loader import get_policy_backend_status, get_policy_engine
@@ -40,4 +40,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

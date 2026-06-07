@@ -1,16 +1,10 @@
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
 import pytest
 
 
 def _closed_engine():
-    root = Path(__file__).resolve().parents[1]
-    src = root / "dist_src" / "ms8_policy_engine" / "src"
-    sys.path.insert(0, str(src))
-    from ms8_policy_engine.engine import ClosedPolicyEngine
+    from ms8_policy_core.engine import ClosedPolicyEngine
 
     return ClosedPolicyEngine()
 
@@ -38,6 +32,7 @@ def test_noise_and_scope_samples(text: str, expected_route: set[str]) -> None:
         ("phone=13800138000", "phone", {"redacted_accept", "pending_review"}),
         ("Authorization: Bearer abcdefghijklmnop", "bearer_token", {"redacted_accept", "pending_review"}),
         ("-----BEGIN OPENSSH PRIVATE KEY-----abc-----END OPENSSH PRIVATE KEY-----", "ssh_private_key", {"pending_review"}),
+        ("-----BEGIN ENCRYPTED PRIVATE KEY-----abc-----END ENCRYPTED PRIVATE KEY-----", "ssh_private_key", {"pending_review"}),
         ("密码: abc123456", "password_cn", {"pending_review"}),
     ],
 )
@@ -65,4 +60,3 @@ def test_injection_bypass_sample_blocked() -> None:
     blocked = {row["id"]: row["reason"] for row in out["data"]["blocked"]}
     assert "debug-primary" in blocked
     assert "revoked-primary" in blocked
-

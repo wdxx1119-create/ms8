@@ -9,7 +9,7 @@ from typing import Any
 
 import yaml
 
-from ms8.connect.scripts.common import connect_root
+from .common import connect_root
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +103,18 @@ def _codex_candidates() -> list[Path]:
 
 def _resolve_codex_path() -> Path:
     return _first_existing_or_fallback(_codex_candidates(), _codex_candidates()[0])
+
+
+def _claude_code_candidates() -> list[Path]:
+    home = Path.home()
+    return [
+        home / ".claude.json",
+        home / ".claude" / "settings.json",
+    ]
+
+
+def _resolve_claude_code_path() -> Path:
+    return _first_existing_or_fallback(_claude_code_candidates(), _claude_code_candidates()[0])
 
 BUILTIN_AGENT_PROFILES: dict[str, dict[str, object]] = {
     "claude_desktop": {
@@ -203,6 +215,14 @@ BUILTIN_AGENT_PROFILES: dict[str, dict[str, object]] = {
         "path_resolver": _resolve_codex_path,
         "snippet_file": "codex_mcp.toml",
         "config_format": "toml",
+        "merge_strategy": "upsert",
+        "verify_keys": ("command", "args"),
+    },
+    "claude_code": {
+        "aliases": ("claude_code", "claude-code", "claudecode"),
+        "path_resolver": _resolve_claude_code_path,
+        "snippet_file": "claude_code_mcp.json",
+        "config_format": "json",
         "merge_strategy": "upsert",
         "verify_keys": ("command", "args"),
     },
@@ -378,6 +398,18 @@ def target_discovery(target: str | None = "all") -> dict[str, dict[str, object]]
                 "resolved": resolved,
                 "resolved_exists": Path(resolved).exists(),
                 "config_format": str(profile.get("config_format", "toml")),
+                "merge_strategy": str(profile.get("merge_strategy", "upsert")),
+                "verify_keys": _as_str_list(profile.get("verify_keys", ())),
+            }
+        elif name == "claude_code":
+            candidates = [str(p) for p in _claude_code_candidates()]
+            resolved = str(_resolve_claude_code_path())
+            out[name] = {
+                "strategy": "candidate_scan_then_fallback",
+                "candidates": candidates,
+                "resolved": resolved,
+                "resolved_exists": Path(resolved).exists(),
+                "config_format": str(profile.get("config_format", "json")),
                 "merge_strategy": str(profile.get("merge_strategy", "upsert")),
                 "verify_keys": _as_str_list(profile.get("verify_keys", ())),
             }

@@ -271,6 +271,184 @@ class MemoryCoreEngine:
             "blocked_total": blocked,
         }
 
+    def _exact_fallback_matches(
+        self,
+        *,
+        query: str,
+        limit: int,
+        purpose: str,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        q = str(query or "").strip().lower()
+        fallback: list[dict[str, Any]] = []
+        if q:
+            for row in self.read_memories():
+                txt = str(row.get("text") or row.get("normalized_text") or "")
+                if q in txt.lower():
+                    fallback.append(row)
+        allowed, trace = self._filter_rows_by_policy(
+            fallback,
+            query=query,
+            purpose=purpose,
+            limit=max(limit, len(fallback)),
+        )
+        return allowed[:limit], trace
+
+    @staticmethod
+    def _merge_ranked_rows(
+        exact_rows: list[dict[str, Any]],
+        ranked_rows: list[dict[str, Any]],
+        *,
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        seen: set[str] = set()
+        merged: list[dict[str, Any]] = []
+        for row in [*exact_rows, *ranked_rows]:
+            row_id = str(row.get("id") or "")
+            row_text = str(row.get("text") or row.get("normalized_text") or "")
+            key = row_id or row_text
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            merged.append(row)
+            if len(merged) >= limit:
+                break
+        return merged
+
+    @staticmethod
+    def _normalize_core_retrieval_row(row: dict[str, Any], index: int) -> dict[str, Any]:
+        return {
+            "id": str(row.get("id") or f"m-{index}"),
+            "text": str(row.get("content") or row.get("text") or ""),
+            "source": str(row.get("source", "memory_core")),
+            "created_at": str(row.get("date") or row.get("created_at") or ""),
+            "status": str(row.get("status") or "accepted"),
+            "scope": str(row.get("scope") or ""),
+            "category": str(row.get("category") or ""),
+            "sensitivity": str(row.get("sensitivity") or "private"),
+            "authority": str(row.get("authority") or "user_implicit"),
+            "can_recall": row.get("can_recall", True),
+            "can_inject": row.get("can_inject", True),
+            "superseded_by": str(row.get("superseded_by") or ""),
+            "valid_until": str(row.get("valid_until") or row.get("ttl") or ""),
+            "score": row.get("score", row.get("scores", {}).get("fusion", 0.0) if isinstance(row.get("scores", {}), dict) else 0.0),
+            "meta": {"engine": "ms8_core"},
+        }
+
+    def retrieve_gateway(
+        self,
+        query: str,
+        *,
+        limit: int = 50,
+        purpose: str = "recall",
+        allow_semantic: bool = False,
+        allow_graph: bool = False,
+    ) -> dict[str, Any]:
+        purpose_name = "inject" if str(purpose or "").strip().lower() == "inject" else "recall"
+        exact_rows, exact_trace = self._exact_fallback_matches(
+            query=query,
+            limit=limit,
+            purpose=purpose_name,
+        )
+        trace: dict[str, Any] = {
+            "purpose": purpose_name,
+            "backend": "jsonl_fallback",
+            "candidate_total": exact_trace.get("candidate_total", 0),
+            "allowed_total": exact_trace.get("allowed_total", len(exact_rows)),
+            "blocked_total": exact_trace.get("blocked_total", 0),
+            "reason_codes": [],
+            "policy_trace": dict(exact_trace),
+            "ranking_trace": {
+                "exact_match_count": len(exact_rows),
+                "semantic_enabled": bool(allow_semantic),
+                "graph_enabled": bool(allow_graph),
+                "core_ranked_count": 0,
+                "merge_strategy": "exact_first",
+            },
+            "context_budget": {"limit": int(max(1, limit))},
+            "health_signals": {
+                "engine_available": bool(self.available and self._core is not None),
+                "core_error": self._init_error or "",
+            },
+        }
+
+        if not self.available or self._core is None:
+            trace["reason_codes"] = ["core_unavailable", "jsonl_exact_fallback"]
+            return {"items": exact_rows[:limit], "trace": trace}
+
+        if str(os.environ.get("MS8_USE_CORE_RETRIEVAL", "1")).strip().lower() not in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }:
+            self._log_fallback("retrieve", "core_retrieval_disabled", {"query": query, "limit": limit})
+            trace["reason_codes"] = ["core_retrieval_disabled", "jsonl_exact_fallback"]
+            return {"items": exact_rows[:limit], "trace": trace}
+
+        rows: list[dict[str, Any]] = []
+        exc_holder: dict[str, Exception] = {}
+        core = self._core
+        if core is None:
+            trace["reason_codes"] = ["core_unavailable", "jsonl_exact_fallback"]
+            return {"items": exact_rows[:limit], "trace": trace}
+
+        def runner() -> None:
+            try:
+                out = core.retrieve_memories(
+                    query=query,
+                    top_k=limit,
+                    allow_semantic=allow_semantic,
+                    allow_graph=allow_graph,
+                )
+                if isinstance(out, list):
+                    rows.extend([x for x in out if isinstance(x, dict)])
+            except (AttributeError, OSError, RuntimeError, TypeError, ValueError) as exc:  # pragma: no cover
+                exc_holder["error"] = exc
+
+        t = threading.Thread(target=runner, daemon=True)
+        t.start()
+        t.join(timeout=8.0)
+        if t.is_alive() or "error" in exc_holder:
+            self._log_fallback(
+                "retrieve",
+                "core_retrieval_timeout_or_error",
+                {"query": query, "limit": limit, "error": str(exc_holder.get("error", ""))},
+            )
+            trace["reason_codes"] = ["core_retrieval_timeout_or_error", "jsonl_exact_fallback"]
+            return {"items": exact_rows[:limit], "trace": trace}
+
+        normalized = [self._normalize_core_retrieval_row(row, i) for i, row in enumerate(rows)]
+        allowed, policy_trace = self._filter_rows_by_policy(
+            normalized,
+            query=query,
+            purpose=purpose_name,
+            limit=limit,
+        )
+        trace.update(
+            {
+                "backend": "memory_core",
+                "candidate_total": policy_trace.get("candidate_total", len(normalized)),
+                "allowed_total": policy_trace.get("allowed_total", len(allowed)),
+                "blocked_total": policy_trace.get("blocked_total", 0),
+                "policy_trace": policy_trace,
+            }
+        )
+        trace["ranking_trace"] = {
+            "exact_match_count": len(exact_rows),
+            "semantic_enabled": bool(allow_semantic),
+            "graph_enabled": bool(allow_graph),
+            "core_ranked_count": len(normalized),
+            "merge_strategy": "exact_first",
+        }
+        if allowed:
+            trace["reason_codes"] = ["policy_filtered", "core_ranked", "exact_first_merge"]
+            merged = self._merge_ranked_rows(exact_rows, allowed, limit=limit)
+            return {"items": merged, "trace": trace}
+
+        self._log_fallback("retrieve", "core_retrieval_no_results_fallback", {"query": query, "limit": limit})
+        trace["reason_codes"] = ["core_retrieval_no_results_fallback", "jsonl_exact_fallback"]
+        return {"items": exact_rows[:limit], "trace": trace}
+
     def _log_fallback(self, kind: str, reason: str, extra: dict[str, Any] | None = None) -> None:
         try:
             self._governance_log.parent.mkdir(parents=True, exist_ok=True)
@@ -449,131 +627,14 @@ class MemoryCoreEngine:
         return rows
 
     def search_memories(self, query: str, limit: int = 50) -> list[dict[str, Any]]:
-        if not self.available or self._core is None:
-            q = str(query or "").strip().lower()
-            fallback = []
-            for row in self.read_memories():
-                txt = str(row.get("text") or row.get("normalized_text") or "")
-                if q and q in txt.lower():
-                    fallback.append(row)
-            allowed, _trace = self._filter_rows_by_policy(
-                fallback,
-                query=query,
-                purpose="recall",
-                limit=limit,
-            )
-            self._log_fallback(
-                "retrieve",
-                "core_unavailable",
-                {"query": query, "limit": limit, "error": self._init_error or ""},
-            )
-            return allowed
-        # Default to stable JSONL search path for CLI responsiveness.
-        # Set MS8_USE_CORE_RETRIEVAL=1 to force full MemoryCore retrieval path.
-        if str(os.environ.get("MS8_USE_CORE_RETRIEVAL", "1")).strip().lower() not in {
-            "1",
-            "true",
-            "yes",
-            "on",
-        }:
-            q = str(query or "").strip().lower()
-            fallback = []
-            for row in self.read_memories():
-                txt = str(row.get("text") or row.get("normalized_text") or "")
-                if q and q in txt.lower():
-                    fallback.append(row)
-            self._log_fallback("retrieve", "core_retrieval_disabled", {"query": query, "limit": limit})
-            allowed, _trace = self._filter_rows_by_policy(
-                fallback,
-                query=query,
-                purpose="recall",
-                limit=limit,
-            )
-            return allowed
-        rows: list[dict[str, Any]] = []
-        exc_holder: dict[str, Exception] = {}
-        core = self._core
-        if core is None:
-            return []
-
-        def runner() -> None:
-            try:
-                out = core.retrieve_memories(
-                    query=query,
-                    top_k=limit,
-                    allow_semantic=False,
-                    allow_graph=False,
-                )
-                if isinstance(out, list):
-                    rows.extend([x for x in out if isinstance(x, dict)])
-            except (AttributeError, OSError, RuntimeError, TypeError, ValueError) as exc:  # pragma: no cover
-                exc_holder["error"] = exc
-
-        t = threading.Thread(target=runner, daemon=True)
-        t.start()
-        t.join(timeout=8.0)
-        if t.is_alive() or "error" in exc_holder:
-            self._log_fallback(
-                "retrieve",
-                "core_retrieval_timeout_or_error",
-                {"query": query, "limit": limit, "error": str(exc_holder.get("error", ""))},
-            )
-            q = str(query or "").strip().lower()
-            fallback = []
-            for row in self.read_memories():
-                txt = str(row.get("text") or row.get("normalized_text") or "")
-                if q and q in txt.lower():
-                    fallback.append(row)
-            allowed, _trace = self._filter_rows_by_policy(
-                fallback,
-                query=query,
-                purpose="recall",
-                limit=limit,
-            )
-            return allowed
-
-        out: list[dict[str, Any]] = []
-        for i, row in enumerate(rows):
-            if not isinstance(row, dict):
-                continue
-            raw = {
-                "id": str(row.get("id") or f"m-{i}"),
-                "text": str(row.get("content") or row.get("text") or ""),
-                "source": str(row.get("source", "memory_core")),
-                "created_at": str(row.get("date") or row.get("created_at") or ""),
-                "status": str(row.get("status") or "accepted"),
-                "scope": str(row.get("scope") or ""),
-                "sensitivity": str(row.get("sensitivity") or "private"),
-                "can_recall": row.get("can_recall", True),
-                "can_inject": row.get("can_inject", True),
-                "superseded_by": str(row.get("superseded_by") or ""),
-                "valid_until": str(row.get("valid_until") or row.get("ttl") or ""),
-                "meta": {"engine": "ms8_core"},
-            }
-            out.append(raw)
-        if out:
-            allowed, _trace = self._filter_rows_by_policy(
-                out,
-                query=query,
-                purpose="recall",
-                limit=limit,
-            )
-            if allowed:
-                return allowed
-        q = str(query or "").strip().lower()
-        fallback = []
-        for row in self.read_memories():
-            txt = str(row.get("text") or row.get("normalized_text") or "")
-            if q and q in txt.lower():
-                fallback.append(row)
-        self._log_fallback("retrieve", "core_retrieval_no_results_fallback", {"query": query, "limit": limit})
-        allowed, _trace = self._filter_rows_by_policy(
-            fallback,
+        result = self.retrieve_gateway(
             query=query,
-            purpose="recall",
             limit=limit,
+            purpose="recall",
+            allow_semantic=False,
+            allow_graph=False,
         )
-        return allowed
+        return [row for row in result.get("items", []) if isinstance(row, dict)]
 
     def count_memories(self) -> int:
         return len(self.read_memories())
@@ -608,18 +669,15 @@ class MemoryCoreEngine:
 
     def get_response_memory_context(self, message: str, top_k: int = 5) -> dict[str, Any]:
         if not self.available or self._core is None:
-            q = str(message or "").strip().lower()
-            candidates: list[dict[str, Any]] = []
-            for row in self.read_memories():
-                txt = str(row.get("text") or row.get("normalized_text") or "")
-                if q and q in txt.lower():
-                    candidates.append(row)
-            matches, trace = self._filter_rows_by_policy(
-                candidates,
+            retrieval = self.retrieve_gateway(
                 query=message,
-                purpose="inject",
                 limit=max(1, top_k),
+                purpose="inject",
+                allow_semantic=False,
+                allow_graph=False,
             )
+            matches = [row for row in retrieval.get("items", []) if isinstance(row, dict)]
+            trace = retrieval.get("trace", {}) if isinstance(retrieval.get("trace", {}), dict) else {}
             return {
                 "context": "",
                 "context_with_expression": "",

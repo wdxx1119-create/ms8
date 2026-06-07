@@ -55,6 +55,8 @@ def test_governance_report_includes_schema_and_fallback(tmp_path: Path, monkeypa
     assert out["schema_invalid_count"] >= 1
     assert out["fallback_write_count"] >= 1
     assert out["fallback_total_count"] >= 1
+    assert out["fallback_recent_count"] >= 1
+    assert out["fallback_active_count"] >= 1
     assert out.get("fallback_error_code_counts", {}).get("E_CORE_UNAVAILABLE", 0) >= 1
     latest = paths["health"] / "governance_report_latest.json"
     history = paths["health"] / "governance_report_history.jsonl"
@@ -246,6 +248,77 @@ def test_governance_report_fallback_missing_fields_defaults_generic(tmp_path: Pa
     out = get_governance_report()
     assert out.get("fallback_total_count", 0) >= 1
     assert out.get("fallback_error_code_counts", {}).get("E_FALLBACK_GENERIC", 0) >= 1
+
+
+def test_governance_report_treats_old_benign_retrieve_fallback_as_historical_only(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("MS8_HOME", str(tmp_path / "ms8_home"))
+    paths = ensure_runtime_dirs()
+    row = {
+        "id": "m1",
+        "text": "hello",
+        "normalized_text": "hello",
+        "category": "general",
+        "status": "accepted",
+        "source": "ask",
+        "meta": {"admission": "ms8_write_guard_v1"},
+        "scope": "personal",
+        "authority": "user_explicit",
+        "sensitivity": "private",
+        "can_recall": True,
+        "can_inject": True,
+        "can_act_on": False,
+    }
+    paths["memories"].write_text(json.dumps(row, ensure_ascii=False) + "\n", encoding="utf-8")
+    fallback_file = paths["health"] / "governance_fallback_log.jsonl"
+    fallback_file.write_text(
+        json.dumps(
+            {"timestamp": "2026-01-01T00:00:00Z", "kind": "retrieve", "reason": "core_retrieval_no_results_fallback"},
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    out = get_governance_report()
+    assert out.get("fallback_total_count", 0) == 1
+    assert out.get("fallback_recent_count", 0) == 0
+    assert out.get("fallback_active_count", 0) == 0
+
+
+def test_governance_report_skipped_not_stale_compression_is_healthy(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("MS8_HOME", str(tmp_path / "ms8_home"))
+    paths = ensure_runtime_dirs()
+    row = {
+        "id": "m1",
+        "text": "hello",
+        "normalized_text": "hello",
+        "category": "general",
+        "status": "accepted",
+        "source": "ask",
+        "meta": {"admission": "ms8_write_guard_v1"},
+        "scope": "personal",
+        "authority": "user_explicit",
+        "sensitivity": "private",
+        "can_recall": True,
+        "can_inject": True,
+        "can_act_on": False,
+    }
+    paths["memories"].write_text(json.dumps(row, ensure_ascii=False) + "\n", encoding="utf-8")
+    paths["compression_state"].write_text(
+        json.dumps(
+            {
+                "status": "skipped",
+                "last_reason": "not_stale",
+                "last_attempt_at": "2026-06-05T00:00:00+00:00",
+                "last_success_at": "",
+                "last_run_at": "",
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    out = get_governance_report()
+    assert out.get("compression_freshness_hours") == 0.0
+    assert out.get("compression_severity") == "healthy"
 
 
 def test_governance_risk_threshold_env_override_fallback_total(tmp_path: Path, monkeypatch) -> None:

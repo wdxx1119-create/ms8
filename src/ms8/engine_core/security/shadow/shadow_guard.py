@@ -233,11 +233,11 @@ class ShadowSystem:
             try:
                 self.ledger.startup_self_heal()
             except OSError as exc:
-                print(f"[ShadowGuard] Startup self-heal failed: {exc}")
+                logger.warning("Startup self-heal failed: %s", exc)
         try:
             self._startup_integrity_scan()
         except OSError as exc:
-            print(f"[ShadowGuard] Startup integrity scan failed: {exc}")
+            logger.warning("Startup integrity scan failed: %s", exc)
 
     def _stack_guard_ok(self) -> bool:
         if not self.stack_guard_enabled:
@@ -305,7 +305,7 @@ class ShadowSystem:
                 if not already:
                     self._seal.trigger_seal(reason="startup_integrity_failed", level="hard")
             except OSError as exc:
-                print(f"[ShadowGuard] Failed triggering startup integrity seal: {exc}")
+                logger.warning("Failed triggering startup integrity seal: %s", exc)
         else:
             if should_emit:
                 self.record_mode(
@@ -350,15 +350,16 @@ class ShadowSystem:
     def _mark_startup_integrity_emitted(self, signature: str) -> None:
         try:
             payload = {"signature": str(signature), "ts": datetime.now(timezone.utc).isoformat()}
+            self._startup_integrity_emit_state_file.parent.mkdir(parents=True, exist_ok=True)
             tmp = self._startup_integrity_emit_state_file.with_suffix(".tmp")
             tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
             os.replace(tmp, self._startup_integrity_emit_state_file)
             try:
                 os.chmod(self._startup_integrity_emit_state_file, 0o600)
             except OSError as exc:
-                print(f"[ShadowGuard] Failed chmod startup integrity state file: {exc}")
+                logger.warning("Failed chmod startup integrity state file: %s", exc)
         except OSError as exc:
-            print(f"[ShadowGuard] Failed writing startup integrity state file: {exc}")
+            logger.warning("Failed writing startup integrity state file: %s", exc)
 
     def reset_checkpoint(self) -> dict[str, Any]:
         try:
@@ -940,7 +941,7 @@ class ShadowSystem:
         try:
             self.ledger.append_verify_result(out)
         except OSError as exc:
-            print(f"[ShadowGuard] Failed appending verify result to ledger: {exc}")
+            logger.warning("Failed appending verify result to ledger: %s", exc)
         self.record_mode(
             "checkpoint",
             source="shadow:verify",
@@ -1209,7 +1210,7 @@ class ShadowSystem:
                     shutil.copy2(cp, tmp_cp)
                     os.replace(tmp_cp, self.ledger.checkpoints_file)
                 except OSError as exc:
-                    print(f"[ShadowGuard] Failed restoring checkpoints from backup {cp}: {exc}")
+                    logger.warning("Failed restoring checkpoints from backup %s: %s", cp, exc)
             if mf.exists():
                 try:
                     out_mf = self._seal.restore_manifest_snapshot(str(mf))

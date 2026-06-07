@@ -6,6 +6,7 @@ TASK_FILE_MAP = {
     "check": "check.task",
     "report": "report.task",
     "usage": "usage.task",
+    "absorb": "absorb.task",
 }
 
 TASK_VERSION = "1"

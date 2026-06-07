@@ -11,8 +11,8 @@ PII_PATTERNS = {
     "jwt": r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b",
     "bearer_token": r"(?i)\bbearer\s+[A-Za-z0-9\-._~+/]+=*\b",
     "ssh_private_key": (
-        r"-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----[\s\S]+?"
-        r"-----END (?:RSA |OPENSSH |EC )?PRIVATE KEY-----"
+        r"-----BEGIN (?:RSA |OPENSSH |EC |ENCRYPTED )?PRIVATE KEY-----[\s\S]+?"
+        r"-----END (?:RSA |OPENSSH |EC |ENCRYPTED )?PRIVATE KEY-----"
     ),
     "db_connection": r"\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis)://[^\s]+",
     "webhook_url": r"https?://[^\s]*?(?:webhook|callback|hook)[^\s]*",

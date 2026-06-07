@@ -79,10 +79,10 @@ def cluster_duplicate_records(
         canonical = members_sorted[0]
         cid = str(canonical.get("id") or "")
         evidence = []
-        for m in members_sorted:
+        for index, m in enumerate(members_sorted):
             mid = str(m.get("id") or "")
             evidence.append(mid)
-            if mid != cid:
+            if index > 0:
                 old_status = str(m.get("status", "") or "")
                 if is_valid_status_transition(old_status, "superseded"):
                     m["status"] = "superseded"

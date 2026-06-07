@@ -3,6 +3,7 @@ from __future__ import annotations
 import gzip
 import hashlib
 import json
+import logging
 import os
 import shutil
 import stat
@@ -13,6 +14,8 @@ from pathlib import Path
 from typing import Any
 
 from .shadow_schema import ShadowEvent, utc_now_iso
+
+logger = logging.getLogger(__name__)
 
 
 def _sha256_text(text: str) -> str:
@@ -119,7 +122,7 @@ class ShadowLedger:
             try:
                 os.chmod(path, 0o600)
             except OSError as exc:
-                print(f"[ShadowLedger] Failed chmod events file {path}: {exc}")
+                logger.debug("Failed chmod events file %s: %s", path, exc)
         finally:
             self._set_immutable(path)
 
@@ -129,15 +132,15 @@ class ShadowLedger:
             self._append_line(path, line)
             return
         except OSError as exc:
-            print(f"[ShadowLedger] Failed appending to primary events file {path}: {exc}")
+            logger.warning("Failed appending to primary events file %s: %s", path, exc)
         try:
             self._append_line(tmp_fallback, line)
             return
         except OSError as exc:
-            print(f"[ShadowLedger] Failed appending to fallback events file {tmp_fallback}: {exc}")
+            logger.warning("Failed appending to fallback events file %s: %s", tmp_fallback, exc)
 
         # last-resort: never silently drop
-        print(line)
+        logger.error("Failed appending shadow event to both primary and fallback stores; event=%s", line)
 
     def _store_payload(self, event_id: str, content: str) -> str:
         payload_file = self.payload_dir / f"{event_id}.json"
@@ -187,7 +190,7 @@ class ShadowLedger:
             try:
                 old.unlink(missing_ok=True)
             except OSError as exc:
-                print(f"[ShadowLedger] Failed pruning old snapshot {old}: {exc}")
+                logger.warning("Failed pruning old snapshot %s: %s", old, exc)
 
     def list_snapshots(self, limit: int = 10) -> list[dict[str, Any]]:
         out: list[dict[str, Any]] = []
@@ -264,9 +267,10 @@ class ShadowLedger:
                 self._append_line(self.backup_events_file, line)
             except OSError as exc:
                 self._backup_write_disabled = True
-                print(
-                    f"[ShadowLedger] Backup events disabled (path not writable): "
-                    f"{self.backup_events_file} ({exc})"
+                logger.warning(
+                    "Backup events disabled (path not writable): %s (%s)",
+                    self.backup_events_file,
+                    exc,
                 )
         self._checkpoint_buffer.append(_sha256_text(line))
         self._checkpoint_if_needed()
@@ -355,7 +359,7 @@ class ShadowLedger:
                         plain = str(out_row.get("content", ""))
                         out_row["content"] = str(self.spool_encryptor(plain))
                     except OSError as exc:
-                        print(f"[ShadowLedger] Spool encryption failed during rewrite: {exc}")
+                        logger.warning("Spool encryption failed during rewrite: %s", exc)
                 f.write(_json_line(out_row) + "\n")
             f.flush()
             os.fsync(f.fileno())
@@ -711,7 +715,7 @@ class ShadowLedger:
             try:
                 os.chmod(self.checkpoints_file, 0o600)
             except OSError as exc:
-                print(f"[ShadowLedger] Failed chmod checkpoints file {self.checkpoints_file}: {exc}")
+                logger.debug("Failed chmod checkpoints file %s: %s", self.checkpoints_file, exc)
         finally:
             self._set_immutable(self.checkpoints_file)
         return {

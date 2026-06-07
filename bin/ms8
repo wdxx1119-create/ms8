@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+if [[ -x "$ROOT/.venv/bin/python" ]]; then
+  if [[ -f "$ROOT/src/ms8/__main__.py" ]]; then
+    exec "$ROOT/.venv/bin/python" -m src.ms8 "$@"
+  fi
+  exec "$ROOT/.venv/bin/python" -m ms8 "$@"
+fi
+
+exec python3 -m ms8 "$@"

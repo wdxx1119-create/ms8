@@ -5,7 +5,7 @@ import logging
 import sys
 from typing import Any
 
-from ms8 import __version__
+from ... import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -207,7 +207,7 @@ def handle_request(req: dict[str, Any]) -> dict[str, Any] | None:
     if method == "ping":
         return _ok_result(req_id, {})
     if method == "tools/list":
-        from ms8.connect.mcp_server.mcp_server import TOOL_NAMES
+        from .mcp_server import TOOL_NAMES
 
         tools = [
             {
@@ -221,7 +221,7 @@ def handle_request(req: dict[str, Any]) -> dict[str, Any] | None:
         ]
         return _ok_result(req_id, {"tools": tools})
     if method == "tools/call":
-        from ms8.connect.mcp_server.mcp_server import call_tool
+        from .mcp_server import call_tool
 
         name = str(params.get("name") or "")
         arguments = params.get("arguments", {}) if isinstance(params.get("arguments", {}), dict) else {}
@@ -229,12 +229,12 @@ def handle_request(req: dict[str, Any]) -> dict[str, Any] | None:
         text = json.dumps(out, ensure_ascii=False)
         return _ok_result(req_id, {"content": [{"type": "text", "text": text}], "isError": not bool(out.get("ok", False))})
     if method == "resources/list":
-        from ms8.connect.mcp_server.mcp_server import RESOURCE_KEYS
+        from .mcp_server import RESOURCE_KEYS
 
         resources = [{"uri": f"ms8://{k}", "name": k, "mimeType": "application/json"} for k in RESOURCE_KEYS]
         return _ok_result(req_id, {"resources": resources})
     if method == "resources/read":
-        from ms8.connect.mcp_server.mcp_server import read_resource
+        from .mcp_server import read_resource
 
         uri = str(params.get("uri") or "")
         key = uri.split("ms8://", 1)[-1] if uri.startswith("ms8://") else uri

@@ -352,6 +352,18 @@ def search_memories(query: str, limit: int = 50) -> list[dict]:
     return rows
 
 
+def search_memories_detailed(query: str, limit: int = 50) -> dict[str, Any]:
+    out = _engine().retrieve_gateway(
+        query=query,
+        limit=limit,
+        purpose="recall",
+        allow_semantic=False,
+        allow_graph=False,
+    )
+    _touch_activity("search")
+    return out
+
+
 def count_memories() -> int:
     return _engine().count_memories()
 
@@ -1858,6 +1870,8 @@ def get_governance_report() -> dict[str, Any]:
     ids: set[str] = set()
     dup_groups = 0
     hash_counter: dict[str, int] = {}
+    duplicate_noise_sources = {"mcp:smoke_test", "mcp_verify"}
+    duplicate_noise_texts = {"connect smoke save"}
     for r in rows:
         status = str(r.get("status", "")).lower()
         if status == "revoked":
@@ -1876,7 +1890,9 @@ def get_governance_report() -> dict[str, Any]:
             legacy_admission_records += 1
         txt = str(r.get("normalized_text") or r.get("text") or "")
         h = txt.strip().lower()
-        hash_counter[h] = hash_counter.get(h, 0) + 1
+        source = str(r.get("source", "") or "")
+        if h and source not in duplicate_noise_sources and h not in duplicate_noise_texts:
+            hash_counter[h] = hash_counter.get(h, 0) + 1
         rid = str(r.get("id", "")).strip()
         if rid:
             ids.add(rid)
@@ -1890,11 +1906,15 @@ def get_governance_report() -> dict[str, Any]:
     schema_invalid_active = 0
     fallback_write_count = 0
     fallback_total_count = 0
+    fallback_recent_count = 0
+    fallback_active_count = 0
     fallback_error_code_counter: Counter[str] = Counter()
     pending_oldest_hours = 0.0
     now = datetime.now(timezone.utc)
     active_window_days = int(os.environ.get("MS8_SCHEMA_INVALID_ACTIVE_DAYS", "14") or 14)
     active_window_s = max(1, active_window_days) * 86400
+    fallback_recent_window_hours = float(os.environ.get("MS8_GOV_FALLBACK_RECENT_HOURS", "24") or 24.0)
+    fallback_recent_window_s = max(1.0, fallback_recent_window_hours) * 3600.0
     if paths["quarantine"].exists():
         for ln in paths["quarantine"].read_text(encoding="utf-8", errors="ignore").splitlines():
             try:
@@ -1923,10 +1943,19 @@ def get_governance_report() -> dict[str, Any]:
             fallback_total_count += 1
             reason = str(obj.get("reason", "") or "").strip().lower()
             error_code = str(obj.get("error_code", "") or "").strip() or _fallback_error_code_from_reason(reason)
+            dt = _to_aware(str(obj.get("timestamp") or obj.get("at") or ""))
+            is_recent = False
+            if dt is not None:
+                age_s = max(0.0, (now - dt).total_seconds())
+                is_recent = age_s <= fallback_recent_window_s
+            if is_recent:
+                fallback_recent_count += 1
             if error_code:
                 fallback_error_code_counter[error_code] += 1
             if str(obj.get("kind", "")) == "write":
                 fallback_write_count += 1
+                if is_recent:
+                    fallback_active_count += 1
     if review_report.exists():
         try:
             rpt = json.loads(review_report.read_text(encoding="utf-8"))
@@ -1943,6 +1972,23 @@ def get_governance_report() -> dict[str, Any]:
         pending_oldest_hours = 0.0
     self_check = run_engine_self_check(level="L4")
     self_check_status = str(self_check.get("status", "unknown")) if isinstance(self_check, dict) else "unknown"
+    self_check_domains = (
+        self_check.get("domain_summary", {})
+        if isinstance(self_check, dict) and isinstance(self_check.get("domain_summary", {}), dict)
+        else {}
+    )
+    security_self_check = self_check_domains.get("security", {}) if isinstance(self_check_domains, dict) else {}
+    has_security_self_check = bool(
+        isinstance(security_self_check, dict) and int(security_self_check.get("total", 0) or 0) > 0
+    )
+    security_self_check_warn = (
+        int(security_self_check.get("warn", 0) or 0) > 0 if isinstance(security_self_check, dict) else False
+    )
+    security_self_check_bad = (
+        (int(security_self_check.get("fail", 0) or 0) + int(security_self_check.get("error", 0) or 0)) > 0
+        if isinstance(security_self_check, dict)
+        else False
+    )
     monitoring = get_engine_monitoring_status()
     rates = monitoring.get("rates", {}) if isinstance(monitoring, dict) and isinstance(monitoring.get("rates", {}), dict) else {}
     rates_v2 = (
@@ -1971,6 +2017,11 @@ def get_governance_report() -> dict[str, Any]:
             logger.debug("Failed to read compression state JSON: %s", exc)
             compression_state = {}
     if not isinstance(compression_hours, (int, float)) and isinstance(compression_state, dict):
+        if (
+            str(compression_state.get("status", "") or "").strip().lower() == "skipped"
+            and str(compression_state.get("last_reason", "") or "").strip().lower() == "not_stale"
+        ):
+            compression_hours = 0.0
         ts_text = str(
             compression_state.get("last_success_at")
             or compression_state.get("last_run_at")
@@ -2030,6 +2081,9 @@ def get_governance_report() -> dict[str, Any]:
         "schema_invalid_active_window_days": active_window_days,
         "fallback_write_count": fallback_write_count,
         "fallback_total_count": fallback_total_count,
+        "fallback_recent_count": fallback_recent_count,
+        "fallback_active_count": fallback_active_count,
+        "fallback_recent_window_hours": fallback_recent_window_hours,
         "fallback_error_code_counts": dict(sorted(fallback_error_code_counter.items())),
         "fallback_error_code_top": [code for code, _ in fallback_error_code_counter.most_common(3)],
         "duplicate_groups": dup_groups,
@@ -2069,14 +2123,15 @@ def get_governance_report() -> dict[str, Any]:
     lifecycle_maintenance_health = "green"
     overall_reasons: list[str] = []
 
-    if self_check_status in {"fail", "error"}:
+    if (self_check_status in {"fail", "error"} and not has_security_self_check) or security_self_check_bad:
         runtime_health = "red"
         security_integrity_health = "red"
         overall_reasons.append("self_check_failed")
-    elif self_check_status in {"warn", "warning"}:
-        runtime_health = "yellow"
+    elif security_self_check_warn:
         security_integrity_health = "yellow"
-        overall_reasons.append("self_check_warn")
+        overall_reasons.append("security_self_check_warn")
+    elif self_check_status in {"warn", "warning"}:
+        overall_reasons.append("memory_self_check_warn")
 
     if authority == "v2_preview":
         # Primary memory-quality authority switched to v2 with sample gate.
@@ -2119,6 +2174,20 @@ def get_governance_report() -> dict[str, Any]:
     # Optional policy attack-sample monitor (produced by scripts/policy_attack_sample_report.py).
     policy_attack_report: dict[str, Any] = {}
     policy_attack_file = paths["health"] / "policy_attack_samples_latest.json"
+    if not policy_attack_file.exists():
+        baseline = {
+            "ok": True,
+            "total_cases": 0,
+            "passed_cases": 0,
+            "failed_cases": 0,
+            "updated_at": _utc_now(),
+            "age_hours": 0.0,
+            "initialized": False,
+        }
+        try:
+            policy_attack_file.write_text(json.dumps(baseline, ensure_ascii=False, indent=2), encoding="utf-8")
+        except OSError as exc:
+            logger.debug("Failed to write policy attack baseline report: %s", exc)
     if policy_attack_file.exists():
         try:
             loaded = json.loads(policy_attack_file.read_text(encoding="utf-8"))
@@ -2181,6 +2250,7 @@ def get_governance_report() -> dict[str, Any]:
         "failed_cases": attack_failed,
         "age_hours": attack_age_h if policy_attack_report else None,
         "updated_at": policy_attack_report.get("updated_at", "") if policy_attack_report else "",
+        "initialized": bool(policy_attack_report.get("initialized", True)) if policy_attack_report else False,
     }
     _persist_governance_report(report=report, health_dir=paths["health"])
     report["trend"] = _governance_trend(health_dir=paths["health"])

@@ -93,29 +93,60 @@ def evaluate_candidate(
 
     if policy_route is not None:
         final_text = str(policy_data.get("normalized_text", normalized)).strip()
+        local_privacy = redact_sensitive_text(final_text)
+        local_privacy_flags = _as_str_list(local_privacy.get("flags", []))
+        merged_privacy_flags = sorted(
+            set(
+                [
+                    str(x)
+                    for x in policy_data.get("privacy_flags", [])
+                    if isinstance(policy_data.get("privacy_flags", []), list)
+                ]
+                + local_privacy_flags
+            )
+        )
+        effective_route = policy_route
+        reasons = [str(x) for x in policy_data.get("reasons", [])] if isinstance(policy_data.get("reasons", []), list) else []
+        should_persist_main = bool(policy_data.get("should_persist_main", policy_route != "rejected"))
+        should_index = bool(policy_data.get("should_index", policy_route in {"accepted", "redacted_accept"}))
+        should_write_memory_md = bool(
+            policy_data.get("should_write_memory_md", policy_route in {"accepted", "redacted_accept"})
+        )
+        redacted = bool(policy_data.get("redacted", policy_route == "redacted_accept"))
+
+        if bool(local_privacy.get("has_sensitive", False)):
+            if "privacy_hit" not in reasons:
+                reasons.append("privacy_hit")
+            if any(x in merged_privacy_flags for x in {"ssh_private_key", "password_field", "password_cn"}):
+                effective_route = "pending_review"
+                should_persist_main = True
+                should_index = False
+                should_write_memory_md = False
+            elif effective_route not in {"rejected", "short_term_only", "pending_review"}:
+                effective_route = "redacted_accept"
+                final_text = str(local_privacy.get("redacted_text", final_text))
+                redacted = True
+                should_persist_main = True
+                should_index = True
+                should_write_memory_md = True
+
         return AdmissionDecision(
             normalized_text=final_text,
-            route=policy_route,
-            reasons=[str(x) for x in policy_data.get("reasons", [])]
-            if isinstance(policy_data.get("reasons", []), list) and policy_data.get("reasons", [])
-            else ["policy_engine_route"],
-            privacy_flags=[str(x) for x in policy_data.get("privacy_flags", [])]
-            if isinstance(policy_data.get("privacy_flags", []), list)
-            else [],
+            route=effective_route,
+            reasons=reasons or ["policy_engine_route"],
+            privacy_flags=merged_privacy_flags,
             conflict_flags=[str(x) for x in policy_data.get("conflict_flags", [])]
             if isinstance(policy_data.get("conflict_flags", []), list)
             else [],
             risk_scores=dict(policy_data.get("risk_scores", {}))
             if isinstance(policy_data.get("risk_scores", {}), dict)
             else {},
-            should_persist_main=bool(policy_data.get("should_persist_main", policy_route != "rejected")),
-            should_index=bool(policy_data.get("should_index", policy_route in {"accepted", "redacted_accept"})),
-            should_write_memory_md=bool(
-                policy_data.get("should_write_memory_md", policy_route in {"accepted", "redacted_accept"})
-            ),
-            redacted=bool(policy_data.get("redacted", policy_route == "redacted_accept")),
+            should_persist_main=should_persist_main,
+            should_index=should_index,
+            should_write_memory_md=should_write_memory_md,
+            redacted=redacted,
             replace_old=bool(policy_data.get("replace_old", False)),
-            raw={"policy_engine": dict(policy_data)},
+            raw={"policy_engine": dict(policy_data), "local_privacy_overlay": local_privacy},
         )
 
     block_result = evaluate_block(normalized)

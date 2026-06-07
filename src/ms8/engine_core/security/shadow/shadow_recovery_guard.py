@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -10,6 +11,8 @@ from typing import Any
 from .shadow_ledger import ShadowLedger
 from .shadow_quarantine import ShadowQuarantine
 from .shadow_schema import utc_now_iso
+
+logger = logging.getLogger(__name__)
 
 
 def _parse_ts(value: str) -> datetime | None:
@@ -214,7 +217,7 @@ class ShadowRecoveryGuard:
                         rec.failure_reason = "already_exists"
                         continue
                 except RuntimeError as exc:
-                    print(f"[ShadowRecoveryGuard] hash_exists_func failed for content hash check: {exc}")
+                    logger.warning("hash_exists_func failed for content hash check: %s", exc)
             src = (
                 rec.source if str(rec.source).startswith(allow_source_prefix) else f"{allow_source_prefix}{rec.source}"
             )

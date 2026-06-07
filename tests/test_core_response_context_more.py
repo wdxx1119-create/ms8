@@ -3,6 +3,7 @@ from __future__ import annotations
 import collections
 from pathlib import Path
 
+import ms8.absorb.search as absorb_search
 from ms8.engine_core.core import MemoryCore
 
 
@@ -105,6 +106,11 @@ def test_response_context_forced_fallback_and_expression_wrapper(tmp_path: Path)
     assert payload["decision_trace"]["decision_reasons"]
     assert payload["context_with_expression"] == payload["context"]
     assert c.working_memory.logged[-1]["reason"] == "forced_fallback_injection"
+    trace = payload["retrieval_gateway"]
+    assert trace["purpose"] == "inject"
+    assert trace["backend"] == "memory_core"
+    assert "memory_md_fallback" in trace["reason_codes"]
+    assert trace["health_signals"]["forced_injection_used"] is True
 
 
 def test_response_context_expression_build_failure_falls_back(tmp_path: Path) -> None:
@@ -135,3 +141,61 @@ def test_response_context_with_expression_prompt_when_context_empty(tmp_path: Pa
     payload = c.get_response_memory_context("q")
     assert payload["context"] == ""
     assert payload["context_with_expression"] == "[SYSTEM_PROMPT_EXTRA]\nOnly prompt"
+
+
+def test_response_context_includes_absorb_local_documents(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    c = _core(tmp_path)
+    c._memory_md_fallback_hits = lambda message, limit=2: []  # type: ignore[method-assign]
+    c.config["settings"]["memory"]["working_memory"]["max_injection_chars"] = 600
+    monkeypatch.setattr(
+        absorb_search,
+        "search_chunks",
+        lambda query, limit=10: [
+            {
+                "chunk_id": "c1",
+                "file_id": "f1",
+                "canonical_path": "/docs/guide.md",
+                "file_type": "md",
+                "status": "LOCAL_INDEXED",
+                "risk_level": "low",
+                "score": 3.2,
+                "search_backend": "sqlite",
+                "text_preview": "Absorbed local project guide content",
+            }
+        ],
+    )
+    payload = c.get_response_memory_context("project guide")
+    assert payload["should_inject"] is True
+    assert "## Local Documents" in payload["context"]
+    assert "Absorbed local project guide content" in payload["context"]
+    assert payload["absorb_context"]["count"] == 1
+    assert payload["decision_trace"]["absorb_total"] == 1
+    assert "absorb_local_documents_included" in payload["decision_trace"]["decision_reasons"]
+    assert payload["context_snapshot"]["absorb_injected_count"] == 1
+    trace = payload["retrieval_gateway"]
+    assert "absorb_context" in trace["reason_codes"]
+    assert trace["health_signals"]["absorb_injected_count"] == 1
+
+
+def test_response_context_skips_absorb_when_budget_too_small(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    c = _core(tmp_path)
+    c._memory_md_fallback_hits = lambda message, limit=2: []  # type: ignore[method-assign]
+    c.config["settings"]["memory"]["working_memory"]["max_injection_chars"] = 120
+    c.config["settings"]["memory"]["working_memory"]["dynamic_injection_budget"]["enabled"] = False
+    monkeypatch.setattr(
+        absorb_search,
+        "search_chunks",
+        lambda query, limit=10: [
+            {
+                "chunk_id": "c1",
+                "canonical_path": "/docs/guide.md",
+                "file_type": "md",
+                "risk_level": "low",
+                "text_preview": "This should not fit",
+            }
+        ],
+    )
+    payload = c.get_response_memory_context("project guide")
+    assert "## Local Documents" not in payload["context"]
+    assert payload["absorb_context"]["count"] == 0
+    assert payload["context_snapshot"]["absorb_injected_count"] == 0

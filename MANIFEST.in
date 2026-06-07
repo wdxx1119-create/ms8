@@ -1,9 +1,13 @@
 include README.md
 include LICENSE
+recursive-include src/ms8/connect *.md
 global-exclude *.db *.sqlite *.jsonl .env
+global-exclude .coverage .coverage.* *.pyc
 prune .ms8_runtime
+prune .tmp*
 prune backups
 prune cache
 prune artifacts
 prune restored_connect_from_pyc
 prune repo_public
+prune src/ms8/engine_core/tests

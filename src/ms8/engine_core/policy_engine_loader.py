@@ -30,8 +30,8 @@ _STATUS = PolicyBackendStatus(
 
 
 def _resolve_module_name() -> str:
-    raw = str(os.getenv("MS8_POLICY_MODULE", "ms8_policy_engine")).strip()
-    return raw or "ms8_policy_engine"
+    raw = str(os.getenv("MS8_POLICY_MODULE", "ms8_policy_core")).strip()
+    return raw or "ms8_policy_core"
 
 
 def _validate_engine_contract(engine: Any) -> PolicyEngine:

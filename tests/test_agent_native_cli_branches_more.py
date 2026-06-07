@@ -24,7 +24,7 @@ def test_agent_cli_run_without_subcommand_returns_2(capsys) -> None:
     code = run_agent_cli(Namespace(agent_cmd="run", run_cmd=""))
     out = capsys.readouterr().out
     assert code == 2
-    assert "ms8 agent run: choose install|check|report|daily" in out
+    assert "ms8 agent run: choose install|check|report|daily|absorb" in out
 
 
 def test_agent_cli_task_without_subcommand_returns_2(capsys) -> None:
@@ -53,4 +53,3 @@ def test_agent_cli_permission_upgrade_needs_confirm(tmp_path: Path, monkeypatch,
     out = capsys.readouterr().out
     assert code == 1
     assert "NEEDS_CONFIRM" in out
-

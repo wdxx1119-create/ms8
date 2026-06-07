@@ -23,6 +23,7 @@ from ms8.connect.scripts.verify_client_configs import run as verify_client_confi
 
 def test_target_alias_normalization():
     assert normalize_target("claude") == "claude_desktop"
+    assert normalize_target("claude-code") == "claude_code"
     assert normalize_target("open_claw") == "openclaw"
     assert normalize_target("hermes_agent") == "hermes"
     assert normalize_target("cherry") == "cherry_studio"
@@ -33,6 +34,7 @@ def test_target_alias_normalization():
 
 def test_selected_targets_all_contains_new_profiles():
     names = selected_targets("all")
+    assert "claude_code" in names
     assert "openclaw" in names
     assert "hermes" in names
     assert "cursor" in names
@@ -81,6 +83,7 @@ def test_cherry_discovery_reports_candidates():
 def test_supported_target_matrix_contains_policy_fields():
     out = supported_target_matrix()
     assert "cline" in out
+    assert "claude_code" in out
     assert "generic_json" in out
     assert out["generic_json"]["merge_strategy"] == "replace"
     assert "verify_keys" in out["openclaw"]
@@ -184,4 +187,16 @@ def test_apply_then_verify_codex_toml(monkeypatch, tmp_path: Path):
     out_apply = apply_client_configs(target="codex")
     assert out_apply["ok"] is True
     out_verify = verify_client_configs(target="codex")
+    assert out_verify["ok"] is True
+
+
+def test_apply_then_verify_claude_code_json(monkeypatch, tmp_path: Path):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("OPENCLAW_MEMORY_AUTO_ROOT", str(tmp_path / ".ms8_runtime" / "connect"))
+    out_gen = generate_client_configs(target="claude_code")
+    assert out_gen["ok"] is True
+    assert out_gen["files"][0].endswith("claude_code_mcp.json")
+    out_apply = apply_client_configs(target="claude_code")
+    assert out_apply["ok"] is True
+    out_verify = verify_client_configs(target="claude_code")
     assert out_verify["ok"] is True
