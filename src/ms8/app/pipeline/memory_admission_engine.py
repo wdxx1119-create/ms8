@@ -106,7 +106,11 @@ def evaluate_candidate(
             )
         )
         effective_route = policy_route
-        reasons = [str(x) for x in policy_data.get("reasons", [])] if isinstance(policy_data.get("reasons", []), list) else []
+        policy_reasons = (
+            [str(x) for x in policy_data.get("reasons", [])]
+            if isinstance(policy_data.get("reasons", []), list)
+            else []
+        )
         should_persist_main = bool(policy_data.get("should_persist_main", policy_route != "rejected"))
         should_index = bool(policy_data.get("should_index", policy_route in {"accepted", "redacted_accept"}))
         should_write_memory_md = bool(
@@ -115,8 +119,8 @@ def evaluate_candidate(
         redacted = bool(policy_data.get("redacted", policy_route == "redacted_accept"))
 
         if bool(local_privacy.get("has_sensitive", False)):
-            if "privacy_hit" not in reasons:
-                reasons.append("privacy_hit")
+            if "privacy_hit" not in policy_reasons:
+                policy_reasons.append("privacy_hit")
             if any(x in merged_privacy_flags for x in {"ssh_private_key", "password_field", "password_cn"}):
                 effective_route = "pending_review"
                 should_persist_main = True
@@ -133,7 +137,7 @@ def evaluate_candidate(
         return AdmissionDecision(
             normalized_text=final_text,
             route=effective_route,
-            reasons=reasons or ["policy_engine_route"],
+            reasons=policy_reasons or ["policy_engine_route"],
             privacy_flags=merged_privacy_flags,
             conflict_flags=[str(x) for x in policy_data.get("conflict_flags", [])]
             if isinstance(policy_data.get("conflict_flags", []), list)

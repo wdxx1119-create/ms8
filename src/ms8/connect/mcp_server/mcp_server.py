@@ -9,8 +9,8 @@ from hashlib import sha1
 from pathlib import Path
 from typing import Any
 
-from .memory_service_interface import MemoryServiceInterface
 from ..scripts.common import connect_package_root, connect_root, load_yaml
+from .memory_service_interface import MemoryServiceInterface
 
 TOOL_NAMES = ("prepare_reply", "submit", "batch_submit", "query", "context", "status", "profile")
 RESOURCE_KEYS = ("long-term", "profile", "recent")
