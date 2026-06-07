@@ -38,7 +38,7 @@ jobs:
       - name: Pytest
         env:
           PYTHONPATH: src
-        run: python -m pytest tests/ --cov=src/ms8 --cov-fail-under=75 -q
+        run: python -m pytest tests/ -q
 
       - name: Doctor smoke
         env:

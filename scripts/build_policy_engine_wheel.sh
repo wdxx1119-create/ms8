@@ -20,6 +20,8 @@ fi
 
 echo "[STEP] Build wheel"
 cd "${POLICY_SRC_DIR}"
+find src -type d -name '__pycache__' -prune -exec rm -rf {} +
+find src -type f -name '*.pyc' -delete
 rm -rf build dist target src/ms8_policy_core.egg-info
 "${VENV_PY}" -m build --wheel
 
