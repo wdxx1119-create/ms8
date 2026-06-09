@@ -6,7 +6,17 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 from ms8.engine_core.security.shadow import get_shadow_system
+from ms8.engine_core.security.shadow import shadow_guard as shadow_guard_mod
+
+
+@pytest.fixture(autouse=True)
+def _isolate_shadow_singletons():
+    shadow_guard_mod._SHADOW_SINGLETONS.clear()
+    yield
+    shadow_guard_mod._SHADOW_SINGLETONS.clear()
 
 
 def _cfg(base: Path) -> dict:

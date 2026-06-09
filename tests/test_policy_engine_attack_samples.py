@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import pytest
 
+ClosedPolicyEngine = pytest.importorskip("ms8_policy_core.engine").ClosedPolicyEngine
+
 
 def _closed_engine():
-    from ms8_policy_core.engine import ClosedPolicyEngine
-
     return ClosedPolicyEngine()
 
 

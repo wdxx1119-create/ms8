@@ -11,6 +11,7 @@
 - `CI` now targets `3.10`, `3.11`, `3.12`, and `3.13`.
 - The main MS8 repository no longer advertises policy-core wheel automation that depends on private source not stored in this repo.
 - Release artifacts were rebuilt after removing duplicate `* 2` packaging leftovers and Python cache noise.
+- `ms8-policy-core` remains an optional closed-backend enhancement so the default `pip install ms8` path stays cross-platform.
 
 ## Validation
 
