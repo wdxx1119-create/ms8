@@ -12,7 +12,7 @@ All notable changes to this project are documented in this file.
 ### Fixed
 - Removed stray duplicate packaging artifacts (`* 2`) before build so release artifacts stay clean.
 - Kept the main release path stable while preserving private policy-core distribution outside the public MS8 repo.
-- Raised the minimum `ms8-policy-core` dependency to `0.1.1` so encrypted private-key detection is present in the published closed backend.
+- Published `ms8-policy-core` `0.1.1` as an optional closed-backend enhancement with encrypted private-key detection, while keeping the default MS8 install cross-platform.
 
 ## [0.2.0] - 2026-05-31
 
