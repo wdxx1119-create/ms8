@@ -4,7 +4,10 @@ import json
 import logging
 from pathlib import Path
 
-import tomllib
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - exercised on Python 3.10
+    import tomli as tomllib
 
 from .client_config import LEGACY_PATH_HINT, snippet_paths, target_paths, target_profile
 from .common import connect_root
