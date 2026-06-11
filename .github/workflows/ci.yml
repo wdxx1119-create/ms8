@@ -62,7 +62,7 @@ jobs:
 
       - name: Build artifacts
         run: |
-          python -m pip install --upgrade pip build
+          python -m pip install --upgrade pip build wheel
           python -m build
 
       - name: Install from wheel
@@ -84,7 +84,7 @@ jobs:
 
       - name: Build wheel
         run: |
-          python -m pip install --upgrade pip build
+          python -m pip install --upgrade pip build wheel
           python -m build --no-isolation
 
       - name: Install wheel with dependencies (online clean-room)
@@ -138,7 +138,7 @@ jobs:
       - name: Install build tooling
         run: |
           python -m pip install --upgrade pip
-          python -m pip install build
+          python -m pip install build wheel
 
       - name: Build artifacts
         run: python -m build --no-isolation
