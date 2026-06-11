@@ -250,9 +250,7 @@ class OpenPolicyEngine:
     @staticmethod
     def _looks_like_noise(text: str) -> bool:
         raw = str(text or "").strip()
-        if len(raw) <= 2:
-            return True
-        if raw.lower() in {"ok", "好的", "收到", "继续", "yes", "no", "ty"}:
+        if raw.lower() in {"ok", "好的", "收到", "继续", "yes", "no", "ty", "嗯", "好"}:
             return True
         return bool(re.fullmatch(r"[\W_]+", raw))
 
