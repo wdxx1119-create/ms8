@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import collections
 from types import SimpleNamespace
 from typing import Any

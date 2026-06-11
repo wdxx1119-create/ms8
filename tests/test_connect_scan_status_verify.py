@@ -4,7 +4,8 @@ import json
 from pathlib import Path
 
 from ms8.connect.adapter_registry import scan_tools
-from ms8.connect.scripts import status, verify_client_configs as verify
+from ms8.connect.scripts import status
+from ms8.connect.scripts import verify_client_configs as verify
 
 
 def test_scan_tools_available_map(monkeypatch) -> None:

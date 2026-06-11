@@ -8,15 +8,19 @@ from pathlib import Path
 
 import pytest
 
+from ms8.engine_core import policy_engine_loader
 from ms8.engine_core.security.shadow import get_shadow_system
 from ms8.engine_core.security.shadow import shadow_guard as shadow_guard_mod
 
 
 @pytest.fixture(autouse=True)
-def _isolate_shadow_singletons():
+def _isolate_shadow_singletons(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("MS8_POLICY_BACKEND", "open")
+    policy_engine_loader.reset_policy_engine_for_tests()
     shadow_guard_mod._SHADOW_SINGLETONS.clear()
     yield
     shadow_guard_mod._SHADOW_SINGLETONS.clear()
+    policy_engine_loader.reset_policy_engine_for_tests()
 
 
 def _cfg(base: Path) -> dict:

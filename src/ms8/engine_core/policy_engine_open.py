@@ -215,7 +215,10 @@ class OpenPolicyEngine:
             return _ok({"takeover": takeover, "allow": True, "mode": mode}, payload)
         if kind == "recovery_admission":
             text = str(payload.get("text", "")).strip()
-            route = "rejected" if self._looks_like_noise(text) else "accepted"
+            # Shadow recovery replays already-captured sealed writes. Do not
+            # apply ordinary low-value/noise filtering here, or tiny but valid
+            # payloads can be silently dropped during disaster recovery.
+            route = "rejected" if not text else "accepted"
             return _ok({"route": route, "allow": route == "accepted", "mode": "observe"}, payload)
         return _ok({"allow": True, "mode": "observe"}, payload)
 

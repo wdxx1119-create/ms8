@@ -11,7 +11,7 @@ class _Searcher:
     def __init__(self, doc_count: int) -> None:
         self._doc_count = doc_count
 
-    def __enter__(self) -> "_Searcher":
+    def __enter__(self) -> _Searcher:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:  # noqa: ANN001
