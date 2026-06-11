@@ -26,4 +26,5 @@ repo_public/
 .ruff_cache/
 .coverage
 .coverage.*
+.coverage*
 htmlcov/
