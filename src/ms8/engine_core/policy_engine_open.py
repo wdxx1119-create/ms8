@@ -64,7 +64,7 @@ class OpenPolicyEngine:
         conflict_flags: list[str] = []
 
         if self._looks_like_noise(text):
-            route = "short_term_only"
+            route = "rejected"
             reasons.append("noise_low_value")
             should_persist_main = False
             should_index = False
@@ -86,7 +86,7 @@ class OpenPolicyEngine:
                 should_write_memory_md = True
 
         if self._looks_like_conflict(text):
-            conflict_flags.append("possible_conflict")
+            conflict_flags.append(self._conflict_flag(text))
             reasons.append("conflict_signal")
             if route not in {"rejected", "short_term_only"}:
                 route = "pending_review"
@@ -254,7 +254,7 @@ class OpenPolicyEngine:
             return True
         if raw.lower() in {"ok", "好的", "收到", "继续", "yes", "no", "ty"}:
             return True
-        return bool(re.fullmatch(r"[\\W_]+", raw))
+        return bool(re.fullmatch(r"[\W_]+", raw))
 
     @staticmethod
     def _redact_sensitive(text: str) -> tuple[str, list[str]]:
@@ -273,4 +273,16 @@ class OpenPolicyEngine:
     @staticmethod
     def _looks_like_conflict(text: str) -> bool:
         raw = str(text or "")
-        return ("启用" in raw and "禁用" in raw) or ("enable" in raw.lower() and "disable" in raw.lower())
+        lowered = raw.lower()
+        return (
+            ("启用" in raw and "禁用" in raw)
+            or ("使用" in raw and any(k in raw for k in ["不要", "别", "不应", "不能"]))
+            or ("enable" in lowered and "disable" in lowered)
+        )
+
+    @staticmethod
+    def _conflict_flag(text: str) -> str:
+        raw = str(text or "")
+        if "使用" in raw and any(k in raw for k in ["不要", "别", "不应", "不能"]):
+            return "negation_conflict"
+        return "possible_conflict"
