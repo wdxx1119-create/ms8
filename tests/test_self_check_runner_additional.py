@@ -41,13 +41,26 @@ def test_run_self_check_concurrent_skip(monkeypatch, tmp_path: Path) -> None:
 
     # force lock contention branch
     class _Lock:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
         def fileno(self):
             return 1
 
         def close(self):
             return None
 
-    monkeypatch.setattr(check_runner.Path, "open", lambda *a, **k: _Lock())  # type: ignore[arg-type]
+    original_open = check_runner.Path.open
+
+    def _fake_open(self: Path, *args, **kwargs):
+        if self.name == "check.lock":
+            return _Lock()
+        return original_open(self, *args, **kwargs)
+
+    monkeypatch.setattr(check_runner.Path, "open", _fake_open)  # type: ignore[arg-type]
 
     def _raise_blocking(*_a, **_k):
         raise BlockingIOError()
