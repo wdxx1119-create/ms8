@@ -3,8 +3,8 @@ from __future__ import annotations
 import datetime as dt
 from pathlib import Path
 
-from ms8.engine_core.learning import MemoryLearning
 from ms8.engine_core import learning as learning_mod
+from ms8.engine_core.learning import MemoryLearning
 
 
 def _mk_learning(tmp_path: Path) -> MemoryLearning:
