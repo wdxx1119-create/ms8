@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import threading
 from pathlib import Path
 
 from ms8.engine_core import file_write_guard as fw

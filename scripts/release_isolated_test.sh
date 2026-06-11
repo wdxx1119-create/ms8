@@ -49,7 +49,11 @@ LOG_DIR="$BASE_TMP/logs"
 mkdir -p "$TMP_HOME" "$TMP_DATA" "$TMP_CONFIG" "$TMP_LOGS" "$LOG_DIR"
 
 "$PY_BIN" -m venv --system-site-packages "$TMP_VENV"
-"$TMP_VENV/bin/python" -m pip install --no-deps "$WHEEL"
+if [[ "${MS8_RELEASE_INSTALL_NO_DEPS:-0}" == "1" ]]; then
+  "$TMP_VENV/bin/python" -m pip install --no-deps "$WHEEL"
+else
+  "$TMP_VENV/bin/python" -m pip install "$WHEEL"
+fi
 
 run_step() {
   local name="$1"
@@ -118,6 +122,12 @@ find "$TMP_MS8_HOME" -type f | sed 's#^# - #'
 echo "Result: $TEST_STATUS"
 
 if [[ "$MODE" == "--cleanup" ]]; then
+  # Some security/shadow files are intentionally written read-only. They live
+  # under this test-only temp root, so make them removable before cleanup.
+  chmod -R u+rwX "$BASE_TMP" 2>/dev/null || true
+  if command -v chflags >/dev/null 2>&1; then
+    chflags -R nouchg "$BASE_TMP" 2>/dev/null || true
+  fi
   rm -rf "$BASE_TMP"
   echo "[INFO] cleanup complete: $BASE_TMP"
 else

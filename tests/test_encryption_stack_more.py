@@ -7,7 +7,12 @@ import pytest
 
 from ms8.engine_core.security.encryption import recovery
 from ms8.engine_core.security.encryption.crypto_manager import CryptoError, CryptoManager
-from ms8.engine_core.security.encryption.file_crypto import FileCryptoError, decrypt_bytes, encrypt_bytes, is_encrypted_blob
+from ms8.engine_core.security.encryption.file_crypto import (
+    FileCryptoError,
+    decrypt_bytes,
+    encrypt_bytes,
+    is_encrypted_blob,
+)
 from ms8.engine_core.security.encryption.key_manager import KeyManager, KeyManagerError
 
 
