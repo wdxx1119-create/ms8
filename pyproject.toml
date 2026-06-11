@@ -23,7 +23,8 @@ dependencies = [
   "jieba>=0.42.1",
   "ollama>=0.4.0",
   "cryptography>=44.0.0",
-  "argon2-cffi>=25.0.0"
+  "argon2-cffi>=25.0.0",
+  "tomli>=2.0.0; python_version < '3.11'"
 ]
 
 [project.optional-dependencies]
