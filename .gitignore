@@ -28,3 +28,13 @@ repo_public/
 .coverage.*
 .coverage*
 htmlcov/
+experiments/ms8_lan_v0/
+docs/ABSORB_NEXT_PHASE.md
+docs/GITHUB_RELEASE_PREP_*.md
+docs/MS8_LOCAL_ABSORB_STRUCTURE_REPORT.md
+docs/MS8_PROJECT_MEMORY_V0_DESIGN.md
+docs/MS8_REPAIR_STATUS_*.md
+docs/NEXT_PHASE_DEFERRED.md
+docs/POLICY_ENGINE_CAPABILITY_MATRIX.md
+docs/POLICY_ENGINE_RELEASE.md
+docs/WRITE_PATH_STATUS_*.md
