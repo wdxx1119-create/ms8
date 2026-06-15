@@ -1,6 +1,6 @@
 include README.md
 include LICENSE
-recursive-include src/ms8/connect *.md
+recursive-include src/ms8/connect *.md *.yaml *.json
 global-exclude *.db *.sqlite *.jsonl .env
 global-exclude .coverage .coverage.* *.pyc
 prune .ms8_runtime

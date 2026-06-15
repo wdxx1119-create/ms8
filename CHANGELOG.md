@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.2.13] - 2026-06-16
+
+### Fixed
+- Aligned package, runtime, README, and changelog version metadata with `pyproject.toml`.
+- Aligned README license display with the repository's `GPL-3.0-or-later` license metadata.
+- Included MCP YAML and JSON resource files in wheel/sdist package data.
+
+### Changed
+- Replaced local machine-specific adapter registry probe paths with portable template metadata.
+
 ## [0.2.12] - 2026-06-08
 
 ### Changed
