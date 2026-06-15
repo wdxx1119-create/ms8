@@ -23,7 +23,7 @@ PYTHONPATH=src \
 MS8_HOME="${MS8_HOME_DIR}" \
 OPENCLAW_MEMORY_SESSION_INGEST_ENABLED="0" \
 MS8_DOCTOR_ALLOW_DEGRADED="1" \
-"${PYTHON_BIN}" -m src.ms8 doctor
+"${PYTHON_BIN}" -m ms8 doctor
 
 echo "[STEP] build artifacts"
 "${PYTHON_BIN}" -m build
