@@ -10,16 +10,9 @@
     ],
     "metadata": {
       "ok": true,
-      "tools": {
-        "python": "/opt/homebrew/bin/python3",
-        "ollama": "/opt/homebrew/bin/ollama",
-        "git": "/usr/bin/git"
-      },
-      "available": {
-        "python": true,
-        "ollama": true,
-        "git": true
-      }
+      "description": "Portable default adapter template. Runtime tool discovery is written under MS8_HOME/connect/runtime.",
+      "tools": {},
+      "available": {}
     }
   }
 }
