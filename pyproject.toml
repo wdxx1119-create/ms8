@@ -67,7 +67,11 @@ where = ["src"]
 exclude = ["ms8.engine_core.tests*"]
 
 [tool.setuptools.package-data]
-ms8 = ["connect/*.md"]
+ms8 = [
+  "connect/*.md",
+  "connect/config/*.yaml",
+  "connect/adapter_registry/*.json"
+]
 
 [tool.ruff]
 line-length = 120
