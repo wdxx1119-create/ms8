@@ -1,0 +1,17 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: detect-private-key
+      - id: detect-aws-credentials
+        args: ["--allow-missing-credentials"]
+
+  - repo: local
+    hooks:
+      - id: forbid-internal-docs
+        name: 拦截内部文档提交
+        description: 检测文件名或内容是否包含内部文档标记，防止敏感文档泄露到仓库
+        entry: scripts/pre-commit-forbid-internal.sh
+        language: script
+        files: ".*"
+        stages: [pre-commit]
