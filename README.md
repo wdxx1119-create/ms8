@@ -7,9 +7,9 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.2.11-blue" alt="version">
+  <img src="https://img.shields.io/badge/version-0.2.13-blue" alt="version">
   <img src="https://img.shields.io/badge/python-3.10--3.13-green" alt="python">
-  <img src="https://img.shields.io/badge/license-MIT-orange" alt="license">
+  <img src="https://img.shields.io/badge/license-GPL--3.0--or--later-orange" alt="license">
   <img src="https://img.shields.io/badge/tests-unit%20%2B%20integration-brightgreen" alt="tests">
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey" alt="platform">
 </p>
@@ -87,7 +87,7 @@ ms8 agent run install --profile DEFAULT_SAFE
 >
 > ```bash
 > python -m build --wheel --outdir dist
-> pip install --force-reinstall dist/ms8-0.2.11-py3-none-any.whl
+> pip install --force-reinstall dist/ms8-0.2.13-py3-none-any.whl
 > ```
 
 ### Agent 权限模式（差异对比）
@@ -469,7 +469,7 @@ python -m build --no-isolation
 
 ## 许可证
 
-MIT License
+GNU General Public License v3.0 or later
 
 ---
 
