@@ -46,7 +46,61 @@ TMP_DATA="$TMP_MS8_HOME/data"
 TMP_CONFIG="$TMP_MS8_HOME/config"
 TMP_LOGS="$TMP_MS8_HOME/logs"
 LOG_DIR="$BASE_TMP/logs"
-mkdir -p "$TMP_HOME" "$TMP_DATA" "$TMP_CONFIG" "$TMP_LOGS" "$LOG_DIR"
+SMOKE_DIR="$BASE_TMP/smoke"
+mkdir -p "$TMP_HOME" "$TMP_DATA" "$TMP_CONFIG" "$TMP_LOGS" "$LOG_DIR" "$SMOKE_DIR"
+
+cat >"$SMOKE_DIR/connect_package_resources.py" <<'PY'
+from ms8.connect.scripts.common import connect_package_root, load_cfg, read_json
+
+root = connect_package_root()
+cfg_path = root / "config" / "mcp_config.yaml"
+registry_path = root / "adapter_registry" / "adapters.json"
+
+assert cfg_path.exists(), f"missing packaged MCP config: {cfg_path}"
+assert registry_path.exists(), f"missing packaged adapter registry: {registry_path}"
+
+cfg = load_cfg()
+assert cfg.get("mcp", {}).get("enabled") is True, cfg
+
+registry = read_json(registry_path)
+adapter = registry.get("ms8_default_adapter", {})
+assert adapter.get("status") == "active", registry
+capabilities = set(adapter.get("capabilities", []))
+expected = {"submit", "query", "context", "status", "profile"}
+assert expected.issubset(capabilities), capabilities
+
+print("connect package resources ok")
+PY
+
+cat >"$SMOKE_DIR/absorb_parser_smoke.py" <<'PY'
+import os
+from pathlib import Path
+
+from ms8.absorb.parser import parse_document
+
+sample = Path(os.environ["MS8_HOME"]) / "absorb-smoke.txt"
+sample.write_text("MS8 absorb smoke document\n", encoding="utf-8")
+
+doc = parse_document(sample)
+assert doc.parse_status == "parsed", doc
+assert doc.file_type == ".txt", doc
+assert "MS8 absorb smoke document" in doc.content_text, doc.content_text
+assert len(doc.content_hash) == 64, doc.content_hash
+
+print("absorb parser smoke ok")
+PY
+
+cat >"$SMOKE_DIR/ask_records_smoke.py" <<'PY'
+from ms8.runtime import ensure_runtime_dirs
+
+paths = ensure_runtime_dirs()
+records = paths["memories"]
+assert records.exists(), f"missing memory records file: {records}"
+text = records.read_text(encoding="utf-8")
+assert "release isolated test memory" in text, text[-1000:]
+
+print("ask records smoke ok")
+PY
 
 "$PY_BIN" -m venv --system-site-packages "$TMP_VENV"
 if [[ "${MS8_RELEASE_INSTALL_NO_DEPS:-0}" == "1" ]]; then
@@ -92,8 +146,11 @@ else
   echo "[INFO] ms8 init command not found; initialization is implicit on first command."
 fi
 run_step "doctor" "$TMP_VENV/bin/ms8" doctor
+run_step "connect_package_resources" "$TMP_VENV/bin/python" "$SMOKE_DIR/connect_package_resources.py"
+run_step "absorb_parser_text" "$TMP_VENV/bin/python" "$SMOKE_DIR/absorb_parser_smoke.py"
 run_step "ask_write" "$TMP_VENV/bin/ms8" ask "记住 release isolated test memory"
 run_step "ask_search" "$TMP_VENV/bin/ms8" ask "release isolated" --limit 5
+run_step "ask_records_written" "$TMP_VENV/bin/python" "$SMOKE_DIR/ask_records_smoke.py"
 run_step "clean_dry_run" "$TMP_VENV/bin/ms8" clean --dry-run
 run_step "reset_dry_run" "$TMP_VENV/bin/ms8" reset --dry-run
 run_step "uninstall_dry_run" "$TMP_VENV/bin/ms8" uninstall --dry-run
