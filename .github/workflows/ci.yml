@@ -46,7 +46,7 @@ jobs:
           MS8_HOME: /tmp/ms8-ci
           OPENCLAW_MEMORY_SESSION_INGEST_ENABLED: "0"
           MS8_DOCTOR_ALLOW_DEGRADED: "1"
-        run: python -m src.ms8 doctor
+        run: python -m ms8 doctor
 
   package-smoke:
     runs-on: ubuntu-latest
