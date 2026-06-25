@@ -91,9 +91,10 @@ def test_doctor_warn_details_mismatch_line(monkeypatch, capsys, tmp_path: Path) 
     )
     code = doctor.run_doctor()
     out = capsys.readouterr().out
-    assert code == 0
+    assert code == 1
     assert "self-check detail mismatch" in out
     assert "governance trend risk yellow" in out
+    assert "Overall: warn" in out
     assert "memory_quality_health: warn" in out
 
 
@@ -126,7 +127,7 @@ def test_doctor_degraded_returns_one_when_runtime_degraded(monkeypatch, tmp_path
     assert code == 1
 
 
-def test_doctor_trend_red_with_memory_only_drag_stays_healthy(monkeypatch, capsys, tmp_path: Path) -> None:
+def test_doctor_trend_red_with_memory_only_drag_degrades(monkeypatch, capsys, tmp_path: Path) -> None:
     _baseline(monkeypatch, tmp_path)
     monkeypatch.setattr(doctor, "get_engine_monitoring_status", lambda: {"enabled": True, "alerts": []})
     monkeypatch.setattr(
@@ -153,8 +154,9 @@ def test_doctor_trend_red_with_memory_only_drag_stays_healthy(monkeypatch, capsy
     )
     code = doctor.run_doctor()
     out = capsys.readouterr().out
-    assert code == 0
+    assert code == 1
     assert "historical memory-quality drag" in out
+    assert "Overall: degraded" in out
 
 
 def test_doctor_trend_red_with_active_runtime_governance_risk_degrades(monkeypatch, capsys, tmp_path: Path) -> None:

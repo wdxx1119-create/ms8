@@ -281,7 +281,7 @@ def run_doctor() -> int:
     print(f"Log dir: {get_log_dir()}")
     print(f"Install mode: {detect_install_mode()}")
     runtime_status = "healthy"
-    print(f"Status: {runtime_status}\n")
+    print("Status: collecting diagnostics\n")
     print("Checks:")
     print(" ✅ runtime dir: OK")
     print(" ✅ data dir: OK")
