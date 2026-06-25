@@ -84,7 +84,7 @@ class SemanticMemorySearch:
                 client = ollama.Client(host=host, trust_env=False)
                 response = client.embeddings(model=self.embedding_model, prompt=text)
                 return [float(value) for value in response["embedding"]]
-            except (RuntimeError, TypeError, ValueError) as exc:
+            except Exception as exc:
                 print(f"[SemanticSearch] Ollama client embedding failed, will fallback to HTTP API: {exc}")
         # Fallback: call Ollama HTTP API directly, so embeddings still work without python ollama package.
         try:

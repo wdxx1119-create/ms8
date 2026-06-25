@@ -653,7 +653,16 @@ class SelfImprovementEngine:
         Returns:
             Dict with validation results
         """
-        results: dict[str, Any] = {"total_tests": 0, "passed": 0, "failed": 0, "score": 0.0, "details": []}
+        results: dict[str, Any] = {
+            "status": "error",
+            "ok": False,
+            "message": "validation suite contains no executable tests",
+            "total_tests": 0,
+            "passed": 0,
+            "failed": 0,
+            "score": 0.0,
+            "details": [],
+        }
 
         # Run memory tests
         for test in self.test_suite.get("memory_tests", []):
@@ -670,5 +679,12 @@ class SelfImprovementEngine:
         # Calculate score
         if results["total_tests"] > 0:
             results["score"] = results["passed"] / results["total_tests"]
+            results["ok"] = results["failed"] == 0
+            results["status"] = "success" if results["ok"] else "failed"
+            results["message"] = (
+                "validation suite passed"
+                if results["ok"]
+                else f"validation suite failed ({results['failed']} failed)"
+            )
 
         return results

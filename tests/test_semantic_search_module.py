@@ -132,6 +132,28 @@ def test_search_fallback_scoring_without_dense(tmp_path, monkeypatch):
     assert all(item["score"] > 0 for item in results)
 
 
+def test_ollama_embedding_falls_back_on_client_runtime_error(tmp_path, monkeypatch):
+    monkeypatch.setattr(mod, "get_config", lambda: _cfg(tmp_path))
+    monkeypatch.setattr(mod, "FileMemoryStore", _DummyStore)
+
+    class _BoomClient:
+        def __init__(self, host: str, trust_env: bool = False) -> None:
+            _ = (host, trust_env)
+
+        def embeddings(self, model: str, prompt: str) -> dict:
+            _ = (model, prompt)
+            raise Exception("context length exceeded")
+
+    class _BoomOllama:
+        Client = _BoomClient
+
+    searcher = mod.SemanticMemorySearch()
+    monkeypatch.setattr(mod, "ollama", _BoomOllama)
+    monkeypatch.setattr(mod.urllib.request, "urlopen", lambda *a, **k: (_ for _ in ()).throw(OSError("offline")))
+
+    assert searcher._ollama_embedding("hello") is None
+
+
 def test_repair_missing_dense(tmp_path, monkeypatch):
     monkeypatch.setattr(mod, "get_config", lambda: _cfg(tmp_path))
     monkeypatch.setattr(mod, "FileMemoryStore", _DummyStore)

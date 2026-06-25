@@ -4,6 +4,7 @@ import json
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 from ms8.engine_core.maintenance.self_check import check_specs as cs
 
@@ -47,8 +48,23 @@ def test_m1_m2_m3_branches(tmp_path: Path) -> None:
     assert out_no_api["status"] == "warn"
 
     setattr(core, "restore_short_term_by_topic", lambda *args, **kwargs: None)
+    wm.write_text("\n", encoding="utf-8")
+    out_empty_ready = cs._check_m1_short_term_persistence(core, {})
+    assert out_empty_ready["status"] == "pass"
+
+    wm.write_text('{"x":1}\n', encoding="utf-8")
     out_ok = cs._check_m1_short_term_persistence(core, {})
     assert out_ok["status"] == "pass"
+
+    workspace_memory = tmp_path / "workspace" / "memory" / "working_memory.jsonl"
+    workspace_memory.parent.mkdir(parents=True, exist_ok=True)
+    workspace_memory.write_text('{"content":"persisted"}\n', encoding="utf-8")
+    missing_legacy = tmp_path / "working_memory.jsonl"
+    if missing_legacy.exists():
+        missing_legacy.unlink()
+    core.working_memory = SimpleNamespace(persistence_file=workspace_memory)
+    out_new_path = cs._check_m1_short_term_persistence(core, {})
+    assert out_new_path["status"] == "pass"
 
     # m2: leaked rejected -> fail, then pass.
     idx = tmp_path / "auto_memory_index.json"
@@ -130,6 +146,16 @@ def test_m4_m5_m6_branches(tmp_path: Path) -> None:
     p.write_text(json.dumps({"duration_ms": 10.0, "timestamp": now}) + "\n", encoding="utf-8")
 
 
+def test_l2_admission_distribution_empty_log_is_initialized(tmp_path: Path) -> None:
+    core = _Core(tmp_path)
+    p = tmp_path / "auto_memory_pipeline.log"
+    p.write_text("", encoding="utf-8")
+
+    out = cs._check_l2_admission_distribution(core, {})
+
+    assert out["status"] == "pass"
+
+
 def test_m7_m8_branches(tmp_path: Path) -> None:
     core = _Core(tmp_path)
 
@@ -153,8 +179,12 @@ def test_m7_m8_branches(tmp_path: Path) -> None:
     out_m8_missing = cs._check_m8_pipeline_latency_budget(core, {})
     assert out_m8_missing["status"] == "warn"
 
-    # m8 fail when p95 too high
     plog = tmp_path / "auto_memory_pipeline.log"
+    plog.write_text("", encoding="utf-8")
+    out_m8_empty = cs._check_m8_pipeline_latency_budget(core, {})
+    assert out_m8_empty["status"] == "pass"
+
+    # m8 fail when p95 too high
     plog.write_text(
         "\n".join([json.dumps({"duration_ms": 4000.0}), json.dumps({"duration_ms": 3500.0})]) + "\n",
         encoding="utf-8",

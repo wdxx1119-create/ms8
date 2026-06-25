@@ -78,8 +78,12 @@ def ensure_runtime_dirs() -> dict[str, Path]:
     compression_state = root / "memory" / "compression_state.json"
     maintenance_window = health / "maintenance_window.json"
     quarantine_file = root / "memory" / "noncanonical_quarantine.jsonl"
+    repair_logs_dir = root / "memory" / "logs"
+    repair_audit_file = repair_logs_dir / "repair_ops_audit.jsonl"
     quarantine_file.parent.mkdir(parents=True, exist_ok=True)
+    repair_logs_dir.mkdir(parents=True, exist_ok=True)
     quarantine_file.touch(exist_ok=True)
+    repair_audit_file.touch(exist_ok=True)
     if not compression_state.exists():
         compression_state.write_text(
             json.dumps(
@@ -147,6 +151,7 @@ def ensure_runtime_dirs() -> dict[str, Path]:
         "activity": activity,
         "compression_state": compression_state,
         "quarantine": quarantine_file,
+        "repair_audit": repair_audit_file,
         "maintenance_window": maintenance_window,
         "config_file": config_file,
     }
@@ -1345,6 +1350,39 @@ def get_engine_shadow_status() -> dict:
     return {"status": "unsupported"}
 
 
+def _shadow_runtime_summary(raw: dict[str, Any] | Any) -> dict[str, Any]:
+    if not isinstance(raw, dict):
+        return {"enabled": False, "available": False, "status": "unavailable"}
+    manifest = raw.get("manifest", {}) if isinstance(raw.get("manifest", {}), dict) else {}
+    reason = str(raw.get("reason") or manifest.get("reason") or "").strip()
+    seal_session_id = str(raw.get("seal_session_id") or manifest.get("seal_session_id") or "").strip()
+    mode = str(raw.get("mode", manifest.get("mode", "unknown")) or "unknown").strip()
+    seal_level = str(raw.get("seal_level", manifest.get("seal_level", "")) or "").strip()
+    sealed = bool(raw.get("sealed", manifest.get("sealed", False)))
+    startup_findings = raw.get("startup_findings", manifest.get("startup_findings", []))
+    if not isinstance(startup_findings, list):
+        startup_findings = []
+    startup_findings = [str(item).strip() for item in startup_findings if str(item).strip()]
+    manifest_signature_valid = manifest.get("manifest_signature_valid", raw.get("manifest_signature_valid", True))
+    summary = {
+        "enabled": bool(raw.get("enabled", False)),
+        "available": True,
+        "status": "ok",
+        "mode": mode,
+        "sealed": sealed,
+        "seal_level": seal_level,
+        "reason": reason,
+        "seal_session_id": seal_session_id,
+        "startup_findings": startup_findings,
+        "manifest_signature_valid": bool(manifest_signature_valid),
+    }
+    if reason == "startup_integrity_failed" or startup_findings:
+        summary["status"] = "degraded"
+    elif sealed:
+        summary["status"] = "warn"
+    return summary
+
+
 def get_engine_knowledge_graph_stats() -> dict:
     engine = _engine()
     if hasattr(engine, "get_knowledge_graph_stats"):
@@ -1990,6 +2028,7 @@ def get_governance_report() -> dict[str, Any]:
         else False
     )
     monitoring = get_engine_monitoring_status()
+    shadow_runtime = _shadow_runtime_summary(get_engine_shadow_status())
     rates = monitoring.get("rates", {}) if isinstance(monitoring, dict) and isinstance(monitoring.get("rates", {}), dict) else {}
     rates_v2 = (
         monitoring.get("rates_v2", {})
@@ -2098,6 +2137,7 @@ def get_governance_report() -> dict[str, Any]:
         "review_governance_report_exists": review_report.exists(),
         "compression_freshness_hours": compression_hours,
         "compression_severity": compression_severity,
+        "shadow_runtime": shadow_runtime,
         "capture_rate": capture_rate,
         "capture_rate_samples": auto_total_entries,
         "capture_rate_target": capture_min,
@@ -2170,6 +2210,20 @@ def get_governance_report() -> dict[str, Any]:
     if fallback_write_count > 5 or schema_invalid_active > 0:
         retrieval_safety_health = "red"
         overall_reasons.append("retrieval_safety_high_risk")
+
+    shadow_reason = str(shadow_runtime.get("reason", "") or "").strip().lower()
+    shadow_findings = shadow_runtime.get("startup_findings", [])
+    shadow_degraded = str(shadow_runtime.get("status", "ok")).strip().lower() == "degraded"
+    shadow_manifest_invalid = not bool(shadow_runtime.get("manifest_signature_valid", True))
+    if shadow_reason == "startup_integrity_failed" or shadow_degraded or shadow_manifest_invalid:
+        runtime_health = "red"
+        security_integrity_health = "red"
+        overall_reasons.append("shadow_startup_integrity_failed")
+    elif bool(shadow_runtime.get("sealed", False)):
+        security_integrity_health = "yellow" if security_integrity_health == "green" else security_integrity_health
+        overall_reasons.append("shadow_sealed")
+    if isinstance(shadow_findings, list) and shadow_findings:
+        overall_reasons.extend(f"shadow_finding:{str(item)}" for item in shadow_findings if str(item).strip())
 
     # Optional policy attack-sample monitor (produced by scripts/policy_attack_sample_report.py).
     policy_attack_report: dict[str, Any] = {}
