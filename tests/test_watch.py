@@ -1,3 +1,4 @@
+import io
 from urllib.parse import unquote
 
 from ms8 import watch
@@ -97,3 +98,18 @@ def test_run_watch_once_emits_encoded_next_actions(monkeypatch, capsys) -> None:
     tick_line = next(line for line in out.splitlines() if line.startswith("watch tick:"))
     encoded = tick_line.split("next_actions=", 1)[1].split(" ", 1)[0]
     assert [unquote(item) for item in encoded.split("|")] == ["ms8 ops governance"]
+
+
+def test_safe_stdout_write_replaces_unencodable_characters(monkeypatch) -> None:
+    class FakeStdout(io.StringIO):
+        encoding = "ascii"
+
+        def flush(self) -> None:
+            return None
+
+    fake_stdout = FakeStdout()
+    monkeypatch.setattr(watch.sys, "stdout", fake_stdout)
+
+    watch._safe_stdout_write("watch next: caf\xe9\n")
+
+    assert fake_stdout.getvalue() == "watch next: caf?\n"
