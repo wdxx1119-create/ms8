@@ -116,6 +116,50 @@ TOOL_DEFINITIONS: dict[str, dict[str, Any]] = {
             "additionalProperties": True,
         },
     },
+    "memory_catalog": {
+        "description": "Return counts and dimensions for the persisted MS8 memory corpus.",
+        "inputSchema": {"type": "object", "properties": {}, "additionalProperties": True},
+    },
+    "memory_list": {
+        "description": "List persisted memories with deterministic pagination and optional filters.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "offset": {"type": "integer", "minimum": 0, "default": 0},
+                "limit": {"type": "integer", "minimum": 1, "maximum": 500, "default": 100},
+                "view": {"type": "string", "enum": ["summary", "full"], "default": "summary"},
+                "source": {"type": "string"},
+                "category": {"type": "string"},
+                "status": {"type": "string"},
+            },
+            "additionalProperties": True,
+        },
+    },
+    "memory_get": {
+        "description": "Return one persisted memory by stable id.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "id": {"type": "string"},
+                "view": {"type": "string", "enum": ["summary", "full"], "default": "full"},
+            },
+            "required": ["id"],
+            "additionalProperties": True,
+        },
+    },
+    "memory_search": {
+        "description": "Search persisted memories with deterministic lexical retrieval.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "text": {"type": "string"},
+                "limit": {"type": "integer", "minimum": 1, "maximum": 500, "default": 20},
+                "view": {"type": "string", "enum": ["summary", "full"], "default": "summary"},
+            },
+            "required": ["text"],
+            "additionalProperties": True,
+        },
+    },
 }
 
 
