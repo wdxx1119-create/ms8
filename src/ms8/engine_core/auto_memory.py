@@ -7,8 +7,11 @@ import glob
 import hashlib
 import json
 import logging
+import os
 import re
+import shutil
 import threading
+from contextlib import contextmanager
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -92,6 +95,14 @@ class AutoMemoryExtractor:
         if not self.session_state_file.is_absolute():
             self.session_state_file = memory_core.config["workspace_dir"] / self.session_state_file
         self.session_state_file.parent.mkdir(parents=True, exist_ok=True)
+        self.session_lock_dir = self.session_state_file.with_suffix(self.session_state_file.suffix + ".lock")
+        self.session_lock_info_file = self.session_lock_dir / "owner.json"
+        self.session_lock_stale_seconds = int(
+            session_cfg.get(
+                "lock_stale_seconds",
+                max(120, self.session_process_timeout_seconds * 4, self.session_sync_interval_seconds * 2),
+            )
+        )
 
         self.pipeline = None
         build_pipeline = _get_build_pipeline_fn()
@@ -129,6 +140,131 @@ class AutoMemoryExtractor:
     def _save_session_state(self, state: dict[str, Any]) -> None:
         state["recent_hashes"] = list(state.get("recent_hashes", []))[-2500:]
         atomic_write_json(self.session_state_file, state, ensure_ascii=False, indent=2)
+
+    @staticmethod
+    def _utc_now_iso() -> str:
+        return datetime.now(timezone.utc).isoformat()
+
+    @staticmethod
+    def _parse_iso_ts(raw: str) -> datetime | None:
+        text = str(raw or "").strip()
+        if not text:
+            return None
+        try:
+            if text.endswith("Z"):
+                text = text[:-1] + "+00:00"
+            dt = datetime.fromisoformat(text)
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc)
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _pid_alive(pid: int) -> bool:
+        if pid <= 0:
+            return False
+        if pid == os.getpid():
+            return True
+        try:
+            if os.name == "nt":
+                import ctypes
+
+                PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+                STILL_ACTIVE = 259
+                handle = ctypes.windll.kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+                if not handle:
+                    return False
+                exit_code = ctypes.c_ulong()
+                ok = ctypes.windll.kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code))
+                ctypes.windll.kernel32.CloseHandle(handle)
+                return bool(ok and exit_code.value == STILL_ACTIVE)
+            os.kill(pid, 0)
+            return True
+        except PermissionError:
+            return True
+        except OSError:
+            return False
+        except Exception:
+            return False
+
+    def _read_session_lock_info(self) -> dict[str, Any]:
+        if not self.session_lock_info_file.exists():
+            return {}
+        try:
+            payload = json.loads(self.session_lock_info_file.read_text(encoding="utf-8"))
+            return payload if isinstance(payload, dict) else {}
+        except (OSError, TypeError, ValueError, json.JSONDecodeError):
+            return {}
+
+    @contextmanager
+    def _session_sync_lock(self) -> Any:
+        attempts = 0
+        acquired = False
+        lock_info = {
+            "pid": os.getpid(),
+            "started_at": self._utc_now_iso(),
+            "state_file": str(self.session_state_file),
+        }
+        while attempts < 2 and not acquired:
+            attempts += 1
+            try:
+                self.session_lock_dir.mkdir(parents=True, exist_ok=False)
+                atomic_write_json(self.session_lock_info_file, lock_info, ensure_ascii=False, indent=2)
+                acquired = True
+                break
+            except FileExistsError:
+                owner = self._read_session_lock_info()
+                owner_pid = int(owner.get("pid", 0) or 0)
+                started_at = self._parse_iso_ts(str(owner.get("started_at", "") or ""))
+                age_seconds = None
+                if started_at is not None:
+                    age_seconds = max(0.0, (self._utc_now() - started_at).total_seconds())
+                if owner_pid > 0 and self._pid_alive(owner_pid):
+                    break
+                if age_seconds is not None and age_seconds < max(1, self.session_lock_stale_seconds):
+                    break
+                try:
+                    shutil.rmtree(self.session_lock_dir)
+                except OSError:
+                    break
+        try:
+            if acquired:
+                yield {"acquired": True, "owner": lock_info}
+            else:
+                owner = self._read_session_lock_info()
+                yield {"acquired": False, "owner": owner}
+        finally:
+            if acquired:
+                try:
+                    shutil.rmtree(self.session_lock_dir)
+                except OSError:
+                    pass
+
+    def _save_session_checkpoint(
+        self,
+        state: dict[str, Any],
+        files_state: dict[str, Any],
+        recent_hashes: set[str],
+        now: datetime,
+        key: str,
+        offset: int,
+    ) -> None:
+        files_state[key] = offset
+        state["files"] = files_state
+        state["recent_hashes"] = list(recent_hashes)[-2500:]
+        state["last_sync_at"] = now.isoformat()
+        self._save_session_state(state)
+
+    @staticmethod
+    def _session_state_snapshot(files_state: dict[str, Any]) -> dict[str, int]:
+        snapshot: dict[str, int] = {}
+        for key, value in files_state.items():
+            try:
+                snapshot[str(key)] = int(value or 0)
+            except (TypeError, ValueError):
+                continue
+        return snapshot
 
     def _extract_text_from_message(self, row: dict[str, Any]) -> tuple[str, str, str]:
         message = row.get("message", {}) if isinstance(row, dict) else {}
@@ -280,117 +416,130 @@ class AutoMemoryExtractor:
                 "reason": "session_dir_missing",
                 "path": str(self.session_dir),
             }
+        with self._session_sync_lock() as lock_state:
+            if not bool(lock_state.get("acquired", False)):
+                owner = lock_state.get("owner", {}) if isinstance(lock_state.get("owner", {}), dict) else {}
+                return {
+                    "status": "skipped",
+                    "reason": "session_sync_concurrent",
+                    "lock_path": str(self.session_lock_dir),
+                    "lock_acquired": False,
+                    "instance_pid": os.getpid(),
+                    "lock_owner_pid": int(owner.get("pid", 0) or 0),
+                    "lock_owner_started_at": str(owner.get("started_at", "") or ""),
+                }
 
-        state = self._load_session_state()
-        now = self._utc_now()
-        if not force:
-            last_sync_raw = str(state.get("last_sync_at", ""))
-            if last_sync_raw:
+            state = self._load_session_state()
+            now = self._utc_now()
+            state_before = self._session_state_snapshot(state.get("files", {}))
+            if not force:
+                last_sync_raw = str(state.get("last_sync_at", ""))
+                if last_sync_raw:
+                    dt = self._parse_iso_ts(last_sync_raw)
+                    if dt is not None:
+                        elapsed = (now - dt).total_seconds()
+                        if elapsed < max(1, self.session_sync_interval_seconds):
+                            return {
+                                "status": "skipped",
+                                "reason": "session_sync_not_due",
+                                "lock_acquired": True,
+                                "instance_pid": os.getpid(),
+                                "lock_path": str(self.session_lock_dir),
+                                "state_before_files": state_before,
+                            }
+
+            limit = int(max_messages or self.session_max_messages_per_run)
+            files_state = state.get("files", {})
+            recent_hashes = set(state.get("recent_hashes", []))
+            processed = 0
+            skipped_noise = 0
+            skipped_dupe = 0
+            skipped_error = 0
+            scanned_files = 0
+
+            files = self._iter_session_files()
+            for fp in files:
+                scanned_files += 1
+                key = str(fp)
+                offset = int(files_state.get(key, 0) or 0)
                 try:
-                    raw = str(last_sync_raw).strip()
-                    if raw.endswith("Z"):
-                        raw = raw[:-1] + "+00:00"
-                    dt = datetime.fromisoformat(raw)
-                    if dt.tzinfo is None:
-                        dt = dt.replace(tzinfo=timezone.utc)
-                    else:
-                        dt = dt.astimezone(timezone.utc)
-                    elapsed = (now - dt).total_seconds()
-                    if elapsed < max(1, self.session_sync_interval_seconds):
-                        return {"status": "skipped", "reason": "session_sync_not_due"}
-                except ValueError as exc:
-                    print(f"[AutoMemory] Invalid session sync timestamp '{last_sync_raw}': {exc}")
+                    lines = fp.read_text(encoding="utf-8").splitlines()
+                except OSError:
+                    continue
+                if offset > len(lines):
+                    offset = 0
+                session_id = fp.stem
+                for idx in range(offset, len(lines)):
+                    line = lines[idx].strip()
+                    if not line:
+                        continue
+                    try:
+                        row = json.loads(line)
+                    except (TypeError, ValueError, json.JSONDecodeError):
+                        continue
+                    if row.get("type") == "session":
+                        session_id = str(row.get("id", session_id))
+                        continue
+                    if row.get("type") != "message":
+                        continue
+                    role, text, msg_id = self._extract_text_from_message(row)
+                    if role not in self.session_allowed_roles:
+                        continue
+                    if self._is_session_noise(text):
+                        skipped_noise += 1
+                        continue
+                    payload_hash = hashlib.sha1(f"{key}|{msg_id}|{text}".encode()).hexdigest()
+                    if payload_hash in recent_hashes:
+                        skipped_dupe += 1
+                        continue
 
-        limit = int(max_messages or self.session_max_messages_per_run)
-        files_state = state.get("files", {})
-        recent_hashes = set(state.get("recent_hashes", []))
-        processed = 0
-        skipped_noise = 0
-        skipped_dupe = 0
-        skipped_error = 0
-        scanned_files = 0
+                    source = self._build_source(fp, session_id)
+                    ok = self._process_interaction_with_timeout(text, source=source)
+                    if not ok:
+                        skipped_error += 1
+                        continue
+                    recent_hashes.add(payload_hash)
+                    processed += 1
+                    self._save_session_checkpoint(state, files_state, recent_hashes, now, key, idx + 1)
 
-        files = self._iter_session_files()
-        for fp in files:
-            scanned_files += 1
-            key = str(fp)
-            offset = int(files_state.get(key, 0) or 0)
-            try:
-                lines = fp.read_text(encoding="utf-8").splitlines()
-            except OSError:
-                continue
-            if offset > len(lines):
-                offset = 0
-            session_id = fp.stem
-            for idx in range(offset, len(lines)):
-                line = lines[idx].strip()
-                if not line:
-                    continue
-                try:
-                    row = json.loads(line)
-                except (TypeError, ValueError, json.JSONDecodeError):
-                    continue
-                if row.get("type") == "session":
-                    session_id = str(row.get("id", session_id))
-                    continue
-                if row.get("type") != "message":
-                    continue
-                role, text, msg_id = self._extract_text_from_message(row)
-                if role not in self.session_allowed_roles:
-                    continue
-                if self._is_session_noise(text):
-                    skipped_noise += 1
-                    continue
-                payload_hash = hashlib.sha1(f"{key}|{msg_id}|{text}".encode()).hexdigest()
-                if payload_hash in recent_hashes:
-                    skipped_dupe += 1
-                    continue
+                    if processed >= limit:
+                        summary = {
+                            "timestamp": datetime.now().isoformat(),
+                            "status": "session_sync",
+                            "lock_acquired": True,
+                            "lock_path": str(self.session_lock_dir),
+                            "instance_pid": os.getpid(),
+                            "processed": processed,
+                            "scanned_files": scanned_files,
+                            "skipped_noise": skipped_noise,
+                            "skipped_dupe": skipped_dupe,
+                            "skipped_error": skipped_error,
+                            "truncated": True,
+                            "state_before_files": state_before,
+                            "state_after_files": self._session_state_snapshot(files_state),
+                        }
+                        self._save_log(summary)
+                        return summary
 
-                source = self._build_source(fp, session_id)
-                ok = self._process_interaction_with_timeout(text, source=source)
-                if not ok:
-                    skipped_error += 1
-                    continue
-                recent_hashes.add(payload_hash)
-                processed += 1
+                self._save_session_checkpoint(state, files_state, recent_hashes, now, key, len(lines))
 
-                if processed >= limit:
-                    files_state[key] = idx + 1
-                    state["files"] = files_state
-                    state["recent_hashes"] = list(recent_hashes)[-2500:]
-                    state["last_sync_at"] = now.isoformat()
-                    self._save_session_state(state)
-                    summary = {
-                        "timestamp": datetime.now().isoformat(),
-                        "status": "session_sync",
-                        "processed": processed,
-                        "scanned_files": scanned_files,
-                        "skipped_noise": skipped_noise,
-                        "skipped_dupe": skipped_dupe,
-                        "skipped_error": skipped_error,
-                        "truncated": True,
-                    }
-                    self._save_log(summary)
-                    return summary
-
-            files_state[key] = len(lines)
-
-        state["files"] = files_state
-        state["recent_hashes"] = list(recent_hashes)[-2500:]
-        state["last_sync_at"] = now.isoformat()
-        self._save_session_state(state)
-        summary = {
-            "timestamp": datetime.now().isoformat(),
-            "status": "session_sync",
-            "processed": processed,
-            "scanned_files": scanned_files,
-            "skipped_noise": skipped_noise,
-            "skipped_dupe": skipped_dupe,
-            "skipped_error": skipped_error,
-            "truncated": False,
-        }
-        self._save_log(summary)
-        return summary
+            summary = {
+                "timestamp": datetime.now().isoformat(),
+                "status": "session_sync",
+                "lock_acquired": True,
+                "lock_path": str(self.session_lock_dir),
+                "instance_pid": os.getpid(),
+                "processed": processed,
+                "scanned_files": scanned_files,
+                "skipped_noise": skipped_noise,
+                "skipped_dupe": skipped_dupe,
+                "skipped_error": skipped_error,
+                "truncated": False,
+                "state_before_files": state_before,
+                "state_after_files": self._session_state_snapshot(files_state),
+            }
+            self._save_log(summary)
+            return summary
 
     def _load_log(self) -> dict[str, Any]:
         if not self.log_file.exists():

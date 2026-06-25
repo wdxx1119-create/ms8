@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from pathlib import Path
 
@@ -95,3 +96,42 @@ def test_l2_slo_check_single_warn_and_skip() -> None:
     core_skip.monitoring = _MonitoringReplayOnly()
     out_skip = cs._check_l2_slo_check(core_skip, {})
     assert out_skip["status"] == "pass"
+
+
+def test_l2_slo_check_capture_backlog_recovers_on_recent_success_window(tmp_path: Path) -> None:
+    class _MonitoringCaptureOnly:
+        def status(self) -> dict:
+            return {"slo": {"all_ok": False, "checks": {"capture_rate": False, "injection_rate": True}}}
+
+    entries = [{"timestamp": f"2026-06-13T00:00:{i:02d}", "status": "dropped", "source": "openclaw_session:old"} for i in range(4)]
+    entries.extend(
+        {"timestamp": f"2026-06-18T00:01:{i:02d}", "status": "success", "source": "openclaw_session:new"}
+        for i in range(12)
+    )
+    (tmp_path / "auto_memory_log.json").write_text(json.dumps({"entries": entries}), encoding="utf-8")
+
+    core = _Core(tmp_path)
+    core.monitoring = _MonitoringCaptureOnly()
+    out = cs._check_l2_slo_check(core, {})
+    assert out["status"] == "pass"
+    assert out["details"]["capture_recovery"]["recovered"] is True
+
+
+def test_l2_slo_check_capture_backlog_stays_warn_when_recent_window_not_clean(tmp_path: Path) -> None:
+    class _MonitoringCaptureOnly:
+        def status(self) -> dict:
+            return {"slo": {"all_ok": False, "checks": {"capture_rate": False, "injection_rate": True}}}
+
+    entries = [{"timestamp": f"2026-06-13T00:00:{i:02d}", "status": "dropped", "source": "openclaw_session:old"} for i in range(4)]
+    entries.extend(
+        {"timestamp": f"2026-06-18T00:01:{i:02d}", "status": "success", "source": "openclaw_session:new"}
+        for i in range(11)
+    )
+    entries.append({"timestamp": "2026-06-18T00:01:59", "status": "dropped", "source": "openclaw_session:new"})
+    (tmp_path / "auto_memory_log.json").write_text(json.dumps({"entries": entries}), encoding="utf-8")
+
+    core = _Core(tmp_path)
+    core.monitoring = _MonitoringCaptureOnly()
+    out = cs._check_l2_slo_check(core, {})
+    assert out["status"] == "warn"
+    assert out["details"]["capture_recovery"]["recovered"] is False

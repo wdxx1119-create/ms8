@@ -52,6 +52,11 @@ def test_governance_report_includes_policy_attack_samples(monkeypatch, tmp_path:
     monkeypatch.setattr(runtime, "run_engine_self_check", lambda level="L4": {"status": "ok"})
     monkeypatch.setattr(
         runtime,
+        "get_engine_shadow_status",
+        lambda: {"enabled": True, "mode": "active", "sealed": False, "manifest": {"reason": ""}},
+    )
+    monkeypatch.setattr(
+        runtime,
         "get_engine_monitoring_status",
         lambda: {
             "rates": {"capture_rate": 1.0, "auto_total_entries": 40},
@@ -80,6 +85,11 @@ def test_governance_report_bootstraps_policy_attack_baseline(monkeypatch, tmp_pa
     monkeypatch.setattr(runtime, "run_engine_self_check", lambda level="L4": {"status": "ok"})
     monkeypatch.setattr(
         runtime,
+        "get_engine_shadow_status",
+        lambda: {"enabled": True, "mode": "active", "sealed": False, "manifest": {"reason": ""}},
+    )
+    monkeypatch.setattr(
+        runtime,
         "get_engine_monitoring_status",
         lambda: {
             "rates": {"capture_rate": 1.0, "auto_total_entries": 40},
@@ -97,3 +107,53 @@ def test_governance_report_bootstraps_policy_attack_baseline(monkeypatch, tmp_pa
     assert pas["failed_cases"] == 0
     assert pas["initialized"] is False
     assert (paths["health"] / "policy_attack_samples_latest.json").exists()
+
+
+def test_governance_report_shadow_startup_integrity_failure_degrades_runtime(monkeypatch, tmp_path: Path) -> None:
+    paths = _stub_paths(tmp_path)
+
+    monkeypatch.setattr(runtime, "ensure_runtime_dirs", lambda: paths)
+    monkeypatch.setattr(runtime, "read_memories", lambda: [])
+    monkeypatch.setattr(runtime, "validate_record", lambda r: (True, ""))
+    monkeypatch.setattr(
+        runtime,
+        "run_engine_self_check",
+        lambda level="L4": {
+            "status": "ok",
+            "domain_summary": {"security": {"total": 1, "pass": 1, "warn": 0, "fail": 0, "error": 0}},
+        },
+    )
+    monkeypatch.setattr(
+        runtime,
+        "get_engine_shadow_status",
+        lambda: {
+            "enabled": True,
+            "mode": "sealed",
+            "sealed": True,
+            "seal_level": "hard",
+            "manifest": {
+                "reason": "startup_integrity_failed",
+                "manifest_signature_valid": False,
+                "startup_findings": ["manifest_signature_invalid"],
+            },
+        },
+    )
+    monkeypatch.setattr(
+        runtime,
+        "get_engine_monitoring_status",
+        lambda: {
+            "rates": {"capture_rate": 1.0, "auto_total_entries": 40},
+            "rates_v2": {"eligible_events": 40},
+            "slo": {"targets": {"capture_rate_min": 0.85, "capture_rate_min_samples": 30}},
+            "slo_v2_preview": {"all_ok": True},
+            "compression_freshness": {"hours_since_last": 1.0},
+        },
+    )
+
+    report = runtime.get_governance_report()
+    shadow = report["shadow_runtime"]
+    assert shadow["status"] == "degraded"
+    assert shadow["reason"] == "startup_integrity_failed"
+    assert report["health_domains"]["runtime_health"] == "red"
+    assert report["health_domains"]["security_integrity_health"] == "red"
+    assert "shadow_startup_integrity_failed" in report["health_domains"]["overall_reasons"]

@@ -115,10 +115,73 @@ def test_smoke_contains_target_metadata(monkeypatch):
 
 def test_status_contains_target_profiles(monkeypatch):
     monkeypatch.setattr("ms8.connect.scripts.status.run_status", lambda: {"ok": True})
+    monkeypatch.setattr("ms8.connect.scripts.status.verify_client_configs", lambda target="all": {"ok": True})
     out = connect_status_main(target="openclaw")
     assert out["ok"] is True
     assert out["target"] == "openclaw"
     assert "openclaw" in out["target_profiles"]
+    assert out["runtime_reports"]["bootstrap_ok"] is True
+
+
+def test_status_recovers_bootstrap_ok_from_current_verify(monkeypatch, tmp_path: Path):
+    connect_root = tmp_path / "connect"
+    runtime_dir = connect_root / "runtime"
+    runtime_dir.mkdir(parents=True, exist_ok=True)
+    (runtime_dir / "bootstrap_report.json").write_text(
+        json.dumps(
+            {
+                "ok": False,
+                "target": "all",
+                "hint": "Auto-connect degraded for all. Run: ms8 connect apply --target all && ms8 connect verify --target all",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (runtime_dir / "connect_report.json").write_text(
+        json.dumps({"result": {"overall_ok": True}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("ms8.connect.scripts.status.run_status", lambda: {"ok": True})
+    monkeypatch.setattr("ms8.connect.scripts.status.connect_root", lambda: connect_root)
+    monkeypatch.setattr("ms8.connect.scripts.status.verify_client_configs", lambda target="all": {"ok": True})
+
+    out = connect_status_main(target="all")
+
+    assert out["runtime_reports"]["bootstrap_ok"] is True
+    assert out["runtime_reports"]["bootstrap_recovered"] is True
+    assert out["runtime_reports"]["connect_flow_overall_ok"] is True
+    assert out["runtime_reports"]["current_verify_ok"] is True
+    assert out["runtime_reports"]["bootstrap_hint"] == ""
+
+
+def test_status_summarizes_health_alerts(monkeypatch):
+    monkeypatch.setattr(
+        "ms8.connect.scripts.status.run_status",
+        lambda: {
+            "ok": True,
+            "health": {
+                "timestamp": "2026-06-19T00:00:00+00:00",
+                "rates_v2": {"noise_block_rate": 0.97},
+                "slo_v2_preview": {"all_ok": True},
+                "runtime_health": "green",
+                "overall": "green",
+                "alerts_recent": [
+                    {"timestamp": "2026-06-18T00:00:00+00:00", "code": "a", "severity": "warning", "message": "m1"},
+                    {"timestamp": "2026-06-18T01:00:00+00:00", "code": "b", "severity": "critical", "message": "m2"},
+                    {"timestamp": "2026-06-18T02:00:00+00:00", "code": "c", "severity": "warning", "message": "m3"},
+                    {"timestamp": "2026-06-18T03:00:00+00:00", "code": "d", "severity": "critical", "message": "m4"},
+                ],
+            },
+        },
+    )
+    monkeypatch.setattr("ms8.connect.scripts.status.verify_client_configs", lambda target="all": {"ok": True})
+
+    out = connect_status_main(target="all")
+
+    assert out["health"]["alerts_recent_count"] == 4
+    assert out["health"]["alerts_recent_latest_codes"] == ["b", "c", "d"]
+    assert "alerts_recent" not in out["health"]
+    assert out["health"]["health_layers"]["overall"] == "green"
 
 
 def test_target_readiness_states():

@@ -74,9 +74,30 @@ class _CoreProbe:
         self.whoosh_search = object()
         self.monitoring = object()
         self.shadow = object()
+        self.last_retrieve: dict[str, object] | None = None
 
-    def retrieve_memories(self, query: str, top_k: int = 5) -> list[dict[str, str]]:
-        return [{"id": "r1", "query": query, "top_k": str(top_k)}]
+    def retrieve_memories(
+        self,
+        query: str,
+        top_k: int = 5,
+        allow_semantic: bool = True,
+        allow_graph: bool = True,
+    ) -> list[dict[str, str | bool]]:
+        self.last_retrieve = {
+            "query": query,
+            "top_k": top_k,
+            "allow_semantic": allow_semantic,
+            "allow_graph": allow_graph,
+        }
+        return [
+            {
+                "id": "r1",
+                "query": query,
+                "top_k": str(top_k),
+                "allow_semantic": allow_semantic,
+                "allow_graph": allow_graph,
+            }
+        ]
 
 
 class _ProbePipelineAlwaysRejected(_ProbePipeline):
@@ -140,6 +161,9 @@ def test_l2_write_then_search_probe_flow(tmp_path: Path) -> None:
     out = cs._check_l2_write_then_search(core, {})
     assert out["status"] == "pass"
     assert out["details"]["index_hits"] >= 1
+    assert core.last_retrieve is not None
+    assert core.last_retrieve["allow_semantic"] is False
+    assert core.last_retrieve["allow_graph"] is False
     assert out["details"]["pipeline_status"] in {"success", "partial_success"}
 
 

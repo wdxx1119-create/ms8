@@ -59,6 +59,44 @@ class MonitoringSLOTests(unittest.TestCase):
             self.assertTrue(Path(snapshot["report_paths"]["json"]).exists())
             self.assertTrue(Path(snapshot["report_paths"]["markdown"]).exists())
 
+    def test_rates_v2_reads_text_from_nested_records(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            memory_dir = workspace / "memory"
+            memory_dir.mkdir(parents=True, exist_ok=True)
+
+            (memory_dir / "auto_memory_log.json").write_text(
+                json.dumps(
+                    {
+                        "entries": [
+                            {
+                                "status": "success",
+                                "records": [
+                                    {
+                                        "text": "请查看 pypl 下载量统计网址并记录配置步骤",
+                                        "category": "configuration",
+                                        "status": "accepted",
+                                    }
+                                ],
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            config = {
+                "workspace_dir": workspace,
+                "memory_dir": memory_dir,
+                "settings": {"memory": {"monitoring": {"enabled": True}}},
+            }
+            mon = MemoryMonitoring(config)
+            snapshot = mon.status(persist_reports=False)
+            rates_v2 = snapshot.get("rates_v2", {})
+            self.assertEqual(rates_v2.get("eligible_events"), 1)
+            self.assertEqual(rates_v2.get("low_value_events"), 0)
+            self.assertEqual(rates_v2.get("valuable_capture_rate"), 1.0)
+            self.assertEqual(rates_v2.get("noise_block_rate"), 1.0)
+
 
 if __name__ == "__main__":
     unittest.main()

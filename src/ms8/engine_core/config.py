@@ -296,6 +296,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "review_confidence_threshold": 0.62,
             "validate": True,
             "allow_categories": [
+                "work_report",
+                "plan",
+                "configuration",
+                "technical_doc",
+                "test_result",
                 "preference",
                 "decision",
                 "feedback",
@@ -1083,6 +1088,7 @@ def get_config() -> dict[str, Any]:
     maintenance_cfg = config_dict["memory"].get("maintenance", {})
     security_cfg = config_dict["memory"].get("security", {})
     monitoring_cfg = config_dict["memory"].get("monitoring", {})
+    connect_cfg = config_dict["memory"].setdefault("connect", {})
 
     long_term_resolved = _resolve_path(workspace_dir, long_term["path"])
     long_term["path"] = str(_prefer_migrated_path(workspace_dir, long_term_resolved, "memory_db"))
@@ -1152,6 +1158,7 @@ def get_config() -> dict[str, Any]:
     alerts_cfg = monitoring_cfg.get("alerts", {})
     if alerts_cfg.get("alert_log_file"):
         alerts_cfg["alert_log_file"] = str(_resolve_path(workspace_dir, alerts_cfg["alert_log_file"]))
+    connect_cfg["root"] = str(_resolve_path(workspace_dir, str(connect_cfg.get("root", "connect"))))
 
     return {
         "workspace_dir": workspace_dir,

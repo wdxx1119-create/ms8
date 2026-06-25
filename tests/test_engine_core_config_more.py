@@ -77,6 +77,7 @@ def test_prefer_migrated_path_and_get_config_rewrites(tmp_path: Path, monkeypatc
                 "daily_report_markdown": "memory/reports/daily.md",
                 "alerts": {"alert_log_file": "memory/reports/alerts.jsonl"},
             },
+            "connect": {"root": "connect"},
         }
     }
 
@@ -96,5 +97,39 @@ def test_prefer_migrated_path_and_get_config_rewrites(tmp_path: Path, monkeypatc
     assert settings["keyword"]["index_dir"].endswith("memory/index/whoosh_index")
     assert settings["knowledge_graph"]["db_path"].endswith("memory/db/knowledge_graph.db")
     assert settings["security"]["shadow"]["backup_dir"].endswith("memory/security/shadow_backup")
+    assert settings["connect"]["root"] == str(workspace / "connect")
     assert settings["auto_memory"]["session_ingestion"]["enabled"] is True
 
+
+def test_get_config_sets_default_connect_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    workspace = tmp_path / "runtime"
+    workspace.mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setattr(cfg_mod, "_default_workspace_dir", lambda: workspace)
+
+    base = {
+        "memory": {
+            "long_term": {"path": "memory/db/memory.db"},
+            "keyword": {"index_dir": "memory/index/whoosh_index"},
+            "git": {"repo_path": "memory/git"},
+        }
+    }
+
+    class _Engine:
+        def __init__(self, *_a, **_k):
+            pass
+
+        def resolve(self):
+            return base, {"status": "ok"}
+
+    monkeypatch.setattr(cfg_mod, "ConfigPriorityEngine", _Engine)
+    monkeypatch.delenv("OPENCLAW_MEMORY_SESSION_INGEST_ENABLED", raising=False)
+
+    conf = cfg_mod.get_config()
+    assert conf["settings"]["memory"]["connect"]["root"] == str(workspace / "connect")
+
+
+def test_default_auto_memory_allow_categories_include_technical_session_types() -> None:
+    allowed = cfg_mod.DEFAULT_CONFIG["memory"]["auto_memory"]["allow_categories"]
+    assert "technical_doc" in allowed
+    assert "configuration" in allowed
