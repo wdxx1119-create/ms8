@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import io
 import logging
+import sys
 import time
 from datetime import datetime, timezone
 from urllib.parse import quote
@@ -31,6 +32,25 @@ from .runtime import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _relax_console_streams() -> None:
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        if stream is None or not hasattr(stream, "reconfigure"):
+            continue
+        try:
+            stream.reconfigure(errors="replace")
+        except (AttributeError, OSError, ValueError):
+            continue
+
+
+def _safe_stdout_write(text: str) -> None:
+    stream = sys.stdout
+    encoding = getattr(stream, "encoding", None) or "utf-8"
+    safe_text = str(text or "").encode(encoding, errors="replace").decode(encoding, errors="replace")
+    stream.write(safe_text)
+    stream.flush()
 
 
 def _self_check_snapshot(payload: dict) -> dict[str, object]:
@@ -127,6 +147,7 @@ def _encode_watch_actions(actions: list[str]) -> str:
 
 
 def run_watch(interval_seconds: int = 1800, once: bool = False) -> int:
+    _relax_console_streams()
     ensure_runtime_dirs()
     if interval_seconds < 10:
         interval_seconds = 10
@@ -139,7 +160,7 @@ def run_watch(interval_seconds: int = 1800, once: bool = False) -> int:
             code = run_doctor()
         doctor_output = doctor_buf.getvalue()
         if doctor_output:
-            print(doctor_output, end="")
+            _safe_stdout_write(doctor_output)
         doctor_actions = _doctor_follow_up_actions(doctor_output)
         mem_count = count_memories()
         learning = run_daily_learning()
