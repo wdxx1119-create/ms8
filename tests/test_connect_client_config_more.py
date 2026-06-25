@@ -90,3 +90,38 @@ def test_expected_command_signature_override(monkeypatch) -> None:
     cmd, prefix = client_config.expected_command_signature("claude_desktop")
     assert cmd == "python3"
     assert prefix == ("-m", "ms8.connect.mcp_server.stdio_server")
+
+
+def test_windows_claude_desktop_discovery_uses_appdata(monkeypatch, tmp_path: Path) -> None:
+    appdata = tmp_path / "AppData" / "Roaming"
+    monkeypatch.setattr(client_config.sys, "platform", "win32")
+    monkeypatch.setenv("APPDATA", str(appdata))
+    monkeypatch.setattr(client_config.Path, "home", lambda: tmp_path)
+
+    info = client_config.target_discovery("claude_desktop")["claude_desktop"]
+
+    assert info["strategy"] == "candidate_scan_then_fallback"
+    assert info["resolved"] == str(appdata / "Claude" / "claude_desktop_config.json")
+    assert "Library" not in info["resolved"]
+
+
+def test_windows_cherry_discovery_uses_appdata(monkeypatch, tmp_path: Path) -> None:
+    appdata = tmp_path / "AppData" / "Roaming"
+    monkeypatch.setattr(client_config.sys, "platform", "win32")
+    monkeypatch.setenv("APPDATA", str(appdata))
+    monkeypatch.setattr(client_config.Path, "home", lambda: tmp_path)
+
+    info = client_config.target_discovery("cherry_studio")["cherry_studio"]
+
+    assert info["resolved"] == str(appdata / "CherryStudio" / "mcp.json")
+    assert all("Library" not in candidate for candidate in info["candidates"])
+
+
+def test_windows_vscode_storage_candidates_use_appdata(monkeypatch, tmp_path: Path) -> None:
+    appdata = tmp_path / "AppData" / "Roaming"
+    monkeypatch.setattr(client_config.sys, "platform", "win32")
+    monkeypatch.setenv("APPDATA", str(appdata))
+
+    candidates = client_config._vscode_global_storage_candidates(["continue.continue"])
+
+    assert candidates == [appdata / "Code" / "User" / "globalStorage" / "continue.continue" / "mcp.json"]
