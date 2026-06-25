@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-from ms8 import dashboard, service, watch
+from ms8 import dashboard, service, service_platform, watch
 
 
 def test_dashboard_runs_and_prints_key_sections(monkeypatch, capsys, tmp_path: Path) -> None:
@@ -199,85 +199,166 @@ def test_watch_non_once_enforces_min_interval_and_sleeps(monkeypatch) -> None:
     assert sleep_calls == [10]
 
 
-def test_service_install_status_remove(monkeypatch, tmp_path: Path) -> None:
-    plist = tmp_path / "LaunchAgents" / "com.ms8.watch.plist"
-    runtime = tmp_path / "runtime"
-    runtime.mkdir(parents=True, exist_ok=True)
+def test_service_install_status_remove(monkeypatch) -> None:
+    calls: list[tuple[str, object]] = []
 
-    calls: list[list[str]] = []
+    class _Backend:
+        def install_watch(self, interval_seconds: int = 1800):
+            calls.append(("install_watch", interval_seconds))
+            return {"ok": True, "backend": "fake"}
 
-    def _fake_run(cmd: list[str], capture_output: bool = True, text: bool = True):
-        calls.append(cmd)
-        return SimpleNamespace(returncode=0, stdout=f"{service.LABEL}\n", stderr="")
+        def watch_status(self):
+            calls.append(("watch_status", None))
+            return {"ok": True, "installed": True, "running": True, "backend": "fake"}
 
-    monkeypatch.setattr(service, "_plist_path", lambda: plist)
-    monkeypatch.setattr(service, "get_runtime_dir", lambda: runtime)
-    monkeypatch.setattr(service.shutil, "which", lambda name: None)
-    monkeypatch.setattr(service.subprocess, "run", _fake_run)
+        def remove_watch(self):
+            calls.append(("remove_watch", None))
+            return {"ok": True, "backend": "fake"}
+
+    monkeypatch.setattr(service, "current_service_backend", lambda: _Backend())
 
     installed = service.install_service(interval_seconds=60)
-    assert installed["ok"] is True
-    assert plist.exists()
-
     status = service.service_status()
-    assert status["ok"] is True
+    removed = service.remove_service()
+
+    assert installed["ok"] is True
     assert status["installed"] is True
     assert status["running"] is True
-
-    removed = service.remove_service()
     assert removed["ok"] is True
-    assert not plist.exists()
-    assert any("load" in c for c in calls)
+    assert calls == [("install_watch", 60), ("watch_status", None), ("remove_watch", None)]
 
 
-def test_absorb_service_install_status_remove(monkeypatch, tmp_path: Path) -> None:
-    plist = tmp_path / "LaunchAgents" / "com.ms8.absorb.watch.plist"
-    runtime = tmp_path / "runtime"
-    runtime.mkdir(parents=True, exist_ok=True)
+def test_absorb_service_install_status_remove(monkeypatch) -> None:
+    calls: list[str] = []
 
-    calls: list[list[str]] = []
+    class _Backend:
+        def install_absorb(self):
+            calls.append("install_absorb")
+            return {"ok": True, "backend": "fake"}
 
-    def _fake_run(cmd: list[str], capture_output: bool = True, text: bool = True):
-        calls.append(cmd)
-        return SimpleNamespace(returncode=0, stdout=f"{service.ABSORB_LABEL}\n", stderr="")
+        def absorb_status(self):
+            calls.append("absorb_status")
+            return {"ok": True, "installed": True, "running": True, "backend": "fake"}
 
-    monkeypatch.setattr(service, "_absorb_plist_path", lambda: plist)
-    monkeypatch.setattr(service, "get_runtime_dir", lambda: runtime)
-    monkeypatch.setattr(service.shutil, "which", lambda name: None)
-    monkeypatch.setattr(service.subprocess, "run", _fake_run)
+        def remove_absorb(self):
+            calls.append("remove_absorb")
+            return {"ok": True, "backend": "fake"}
+
+    monkeypatch.setattr(service, "current_service_backend", lambda: _Backend())
 
     installed = service.install_absorb_service()
-    assert installed["ok"] is True
-    assert plist.exists()
-    assert "absorb" in plist.read_text(encoding="utf-8")
-
     status = service.absorb_service_status()
-    assert status["ok"] is True
+    removed = service.remove_absorb_service()
+
+    assert installed["ok"] is True
     assert status["installed"] is True
     assert status["running"] is True
-
-    removed = service.remove_absorb_service()
     assert removed["ok"] is True
-    assert not plist.exists()
-    assert any("load" in c for c in calls)
+    assert calls == ["install_absorb", "absorb_status", "remove_absorb"]
 
 
-def test_service_remove_when_plist_missing(monkeypatch, tmp_path: Path) -> None:
-    plist = tmp_path / "LaunchAgents" / "com.ms8.watch.plist"
-    calls: list[list[str]] = []
+def test_install_all_project_memory_services_counts_only_successes(monkeypatch) -> None:
+    monkeypatch.setattr(service, "list_projects", lambda: [{"name": "win-demo"}, {"name": "win-mainline"}])
+    results = {
+        "win-demo": {"ok": False, "project": "win-demo", "reason_code": "windows_service_install_failed"},
+        "win-mainline": {"ok": True, "project": "win-mainline"},
+    }
+    monkeypatch.setattr(
+        service,
+        "install_project_memory_service",
+        lambda name, auto_build=True, submit_summary=True, auto_index=True: results[name],
+    )
 
-    def _fake_run(cmd: list[str], capture_output: bool = True, text: bool = True):
-        calls.append(cmd)
-        return SimpleNamespace(returncode=0, stdout="", stderr="")
+    payload = service.install_all_project_memory_services()
 
-    monkeypatch.setattr(service, "_plist_path", lambda: plist)
-    monkeypatch.setattr(service.subprocess, "run", _fake_run)
+    assert payload["ok"] is False
+    assert payload["registered_projects"] == 2
+    assert payload["services_installed"] == 1
+    assert payload["services_failed"] == 1
+    assert payload["results"][0]["project"] == "win-demo"
+    assert payload["results"][1]["project"] == "win-mainline"
+
+
+def test_project_memory_services_status_all_includes_runtime_mode_summary(monkeypatch) -> None:
+    monkeypatch.setattr(service, "list_projects", lambda: [{"name": "win-demo"}, {"name": "win-mainline"}])
+    monkeypatch.setattr("ms8.absorb.project_memory.health._watch_support", lambda: {"installed": True, "backend": "watchdog"})
+
+    def _fake_status(name: str) -> dict:
+        if name == "win-demo":
+            return {
+                "ok": True,
+                "project": name,
+                "backend": "schtasks",
+                "installed": False,
+                "running": False,
+                "error_kind": "permission_denied",
+            }
+        return {
+            "ok": True,
+            "project": name,
+            "backend": "launchd",
+            "installed": True,
+            "running": True,
+        }
+
+    monkeypatch.setattr(service, "project_memory_service_status", _fake_status)
+
+    payload = service.project_memory_services_status_all()
+
+    assert payload["ok"] is True
+    assert payload["registered_projects"] == 2
+    assert payload["installed_services"] == 1
+    assert payload["running_services"] == 1
+    assert payload["background_service_ready_projects"] == 1
+    assert payload["foreground_watch_available_projects"] == 2
+    assert payload["recommended_runtime_modes"] == {
+        "background_service": 1,
+        "foreground_watch": 1,
+    }
+    assert payload["results"][0]["recommended_runtime_mode"] == "foreground_watch"
+    assert payload["results"][0]["runtime_hint"] == "Background scheduler is blocked by Windows permissions; use foreground watch."
+    assert payload["results"][1]["recommended_runtime_mode"] == "background_service"
+
+
+def test_service_remove_when_backend_reports_missing(monkeypatch) -> None:
+    class _Backend:
+        def remove_watch(self):
+            return {"ok": True, "backend": "fake", "reason_code": "already_missing"}
+
+    monkeypatch.setattr(service, "current_service_backend", lambda: _Backend())
 
     removed = service.remove_service()
     assert removed["ok"] is True
+    assert removed["reason_code"] == "already_missing"
 
 
 def test_program_arguments_prefers_ms8_binary(monkeypatch) -> None:
-    monkeypatch.setattr(service.shutil, "which", lambda name: "/usr/local/bin/ms8" if name == "ms8" else None)
+    monkeypatch.setattr(service_platform.shutil, "which", lambda name: "/usr/local/bin/ms8" if name == "ms8" else None)
     args = service._program_arguments("watch", "--interval", "60")
     assert args == ["/usr/local/bin/ms8", "watch", "--interval", "60"]
+
+
+def test_windows_scheduler_error_classifier_detects_permission_denied() -> None:
+    payload = service_platform._classify_windows_scheduler_error("错误: 拒绝访问。", "")
+
+    assert payload["error_kind"] == "permission_denied"
+    assert payload["permission_required"] is True
+    assert payload["scheduler_available"] is True
+
+
+def test_windows_service_hint_uses_standard_reason_code() -> None:
+    payload = service._with_windows_service_hint(
+        {
+            "ok": False,
+            "backend": "schtasks",
+            "project": "win-mainline",
+            "error_kind": "permission_denied",
+            "stderr": "错误: 拒绝访问。",
+        },
+        action="install",
+        project="win-mainline",
+    )
+
+    assert payload["reason_code"] == "windows_service_permission_denied"
+    assert payload["fallback_mode"] == "foreground_watch"
+    assert payload["next_actions"][0] == "ms8 absorb project-memory watch --name win-mainline"

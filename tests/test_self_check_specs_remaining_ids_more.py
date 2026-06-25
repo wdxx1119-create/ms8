@@ -4,6 +4,7 @@ import json
 import sys
 import time
 from pathlib import Path
+from pathlib import PureWindowsPath
 from types import ModuleType, SimpleNamespace
 
 from ms8.engine_core.maintenance.self_check import check_specs as cs
@@ -142,3 +143,10 @@ def test_m9_write_gateway_single_entry_executes(tmp_path: Path) -> None:
     core = _core(tmp_path)
     out = cs._check_m9_write_gateway_single_entry(core, {})
     assert out["status"] in {cs.STATUS_PASS, cs.STATUS_FAIL}
+
+
+def test_relative_scan_path_normalizes_windows_separators() -> None:
+    root = PureWindowsPath(r"C:\repo\src\ms8\engine_core")
+    path = PureWindowsPath(r"C:\repo\src\ms8\engine_core\maintenance\self_check\check_specs.py")
+
+    assert cs._relative_scan_path(root, path) == "maintenance/self_check/check_specs.py"
