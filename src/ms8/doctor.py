@@ -25,6 +25,7 @@ from .runtime import (
     get_capability_reachability_report,
     get_engine_llm_status,
     get_engine_monitoring_status,
+    get_engine_shadow_status,
     get_expression_router_status,
     get_governance_report,
     get_llm_status_runtime,
@@ -35,6 +36,17 @@ from .runtime import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _relax_console_streams() -> None:
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        if stream is None or not hasattr(stream, "reconfigure"):
+            continue
+        try:
+            stream.reconfigure(errors="replace")
+        except (AttributeError, OSError, ValueError):
+            continue
 
 
 def _nested_int(payload: dict, keys: list[str], default: int = 0) -> int:
@@ -187,7 +199,73 @@ def _format_trend_delta(window: dict) -> str:
     )
 
 
+def _self_check_guidance(check_ids: list[str]) -> list[dict[str, str]]:
+    guidance: list[dict[str, str]] = []
+    seen: set[str] = set()
+    known = {
+        "m3_review_queue_sla": {
+            "explanation": "review queue backlog age or pending volume exceeded SLA.",
+            "next": "ms8 review list",
+        },
+    }
+    for check_id in check_ids:
+        row = known.get(str(check_id).strip())
+        if not row:
+            continue
+        key = str(check_id).strip()
+        if key in seen:
+            continue
+        seen.add(key)
+        guidance.append(
+            {
+                "check_id": key,
+                "explanation": str(row["explanation"]),
+                "next": str(row["next"]),
+            }
+        )
+    return guidance
+
+
+def _combine_health_states(*states: str) -> str:
+    normalized = [str(state).strip().lower() for state in states if str(state).strip()]
+    if any(state in {"degraded", "red", "fail", "error"} for state in normalized):
+        return "degraded"
+    if any(state in {"warn", "warning", "yellow"} for state in normalized):
+        return "warn"
+    return "healthy"
+
+
+def _watch_follow_up_actions(
+    *,
+    runtime_health: str,
+    memory_quality_health: str,
+    security_governance_health: str,
+    absorb_actions: list[str],
+    shadow_actions: list[str],
+) -> list[str]:
+    actions: list[str] = []
+    if runtime_health == "degraded":
+        actions.append("ms8 watch --once")
+    if memory_quality_health != "healthy":
+        actions.append("ms8 ops governance")
+    if security_governance_health != "healthy":
+        actions.append("ms8 ops self-check-report")
+    if absorb_actions:
+        actions.append(absorb_actions[0])
+    actions.extend(shadow_actions[:2])
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for action in actions:
+        key = str(action).strip()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        deduped.append(key)
+    return deduped
+
+
 def run_doctor() -> int:
+    _relax_console_streams()
     paths = ensure_runtime_dirs()
     mem_count = count_memories()
     usage = shutil.disk_usage(paths["root"])
@@ -281,6 +359,10 @@ def run_doctor() -> int:
                 print(f" ❌ self-check fail checks: {', '.join(fail_checks[:8])}")
             else:
                 print(" ❌ self-check fails exist but fail check_ids are unavailable in row details.")
+        known_guidance = _self_check_guidance(fail_checks + warn_checks)
+        for row in known_guidance[:3]:
+            print(f"    ↳ {row['check_id']}: {row['explanation']}")
+            print(f"    ↳ self-check next: {row['next']}")
         if summary_warn > len(warn_checks) or summary_fail > len(fail_checks):
             print(
                 " ⚠️ self-check detail mismatch: summary has more warn/fail than per-check rows; "
@@ -410,6 +492,35 @@ def run_doctor() -> int:
     if absorb_actions:
         print(f"    ↳ absorb next: {absorb_actions[0]}")
     gov = get_governance_report()
+    shadow_status = get_engine_shadow_status()
+    shadow_summary = gov.get("shadow_runtime", {}) if isinstance(gov.get("shadow_runtime", {}), dict) else {}
+    shadow_reason = str(
+        shadow_summary.get("reason")
+        or shadow_status.get("reason")
+        or (shadow_status.get("manifest", {}) if isinstance(shadow_status.get("manifest", {}), dict) else {}).get("reason")
+        or ""
+    ).strip()
+    shadow_mode = str(shadow_summary.get("mode") or shadow_status.get("mode") or "unknown").strip()
+    shadow_sealed = bool(shadow_summary.get("sealed", shadow_status.get("sealed", False)))
+    shadow_level = str(shadow_summary.get("seal_level") or shadow_status.get("seal_level") or "").strip()
+    shadow_findings = shadow_summary.get("startup_findings", [])
+    if not isinstance(shadow_findings, list):
+        shadow_findings = []
+    shadow_findings = [str(item).strip() for item in shadow_findings if str(item).strip()]
+    shadow_actions: list[str] = []
+    if shadow_reason == "startup_integrity_failed":
+        shadow_actions = ["ms8 shadow status", "ms8 shadow health"]
+    elif shadow_sealed:
+        shadow_actions = ["ms8 shadow status"]
+    print(
+        " ✅ shadow: "
+        f"mode={shadow_mode} sealed={shadow_sealed} level={shadow_level or 'n/a'}"
+        + (f" reason={shadow_reason}" if shadow_reason else "")
+    )
+    if shadow_findings:
+        print(f" ⚠️ shadow startup findings: {', '.join(shadow_findings[:5])}")
+    if shadow_actions:
+        print(f"    ↳ shadow next: {shadow_actions[0]}")
     print(
         " ✅ governance: "
         f"noncanonical={gov.get('noncanonical_records', 0)} "
@@ -458,9 +569,22 @@ def run_doctor() -> int:
                 f"7d_samples={t7.get('samples', 0)} "
                 f"{_format_trend_delta(t7)}"
             )
+            gov_domains = gov.get("health_domains", {}) if isinstance(gov.get("health_domains", {}), dict) else {}
+            active_runtime_governance_risk = any(
+                str(gov_domains.get(name, "green")).strip().lower() == "red"
+                for name in (
+                    "runtime_health",
+                    "retrieval_safety_health",
+                    "security_integrity_health",
+                    "lifecycle_maintenance_health",
+                )
+            )
             if "red" in {risk24, risk7}:
-                runtime_status = "degraded"
-                print(" ⚠️ governance trend risk red (overall degraded)")
+                if active_runtime_governance_risk:
+                    runtime_status = "degraded"
+                    print(" ⚠️ governance trend risk red (overall degraded)")
+                else:
+                    print(" ⚠️ governance trend risk red (historical memory-quality drag; current runtime governance green)")
             elif "yellow" in {risk24, risk7}:
                 print(" ⚠️ governance trend risk yellow")
 
@@ -567,12 +691,32 @@ def run_doctor() -> int:
     elif self_check_security_warn or fallback_write > 0 or baseline_pending:
         security_governance_health = "warn"
 
+    governance_overall = str(gov_domains.get("overall", "")).strip().lower()
+    runtime_status = _combine_health_states(
+        runtime_status,
+        runtime_health,
+        memory_quality_health,
+        security_governance_health,
+        governance_overall,
+    )
+
     print("\n--- Health Layers ---")
     print(f"runtime_health: {runtime_health}")
     print(f"memory_quality_health: {memory_quality_health}")
     print(f"security_governance_health: {security_governance_health}")
 
     print(f"\nOverall: {runtime_status}")
+    next_actions = _watch_follow_up_actions(
+        runtime_health=runtime_health,
+        memory_quality_health=memory_quality_health,
+        security_governance_health=security_governance_health,
+        absorb_actions=absorb_actions,
+        shadow_actions=shadow_actions,
+    )
+    if next_actions:
+        print(f"watch next: {next_actions[0]}")
+        for action in next_actions[1:3]:
+            print(f"watch also: {action}")
     agent = _agent_native_status()
     print("\n--- Agent-native Integration ---")
     print(f"agent_policy: {agent['policy']}")

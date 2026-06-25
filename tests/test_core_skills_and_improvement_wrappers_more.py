@@ -6,6 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from ms8.engine_core.core import MemoryCore
+from ms8.engine_core.self_improvement import SelfImprovementEngine
 
 
 def _core(tmp_path: Path) -> MemoryCore:
@@ -173,3 +174,16 @@ def test_remember_and_improvement_llm_wrappers(tmp_path: Path) -> None:
     assert c.get_improvement_summary()["status"] == "error"
     c.llm_enabled = False
     assert c.get_model_info()["enabled"] is False
+
+
+def test_validation_suite_reports_empty_suite_as_error(tmp_path: Path) -> None:
+    c = _core(tmp_path)
+    c.memory_blocks = SimpleNamespace()
+    engine = SelfImprovementEngine(c, config_dir=str(tmp_path / "self_improvement"))
+
+    result = engine.run_validation_suite()
+
+    assert result["status"] == "error"
+    assert result["ok"] is False
+    assert result["total_tests"] == 0
+    assert "no executable tests" in result["message"]

@@ -32,6 +32,11 @@ def _baseline(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(doctor, "get_engine_llm_status", lambda: {"available": True, "providers": {}})
     monkeypatch.setattr(
         doctor,
+        "get_engine_shadow_status",
+        lambda: {"enabled": True, "mode": "active", "sealed": False, "manifest": {"reason": ""}},
+    )
+    monkeypatch.setattr(
+        doctor,
         "get_llm_status_runtime",
         lambda: {
             "recommended_mode": "cloud",
@@ -108,9 +113,76 @@ def test_doctor_degraded_returns_one_when_runtime_degraded(monkeypatch, tmp_path
             "pending_review_oldest_hours": 0.0,
             "self_check_status": "error",
             "trend": {"window_24h": {"samples": 1, "risk": "red", "delta": {}}, "window_7d": {"samples": 1, "risk": "green", "delta": {}}},
-            "health_domains": {"memory_quality_health": "red"},
+            "health_domains": {
+                "runtime_health": "green",
+                "memory_quality_health": "red",
+                "retrieval_safety_health": "red",
+                "security_integrity_health": "green",
+                "lifecycle_maintenance_health": "green",
+            },
         },
     )
     code = doctor.run_doctor()
     assert code == 1
 
+
+def test_doctor_trend_red_with_memory_only_drag_stays_healthy(monkeypatch, capsys, tmp_path: Path) -> None:
+    _baseline(monkeypatch, tmp_path)
+    monkeypatch.setattr(doctor, "get_engine_monitoring_status", lambda: {"enabled": True, "alerts": []})
+    monkeypatch.setattr(
+        doctor,
+        "get_governance_report",
+        lambda: {
+            "noncanonical_records": 0,
+            "schema_invalid_count": 0,
+            "fallback_write_count": 0,
+            "fallback_total_count": 38,
+            "duplicate_groups": 12,
+            "pending_review": 0,
+            "pending_review_oldest_hours": 0.0,
+            "self_check_status": "ok",
+            "trend": {"window_24h": {"samples": 5, "risk": "red", "delta": {}}, "window_7d": {"samples": 9, "risk": "red", "delta": {}}},
+            "health_domains": {
+                "runtime_health": "green",
+                "memory_quality_health": "red",
+                "retrieval_safety_health": "green",
+                "security_integrity_health": "green",
+                "lifecycle_maintenance_health": "green",
+            },
+        },
+    )
+    code = doctor.run_doctor()
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "historical memory-quality drag" in out
+
+
+def test_doctor_trend_red_with_active_runtime_governance_risk_degrades(monkeypatch, capsys, tmp_path: Path) -> None:
+    _baseline(monkeypatch, tmp_path)
+    monkeypatch.setattr(doctor, "get_engine_monitoring_status", lambda: {"enabled": True, "alerts": []})
+    monkeypatch.setattr(
+        doctor,
+        "get_governance_report",
+        lambda: {
+            "noncanonical_records": 0,
+            "schema_invalid_count": 0,
+            "fallback_write_count": 0,
+            "fallback_total_count": 38,
+            "duplicate_groups": 12,
+            "pending_review": 0,
+            "pending_review_oldest_hours": 0.0,
+            "self_check_status": "ok",
+            "trend": {"window_24h": {"samples": 5, "risk": "red", "delta": {}}, "window_7d": {"samples": 9, "risk": "green", "delta": {}}},
+            "health_domains": {
+                "runtime_health": "green",
+                "memory_quality_health": "red",
+                "retrieval_safety_health": "red",
+                "security_integrity_health": "green",
+                "lifecycle_maintenance_health": "green",
+            },
+        },
+    )
+    code = doctor.run_doctor()
+    out = capsys.readouterr().out
+    assert code == 1
+    assert "overall degraded" in out

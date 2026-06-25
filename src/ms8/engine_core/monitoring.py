@@ -539,7 +539,21 @@ class MemoryMonitoring:
             return True
 
         def _entry_text(e: dict) -> str:
-            return str(e.get("text") or e.get("content") or e.get("query") or "").strip()
+            direct = str(e.get("text") or e.get("content") or e.get("query") or "").strip()
+            if direct:
+                return direct
+            records = e.get("records", [])
+            if isinstance(records, list):
+                parts: list[str] = []
+                for record in records:
+                    if not isinstance(record, dict):
+                        continue
+                    text = str(record.get("text") or record.get("normalized_text") or record.get("content") or "").strip()
+                    if text:
+                        parts.append(text)
+                if parts:
+                    return " ".join(parts)
+            return ""
 
         def _is_high_value(e: dict) -> bool:
             cat = str(e.get("category", "")).lower()
