@@ -241,3 +241,37 @@ def test_read_only_memory_tools_work_without_core() -> None:
     assert svc.memory_list()["ok"] is True
     assert svc.memory_get("m1")["ok"] is True
     assert svc.memory_search("alpha")["ok"] is True
+
+
+
+def test_memory_default_visibility_and_explicit_audit_redaction(tmp_path: Path) -> None:
+    records = tmp_path / "memory" / "auto_memory_records.jsonl"
+    records.parent.mkdir(parents=True, exist_ok=True)
+    rows = [
+        {"id": "ok", "text": "visible", "normalized_text": "visible", "status": "accepted", "source": "ask", "category": "general", "created_at": "2026-01-01T00:00:00Z", "scope": "personal", "authority": "user_explicit", "sensitivity": "private", "can_recall": True},
+        {"id": "candidate", "text": "candidate", "normalized_text": "candidate", "status": "candidate", "source": "ask", "category": "general", "created_at": "2026-01-02T00:00:00Z", "scope": "personal", "authority": "user_explicit", "sensitivity": "private", "can_recall": True},
+        {"id": "secret", "text": "password=abc", "normalized_text": "password=abc", "status": "accepted", "source": "ask", "category": "general", "created_at": "2026-01-03T00:00:00Z", "scope": "personal", "authority": "user_explicit", "sensitivity": "secret", "can_recall": True, "token": "abc"},
+        {"id": "disabled", "text": "disabled", "normalized_text": "disabled", "status": "accepted", "source": "ask", "category": "general", "created_at": "2026-01-04T00:00:00Z", "scope": "personal", "authority": "user_explicit", "sensitivity": "private", "can_recall": False},
+    ]
+    records.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+
+    class _AuditAdapter(_EngineAdapterMinimal):
+        def records_file(self):
+            return records
+
+        def read_memories(self):
+            return [row for row in rows if row.get("can_recall", True)]
+
+    svc = MemoryServiceInterface(config={}, core=_CoreMinimal())
+    svc._engine_adapter = lambda: _AuditAdapter(rows)  # type: ignore[method-assign]
+
+    default_list = svc.memory_list(view="full")
+    assert [item["id"] for item in default_list["items"]] == ["ok"]
+    assert svc.memory_get("candidate")["status"] == "not_found"
+
+    audit_list = svc.memory_list(view="full", include_blocked=True)
+    assert audit_list["audit_view"] is True
+    assert audit_list["total"] == 4
+    secret = next(item for item in audit_list["items"] if item["id"] == "secret")
+    assert secret["text"] == "[REDACTED]"
+    assert secret["token"] == "[REDACTED]"

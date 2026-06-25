@@ -80,6 +80,79 @@ def _write_allowed() -> bool:
     return deny not in {"1", "true", "yes", "on"}
 
 
+def _as_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _audit_read_allowed(params: dict[str, Any]) -> bool:
+    required_token = str(os.environ.get("MS8_CONNECT_CLIENT_TOKEN", "")).strip()
+    if not required_token:
+        return False
+    if not _as_bool(os.environ.get("MS8_CONNECT_AUDIT_READ", "0")):
+        return False
+    ok, _ = _enforce_client_token(params)
+    return ok
+
+
+def _memory_error(tool: str, exc: Exception) -> dict[str, Any]:
+    return {
+        "ok": False,
+        "status": "invalid_request",
+        "error": "invalid_memory_tool_request",
+        "error_code": "E_MCP_INVALID_REQUEST",
+        "reason": str(exc),
+        "tool": tool,
+    }
+
+
+def _call_memory_tool(tool: str, params: dict[str, Any], svc: MemoryServiceInterface) -> dict[str, Any]:
+    include_blocked = _as_bool(params.get("include_blocked", False))
+    if include_blocked and not _audit_read_allowed(params):
+        out = {
+            "ok": False,
+            "status": "forbidden",
+            "error": "audit_read_not_allowed",
+            "error_code": "E_MCP_AUDIT_READ_FORBIDDEN",
+            "tool": tool,
+        }
+        _audit(tool, False, {"client": _get_client_name(params), "audit_view": True})
+        return out
+    try:
+        if tool == "memory_catalog":
+            out = svc.memory_catalog(include_blocked=True) if include_blocked else svc.memory_catalog()
+        elif tool == "memory_list":
+            kwargs: dict[str, Any] = {
+                "offset": int(params.get("offset", 0) or 0),
+                "limit": int(params.get("limit", 100) or 100),
+                "view": str(params.get("view") or "summary"),
+                "source": str(params.get("source") or ""),
+                "category": str(params.get("category") or ""),
+                "status": str(params.get("status") or ""),
+            }
+            if include_blocked:
+                kwargs["include_blocked"] = True
+            out = svc.memory_list(**kwargs)
+        elif tool == "memory_get":
+            kwargs = {"view": str(params.get("view") or "full")}
+            if include_blocked:
+                kwargs["include_blocked"] = True
+            out = svc.memory_get(str(params.get("id") or params.get("memory_id") or ""), **kwargs)
+        elif tool == "memory_search":
+            out = svc.memory_search(
+                str(params.get("text") or params.get("query") or ""),
+                limit=int(params.get("limit", 20) or 20),
+                view=str(params.get("view") or "summary"),
+            )
+        else:
+            return {"ok": False, "error": f"unknown_tool:{tool}"}
+    except (OSError, TypeError, ValueError) as exc:
+        out = _memory_error(tool, exc)
+    _audit(tool, bool(out.get("ok", False)), {"client": _get_client_name(params), "audit_view": include_blocked})
+    return out
+
+
 def _audit(action: str, ok: bool, detail: dict[str, Any] | None = None) -> None:
     root = connect_root()
     p = root / "logs" / "audit.log"
@@ -289,44 +362,31 @@ def call_tool(name: str, params: dict[str, Any] | None = None, config: dict[str,
         out = svc.profile(str(p.get("key") or p.get("resource") or "profile"))
         _audit("profile", bool(out.get("ok", False)), {"client": _get_client_name(p)})
         return out
-    if tool == "memory_catalog":
-        out = svc.memory_catalog()
-        _audit("memory_catalog", bool(out.get("ok", False)), {"client": _get_client_name(p)})
-        return out
-    if tool == "memory_list":
-        out = svc.memory_list(
-            offset=int(p.get("offset", 0) or 0),
-            limit=int(p.get("limit", 100) or 100),
-            view=str(p.get("view") or "summary"),
-            source=str(p.get("source") or ""),
-            category=str(p.get("category") or ""),
-            status=str(p.get("status") or ""),
-        )
-        _audit("memory_list", bool(out.get("ok", False)), {"client": _get_client_name(p)})
-        return out
-    if tool == "memory_get":
-        out = svc.memory_get(
-            str(p.get("id") or p.get("memory_id") or ""),
-            view=str(p.get("view") or "full"),
-        )
-        _audit("memory_get", bool(out.get("ok", False)), {"client": _get_client_name(p)})
-        return out
-    if tool == "memory_search":
-        out = svc.memory_search(
-            str(p.get("text") or p.get("query") or ""),
-            limit=int(p.get("limit", 20) or 20),
-            view=str(p.get("view") or "summary"),
-        )
-        _audit("memory_search", bool(out.get("ok", False)), {"client": _get_client_name(p)})
-        return out
+    if tool.startswith("memory_"):
+        return _call_memory_tool(tool, p, svc)
     return {"ok": False, "error": f"unknown_tool:{name}"}
 
 
-def read_resource(key: str, config: dict[str, Any] | None = None) -> dict[str, Any]:
+def read_resource(
+    key: str,
+    config: dict[str, Any] | None = None,
+    params: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    p = params if isinstance(params, dict) else {}
+    ok_token, token_err = _enforce_client_token(p)
+    if not ok_token:
+        out = {"ok": False, "error": token_err, "resource": key, "client": _get_client_name(p)}
+        _audit("resource_auth", False, out)
+        return out
     cfg = _load_config(config)
     svc = MemoryServiceInterface.from_config(cfg)
     if key == "catalog":
         return svc.memory_catalog()
     if key.startswith("memory/"):
-        return svc.memory_get(key.split("/", 1)[1], view="full")
+        return {
+            "ok": False,
+            "error": "dynamic_memory_resource_disabled",
+            "error_code": "E_MCP_RESOURCE_DISABLED",
+            "resource": key,
+        }
     return svc.profile(key)
