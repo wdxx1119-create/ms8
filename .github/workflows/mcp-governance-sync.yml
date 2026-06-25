@@ -1,0 +1,50 @@
+name: Sync MCP Governance Repair Branch
+
+on:
+  push:
+    paths:
+      - ".github/workflows/mcp-governance-sync.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repair branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/mcp-full-memory-governance
+          fetch-depth: 0
+
+      - name: Merge latest main and remove this workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-edit origin/main
+          rm -f .github/workflows/mcp-governance-sync.yml
+
+      - name: Validate merged branch
+        run: |
+          python -m pip install -e ".[dev]"
+          python -m pytest -q --no-cov \
+            tests/test_memory_service_interface_edges.py \
+            tests/test_connect_module_and_mcp_server_helpers.py \
+            tests/test_connect_stdio_server.py
+          python -m compileall -q \
+            src/ms8/connect/mcp_server/memory_access_policy.py \
+            src/ms8/connect/mcp_server/memory_service_interface.py \
+            src/ms8/connect/mcp_server/mcp_server.py \
+            src/ms8/connect/mcp_server/stdio_server.py
+
+      - name: Push synchronized branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -A
+          git commit -m "ci: remove one-time branch sync workflow"
+          git push origin HEAD:fix/mcp-full-memory-governance
