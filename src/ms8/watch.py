@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
 import logging
 import time
 from datetime import datetime, timezone
+from urllib.parse import quote
 
 from .absorb.health import absorb_health_summary
 from .doctor import run_doctor
@@ -100,6 +103,29 @@ def _self_check_snapshot(payload: dict) -> dict[str, object]:
     return {"status": status, **counts, "warn_ids": warn_ids[:3], "fail_ids": fail_ids[:3]}
 
 
+def _doctor_follow_up_actions(output: str) -> list[str]:
+    actions: list[str] = []
+    seen: set[str] = set()
+    for raw_line in str(output or "").splitlines():
+        line = raw_line.strip()
+        if line.startswith("watch next:"):
+            action = line.split(":", 1)[1].strip()
+        elif line.startswith("watch also:"):
+            action = line.split(":", 1)[1].strip()
+        else:
+            continue
+        if not action or action in seen:
+            continue
+        seen.add(action)
+        actions.append(action)
+    return actions
+
+
+def _encode_watch_actions(actions: list[str]) -> str:
+    encoded = [quote(str(action).strip(), safe="") for action in actions if str(action).strip()]
+    return "|".join(encoded)
+
+
 def run_watch(interval_seconds: int = 1800, once: bool = False) -> int:
     ensure_runtime_dirs()
     if interval_seconds < 10:
@@ -108,7 +134,13 @@ def run_watch(interval_seconds: int = 1800, once: bool = False) -> int:
 
     while True:
         ts = datetime.now(timezone.utc).isoformat()
-        code = run_doctor()
+        doctor_buf = io.StringIO()
+        with contextlib.redirect_stdout(doctor_buf):
+            code = run_doctor()
+        doctor_output = doctor_buf.getvalue()
+        if doctor_output:
+            print(doctor_output, end="")
+        doctor_actions = _doctor_follow_up_actions(doctor_output)
         mem_count = count_memories()
         learning = run_daily_learning()
         kg_extract = run_kg_batch_extract(limit=20, force=False)
@@ -153,6 +185,8 @@ def run_watch(interval_seconds: int = 1800, once: bool = False) -> int:
             tick_message += f" self_check_fail_ids={','.join(str(x) for x in fail_ids)}"
         if isinstance(warn_ids, list) and warn_ids:
             tick_message += f" self_check_warn_ids={','.join(str(x) for x in warn_ids)}"
+        if doctor_actions:
+            tick_message += f" next_actions={_encode_watch_actions(doctor_actions[:3])}"
         if has_recent_activity(window_seconds=active_window):
             final_message = f"{tick_message} backup=skipped cleanup=skipped reason=recent_activity"
             logger.info(final_message)
