@@ -189,6 +189,8 @@ def test_run_doctor_absorb_warning_prints_shortest_action(monkeypatch, capsys, t
     assert "absorb: risk=yellow" in out
     assert "Overall: warn" in out
     assert "absorb next: ms8 absorb review list" in out
+    assert "watch next: ms8 absorb review list" in out
+    assert "watch also: ms8 ops governance" in out
 
 
 def test_run_doctor_self_check_guidance_prints_known_next_action(monkeypatch, capsys, tmp_path: Path) -> None:
@@ -363,6 +365,96 @@ def test_run_doctor_overall_warn_follows_governance_domain_and_prints_follow_up(
     assert "memory_quality_health: warn" in out
     assert "Overall: warn" in out
     assert "watch next: ms8 ops governance" in out
+
+
+def test_run_doctor_warn_prioritizes_direct_absorb_action_before_governance(
+    monkeypatch, capsys, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("MS8_HOME", str(tmp_path / ".ms8"))
+    monkeypatch.setattr(doctor, "ensure_runtime_dirs", lambda: {"root": tmp_path / ".ms8"})
+    monkeypatch.setattr(doctor, "count_memories", lambda: 3)
+
+    class _Usage:
+        total = 10
+        used = 3
+        free = 7 * (1024**3)
+
+    monkeypatch.setattr(doctor.shutil, "disk_usage", lambda _p: _Usage())
+    monkeypatch.setattr(doctor, "engine_status", lambda: {"mode": "ms8_core", "available": True})
+    monkeypatch.setattr(
+        doctor,
+        "run_engine_self_check",
+        lambda level="L4": {
+            "schema_version": "1.0",
+            "status": "warn",
+            "summary": {"total": 1, "pass": 0, "warn": 1, "fail": 0, "error": 0, "exit_code": 1},
+            "results": [{"check_id": "l4_capture_trend", "status": "warn"}],
+            "domain_summary": {"memory": {"total": 1, "pass": 0, "warn": 1, "fail": 0, "error": 0, "pass_rate": 0.0}},
+            "maturity_gate": {"memory_ready": True, "security_ready": True, "connect_ready": True, "overall_ready": True},
+        },
+    )
+    monkeypatch.setattr(doctor, "get_engine_monitoring_status", lambda: {"enabled": True, "alerts": []})
+    monkeypatch.setattr(
+        doctor,
+        "get_engine_shadow_status",
+        lambda: {"enabled": True, "mode": "active", "sealed": False, "manifest": {"reason": ""}},
+    )
+    monkeypatch.setattr(doctor, "get_engine_llm_status", lambda: {"available": True, "providers": {}})
+    monkeypatch.setattr(doctor, "get_llm_status_runtime", lambda: {})
+    monkeypatch.setattr(
+        doctor,
+        "get_governance_report",
+        lambda: {
+            "noncanonical_records": 0,
+            "schema_invalid_count": 0,
+            "fallback_write_count": 0,
+            "fallback_total_count": 0,
+            "duplicate_groups": 0,
+            "pending_review": 0,
+            "pending_review_oldest_hours": 0,
+            "self_check_status": "warn",
+            "trend": {"window_24h": {"samples": 1, "risk": "yellow"}, "window_7d": {"samples": 1, "risk": "green"}},
+            "health_domains": {"memory_quality_health": "yellow", "overall": "yellow"},
+        },
+    )
+    monkeypatch.setattr(doctor, "get_expression_router_status", lambda: {"total_samples": 0, "mode_counts": {}})
+    monkeypatch.setattr(
+        doctor,
+        "get_capability_reachability_report",
+        lambda top_unreachable=10: {"reachable_ratio": 1.0, "referenced_methods": 1, "public_methods_total": 1, "unreachable_methods": 0},
+    )
+    monkeypatch.setattr(doctor, "_agent_native_status", lambda: {"policy": "PRESENT", "permission_profile": "DEFAULT_SAFE", "task_files": "install=P, ops=P, usage=P", "agent_native_status": "OK"})
+    monkeypatch.setattr(doctor, "has_recent_activity", lambda _w=3600: True)
+    monkeypatch.setattr(
+        doctor,
+        "get_policy_backend_status",
+        lambda: {
+            "policy_backend": "open",
+            "policy_engine_version": "0.1.0-open",
+            "policy_strict_mode": False,
+            "policy_fallback_reason": "",
+            "policy_license": {"status": "disabled", "enabled": False},
+        },
+    )
+    monkeypatch.setattr(
+        doctor,
+        "absorb_health_summary",
+        lambda: {
+            "risk": "green",
+            "authorized_roots": 0,
+            "pending_review": 0,
+            "quarantine": 0,
+            "auto_submit_summaries": False,
+            "auto_write_tier": "OFF",
+        },
+    )
+
+    code = doctor.run_doctor()
+    out = capsys.readouterr().out
+
+    assert code == 1
+    assert "watch next: ms8 absorb add <directory>" in out
+    assert "watch also: ms8 ops governance" in out
 
 
 def test_run_doctor_shadow_startup_integrity_failure_degrades_and_points_to_shadow_actions(
