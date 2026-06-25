@@ -118,7 +118,11 @@ TOOL_DEFINITIONS: dict[str, dict[str, Any]] = {
     },
     "memory_catalog": {
         "description": "Return counts and dimensions for the persisted MS8 memory corpus.",
-        "inputSchema": {"type": "object", "properties": {}, "additionalProperties": True},
+        "inputSchema": {
+            "type": "object",
+            "properties": {"include_blocked": {"type": "boolean", "default": False}},
+            "additionalProperties": True,
+        },
     },
     "memory_list": {
         "description": "List persisted memories with deterministic pagination and optional filters.",
@@ -131,6 +135,7 @@ TOOL_DEFINITIONS: dict[str, dict[str, Any]] = {
                 "source": {"type": "string"},
                 "category": {"type": "string"},
                 "status": {"type": "string"},
+                "include_blocked": {"type": "boolean", "default": False},
             },
             "additionalProperties": True,
         },
@@ -142,6 +147,7 @@ TOOL_DEFINITIONS: dict[str, dict[str, Any]] = {
             "properties": {
                 "id": {"type": "string"},
                 "view": {"type": "string", "enum": ["summary", "full"], "default": "full"},
+                "include_blocked": {"type": "boolean", "default": False},
             },
             "required": ["id"],
             "additionalProperties": True,
@@ -269,7 +275,16 @@ def handle_request(req: dict[str, Any]) -> dict[str, Any] | None:
 
         name = str(params.get("name") or "")
         arguments = params.get("arguments", {}) if isinstance(params.get("arguments", {}), dict) else {}
-        out = call_tool(name, arguments)
+        try:
+            out = call_tool(name, arguments)
+        except (OSError, TypeError, ValueError) as exc:
+            out = {
+                "ok": False,
+                "status": "invalid_request",
+                "error": "tool_call_failed",
+                "error_code": "E_MCP_TOOL_CALL_FAILED",
+                "reason": str(exc),
+            }
         text = json.dumps(out, ensure_ascii=False)
         return _ok_result(req_id, {"content": [{"type": "text", "text": text}], "isError": not bool(out.get("ok", False))})
     if method == "resources/list":
@@ -282,7 +297,16 @@ def handle_request(req: dict[str, Any]) -> dict[str, Any] | None:
 
         uri = str(params.get("uri") or "")
         key = uri.split("ms8://", 1)[-1] if uri.startswith("ms8://") else uri
-        out = read_resource(key)
+        try:
+            out = read_resource(key, params=params)
+        except (OSError, TypeError, ValueError) as exc:
+            out = {
+                "ok": False,
+                "status": "invalid_request",
+                "error": "resource_read_failed",
+                "error_code": "E_MCP_RESOURCE_READ_FAILED",
+                "reason": str(exc),
+            }
         text = json.dumps(out, ensure_ascii=False)
         return _ok_result(req_id, {"contents": [{"uri": uri or f"ms8://{key}", "mimeType": "application/json", "text": text}]})
     return _err_result(req_id, -32601, f"method_not_found:{method}")

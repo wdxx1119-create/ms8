@@ -26,6 +26,7 @@ from ...engine_core.response_mode_types import RouterDecision
 from ...engine_core.sticky_prompt_templates import GUARDRAIL_PROMPT_EXTRA, build_profile_hint, get_prompt_extra
 from ...paths import get_ms8_home
 from ..integration_hooks.service_models import MemoryCandidate
+from .memory_access_policy import memory_row_browsable, redact_memory_row
 
 ERR_CORE_UNAVAILABLE = "E_CORE_UNAVAILABLE"
 ERR_PROFILE_NOT_FOUND = "E_PROFILE_NOT_FOUND"
@@ -177,19 +178,21 @@ class MemoryServiceInterface:
                 "results": [],
             }
 
-    def memory_catalog(self) -> dict[str, Any]:
-        rows = self._read_memory_rows()
+    def memory_catalog(self, *, include_blocked: bool = False) -> dict[str, Any]:
+        rows = self._read_memory_rows(include_blocked=include_blocked)
+        latest_created_at = max((str(row.get("created_at", "")) for row in rows), default="")
         return {
             "ok": True,
             "provider": "ms8_runtime",
             "read_only": True,
+            "audit_view": bool(include_blocked),
             "total": len(rows),
             "sources": dict(sorted(Counter(str(row.get("source", "")) for row in rows if row.get("source")).items())),
             "categories": dict(
                 sorted(Counter(str(row.get("category", "")) for row in rows if row.get("category")).items())
             ),
             "statuses": dict(sorted(Counter(str(row.get("status", "")) for row in rows if row.get("status")).items())),
-            "latest_created_at": str(rows[-1].get("created_at", "")) if rows else "",
+            "latest_created_at": latest_created_at,
         }
 
     def memory_list(
@@ -201,10 +204,11 @@ class MemoryServiceInterface:
         source: str = "",
         category: str = "",
         status: str = "",
+        include_blocked: bool = False,
     ) -> dict[str, Any]:
         offset, limit = self._validated_page(offset, limit)
         rows = self._filter_memory_rows(
-            self._read_memory_rows(),
+            self._read_memory_rows(include_blocked=include_blocked),
             source=source,
             category=category,
             status=status,
@@ -214,6 +218,7 @@ class MemoryServiceInterface:
         return {
             "ok": True,
             "provider": "ms8_runtime",
+            "audit_view": bool(include_blocked),
             "view": view,
             "offset": offset,
             "limit": limit,
@@ -222,15 +227,22 @@ class MemoryServiceInterface:
             "items": [self._render_memory_row(row, view) for row in page],
         }
 
-    def memory_get(self, memory_id: str, *, view: str = "full") -> dict[str, Any]:
+    def memory_get(
+        self,
+        memory_id: str,
+        *,
+        view: str = "full",
+        include_blocked: bool = False,
+    ) -> dict[str, Any]:
         normalized_id = str(memory_id or "").strip()
         if not normalized_id:
             return {"ok": False, "status": "invalid_request", "reason": "memory_id_required"}
-        for row in self._read_memory_rows():
+        for row in self._read_memory_rows(include_blocked=include_blocked):
             if str(row.get("id", "")).strip() == normalized_id:
                 return {
                     "ok": True,
                     "provider": "ms8_runtime",
+                    "audit_view": bool(include_blocked),
                     "item": self._render_memory_row(row, view),
                 }
         return {
@@ -607,10 +619,34 @@ class MemoryServiceInterface:
             raise ValueError(f"limit must be between 1 and {MAX_PAGE_SIZE}")
         return offset, limit
 
-    def _read_memory_rows(self) -> list[dict[str, Any]]:
+
+    @staticmethod
+    def _read_all_memory_rows(adapter: MemoryCoreEngine) -> list[dict[str, Any]]:
+        records_file = adapter.records_file()
+        if not records_file.exists():
+            return []
+        rows: list[dict[str, Any]] = []
+        for line in records_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+            if not line.strip():
+                continue
+            try:
+                payload = json.loads(line)
+            except (TypeError, ValueError, json.JSONDecodeError) as exc:
+                logger.debug("skip_invalid_mcp_memory_json err=%s", exc)
+                continue
+            if isinstance(payload, dict):
+                if "text" not in payload and "normalized_text" in payload:
+                    payload["text"] = payload.get("normalized_text", "")
+                rows.append(payload)
+        return rows
+
+    def _read_memory_rows(self, *, include_blocked: bool = False) -> list[dict[str, Any]]:
         adapter = self._engine_adapter()
-        rows = adapter.read_memories()
-        return [dict(row) for row in rows if isinstance(row, dict)]
+        source_rows = self._read_all_memory_rows(adapter) if include_blocked else adapter.read_memories()
+        rows = [dict(row) for row in source_rows if isinstance(row, dict)]
+        if include_blocked:
+            return rows
+        return [row for row in rows if memory_row_browsable(row)]
 
     @staticmethod
     def _filter_memory_rows(
@@ -634,11 +670,13 @@ class MemoryServiceInterface:
             out.append(row)
         return out
 
+
     def _render_memory_row(self, row: dict[str, Any], view: str) -> dict[str, Any]:
+        safe_row = redact_memory_row(row)
         if view == "summary":
-            return self._normalize_result_row(row)
+            return self._normalize_result_row(safe_row)
         if view == "full":
-            return self._json_safe(row)
+            return self._json_safe(safe_row)
         raise ValueError("view must be 'summary' or 'full'")
 
     def _normalize_submit_result(self, raw: Any) -> dict[str, Any]:
