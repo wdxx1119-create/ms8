@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -32,6 +33,8 @@ ERR_PROFILE_PARSE = "E_PROFILE_PARSE"
 ERR_PROFILE_UNKNOWN = "E_PROFILE_UNKNOWN"
 
 logger = logging.getLogger(__name__)
+MAX_PAGE_SIZE = 500
+DEFAULT_PAGE_SIZE = 100
 
 
 @dataclass
@@ -173,6 +176,102 @@ class MemoryServiceInterface:
                 "error_code": "E_MCP_QUERY_FAILED",
                 "results": [],
             }
+
+    def memory_catalog(self) -> dict[str, Any]:
+        rows = self._read_memory_rows()
+        return {
+            "ok": True,
+            "provider": "ms8_runtime",
+            "read_only": True,
+            "total": len(rows),
+            "sources": dict(sorted(Counter(str(row.get("source", "")) for row in rows if row.get("source")).items())),
+            "categories": dict(
+                sorted(Counter(str(row.get("category", "")) for row in rows if row.get("category")).items())
+            ),
+            "statuses": dict(sorted(Counter(str(row.get("status", "")) for row in rows if row.get("status")).items())),
+            "latest_created_at": str(rows[-1].get("created_at", "")) if rows else "",
+        }
+
+    def memory_list(
+        self,
+        *,
+        offset: int = 0,
+        limit: int = DEFAULT_PAGE_SIZE,
+        view: str = "summary",
+        source: str = "",
+        category: str = "",
+        status: str = "",
+    ) -> dict[str, Any]:
+        offset, limit = self._validated_page(offset, limit)
+        rows = self._filter_memory_rows(
+            self._read_memory_rows(),
+            source=source,
+            category=category,
+            status=status,
+        )
+        page = rows[offset : offset + limit]
+        next_offset = offset + len(page)
+        return {
+            "ok": True,
+            "provider": "ms8_runtime",
+            "view": view,
+            "offset": offset,
+            "limit": limit,
+            "total": len(rows),
+            "next_offset": next_offset if next_offset < len(rows) else None,
+            "items": [self._render_memory_row(row, view) for row in page],
+        }
+
+    def memory_get(self, memory_id: str, *, view: str = "full") -> dict[str, Any]:
+        normalized_id = str(memory_id or "").strip()
+        if not normalized_id:
+            return {"ok": False, "status": "invalid_request", "reason": "memory_id_required"}
+        for row in self._read_memory_rows():
+            if str(row.get("id", "")).strip() == normalized_id:
+                return {
+                    "ok": True,
+                    "provider": "ms8_runtime",
+                    "item": self._render_memory_row(row, view),
+                }
+        return {
+            "ok": False,
+            "status": "not_found",
+            "reason": "memory_not_found",
+            "memory_id": normalized_id,
+        }
+
+    def memory_search(self, query: str, *, limit: int = 20, view: str = "summary") -> dict[str, Any]:
+        text = str(query or "").strip()
+        if not text:
+            return {"ok": False, "status": "invalid_request", "reason": "query_required", "items": []}
+        try:
+            gateway = self._engine_adapter().retrieve_gateway(
+                query=text,
+                limit=int(max(1, min(limit, MAX_PAGE_SIZE))),
+                purpose="recall",
+                allow_semantic=False,
+                allow_graph=False,
+            )
+        except (OSError, RuntimeError, TypeError, ValueError) as exc:
+            logger.warning("mcp_memory_search_failed query=%s err=%s", text, exc)
+            return {
+                "ok": False,
+                "status": "error",
+                "reason": str(exc),
+                "error_code": "E_MCP_MEMORY_SEARCH_FAILED",
+                "items": [],
+            }
+        rows = gateway.get("items", []) if isinstance(gateway.get("items", []), list) else []
+        items = [self._render_memory_row(row, view) for row in rows if isinstance(row, dict)]
+        return {
+            "ok": True,
+            "provider": "ms8_runtime",
+            "query": text,
+            "limit": int(max(1, min(limit, MAX_PAGE_SIZE))),
+            "total_matches": len(items),
+            "items": items,
+            "retrieval_gateway": gateway.get("trace", {}),
+        }
 
     def context(self, text: str, limit: int = 5) -> dict[str, Any]:
         if not self.available():
@@ -499,6 +598,48 @@ class MemoryServiceInterface:
         except (TypeError, ValueError) as exc:
             logger.debug("Failed to parse resource int '%s': %s", key, exc)
             return int(default)
+
+    @staticmethod
+    def _validated_page(offset: int, limit: int) -> tuple[int, int]:
+        if offset < 0:
+            raise ValueError("offset must be non-negative")
+        if not 1 <= limit <= MAX_PAGE_SIZE:
+            raise ValueError(f"limit must be between 1 and {MAX_PAGE_SIZE}")
+        return offset, limit
+
+    def _read_memory_rows(self) -> list[dict[str, Any]]:
+        adapter = self._engine_adapter()
+        rows = adapter.read_memories()
+        return [dict(row) for row in rows if isinstance(row, dict)]
+
+    @staticmethod
+    def _filter_memory_rows(
+        rows: list[dict[str, Any]],
+        *,
+        source: str = "",
+        category: str = "",
+        status: str = "",
+    ) -> list[dict[str, Any]]:
+        source_filter = str(source or "").strip()
+        category_filter = str(category or "").strip()
+        status_filter = str(status or "").strip()
+        out: list[dict[str, Any]] = []
+        for row in rows:
+            if source_filter and str(row.get("source", "")) != source_filter:
+                continue
+            if category_filter and str(row.get("category", "")) != category_filter:
+                continue
+            if status_filter and str(row.get("status", "")) != status_filter:
+                continue
+            out.append(row)
+        return out
+
+    def _render_memory_row(self, row: dict[str, Any], view: str) -> dict[str, Any]:
+        if view == "summary":
+            return self._normalize_result_row(row)
+        if view == "full":
+            return self._json_safe(row)
+        raise ValueError("view must be 'summary' or 'full'")
 
     def _normalize_submit_result(self, raw: Any) -> dict[str, Any]:
         items = raw if isinstance(raw, list) else [raw]

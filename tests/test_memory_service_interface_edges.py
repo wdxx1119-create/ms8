@@ -20,6 +20,17 @@ class _CoreMinimal:
         return {"ok": True}
 
 
+class _EngineAdapterMinimal:
+    def __init__(self, rows=None):
+        self.rows = rows if rows is not None else []
+
+    def read_memories(self):
+        return list(self.rows)
+
+    def retrieve_gateway(self, query: str, limit: int = 5, purpose: str = "recall", allow_semantic: bool = False, allow_graph: bool = False):
+        return {"items": list(self.rows)[:limit], "trace": {"query": query, "purpose": purpose}}
+
+
 def test_from_config_fallback_workspace(monkeypatch, tmp_path: Path) -> None:
     # Force workspace fallback path branch.
     monkeypatch.setattr(MemoryServiceInterface, "_is_writable_dir", staticmethod(lambda _p: False))
@@ -153,3 +164,80 @@ def test_build_expression_context_router_failure_fallback(monkeypatch, tmp_path:
     out = svc._build_expression_context("hello", {"context": "x"})
     assert out["mode"] == "normal"
     assert "router_fallback_normal" in out["decision"]["reason"]
+
+
+def test_memory_catalog_list_get_and_search() -> None:
+    rows = [
+        {
+            "id": "m1",
+            "text": "alpha memory",
+            "source": "ask",
+            "category": "decision",
+            "status": "accepted",
+            "created_at": "2026-01-01T00:00:00Z",
+            "extra": {"k": "v"},
+        },
+        {
+            "id": "m2",
+            "text": "beta memory",
+            "source": "mcp:submit",
+            "category": "preference",
+            "status": "accepted",
+            "created_at": "2026-01-02T00:00:00Z",
+        },
+    ]
+    svc = MemoryServiceInterface(config={}, core=_CoreMinimal())
+    svc._engine_adapter = lambda: _EngineAdapterMinimal(rows)  # type: ignore[method-assign]
+
+    catalog = svc.memory_catalog()
+    assert catalog["ok"] is True
+    assert catalog["total"] == 2
+    assert catalog["sources"]["ask"] == 1
+
+    listed = svc.memory_list(limit=1, view="summary", source="ask")
+    assert listed["ok"] is True
+    assert listed["total"] == 1
+    assert listed["items"][0]["id"] == "m1"
+
+    full = svc.memory_get("m1", view="full")
+    assert full["ok"] is True
+    assert full["item"]["extra"]["k"] == "v"
+
+    missing = svc.memory_get("missing")
+    assert missing["ok"] is False
+    assert missing["status"] == "not_found"
+
+    search = svc.memory_search("alpha", limit=5, view="summary")
+    assert search["ok"] is True
+    assert search["items"][0]["id"] == "m1"
+
+
+def test_memory_query_validation_errors() -> None:
+    svc = MemoryServiceInterface(config={}, core=_CoreMinimal())
+    svc._engine_adapter = lambda: _EngineAdapterMinimal([])  # type: ignore[method-assign]
+
+    invalid_get = svc.memory_get("")
+    assert invalid_get["ok"] is False
+    assert invalid_get["status"] == "invalid_request"
+
+    invalid_search = svc.memory_search("")
+    assert invalid_search["ok"] is False
+    assert invalid_search["status"] == "invalid_request"
+
+    try:
+        svc.memory_list(limit=501)
+    except ValueError as exc:
+        assert "limit must be between 1 and 500" in str(exc)
+    else:  # pragma: no cover
+        raise AssertionError("memory_list should reject an oversized limit")
+
+
+def test_read_only_memory_tools_work_without_core() -> None:
+    rows = [{"id": "m1", "text": "alpha", "source": "ask", "category": "decision", "status": "accepted", "created_at": "t"}]
+    svc = MemoryServiceInterface(config={}, core=None, core_error="core init failed")
+    svc._engine_adapter = lambda: _EngineAdapterMinimal(rows)  # type: ignore[method-assign]
+
+    assert svc.memory_catalog()["ok"] is True
+    assert svc.memory_list()["ok"] is True
+    assert svc.memory_get("m1")["ok"] is True
+    assert svc.memory_search("alpha")["ok"] is True

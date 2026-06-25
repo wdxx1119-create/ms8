@@ -35,14 +35,15 @@ def test_handle_request_core_methods(monkeypatch):
 def test_handle_request_tools_and_resources(monkeypatch):
     import ms8.connect.mcp_server.mcp_server as mcp_mod
 
-    monkeypatch.setattr(mcp_mod, "TOOL_NAMES", ["prepare_reply"])
-    monkeypatch.setattr(mcp_mod, "RESOURCE_KEYS", ["profile"])
+    monkeypatch.setattr(mcp_mod, "TOOL_NAMES", ["prepare_reply", "memory_list"])
+    monkeypatch.setattr(mcp_mod, "RESOURCE_KEYS", ["profile", "catalog"])
     monkeypatch.setattr(mcp_mod, "call_tool", lambda name, args: {"ok": True, "name": name, "args": args})
     monkeypatch.setattr(mcp_mod, "read_resource", lambda key: {"ok": True, "key": key})
 
     tools = stdio_server.handle_request({"jsonrpc": "2.0", "id": 3, "method": "tools/list"})
     assert tools is not None
     assert tools["result"]["tools"][0]["name"] == "prepare_reply"
+    assert tools["result"]["tools"][1]["name"] == "memory_list"
 
     called = stdio_server.handle_request(
         {
@@ -59,6 +60,7 @@ def test_handle_request_tools_and_resources(monkeypatch):
 
     resources = stdio_server.handle_request({"jsonrpc": "2.0", "id": 5, "method": "resources/list"})
     assert resources["result"]["resources"][0]["uri"] == "ms8://profile"
+    assert resources["result"]["resources"][1]["uri"] == "ms8://catalog"
 
     read = stdio_server.handle_request(
         {"jsonrpc": "2.0", "id": 6, "method": "resources/read", "params": {"uri": "ms8://profile"}}

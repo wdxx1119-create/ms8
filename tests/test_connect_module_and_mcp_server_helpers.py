@@ -64,6 +64,18 @@ def test_mcp_server_tool_paths_and_auth(monkeypatch) -> None:
         def profile(self, key):
             return {"ok": True, "key": key}
 
+        def memory_catalog(self):
+            return {"ok": True, "total": 1}
+
+        def memory_list(self, **kwargs):
+            return {"ok": True, "kwargs": kwargs}
+
+        def memory_get(self, memory_id, view="full"):
+            return {"ok": True, "id": memory_id, "view": view}
+
+        def memory_search(self, query, limit=20, view="summary"):
+            return {"ok": True, "query": query, "limit": limit, "view": view}
+
     monkeypatch.setattr(server, "MemoryServiceInterface", _Svc)
     monkeypatch.setattr(server, "_load_registry", lambda: {"a": 1})
     monkeypatch.setattr(server, "_audit", lambda *_a, **_k: None)
@@ -92,6 +104,10 @@ def test_mcp_server_tool_paths_and_auth(monkeypatch) -> None:
     assert server.call_tool("context", {"token": "tok", "text": "x"})["ok"] is True
     assert server.call_tool("status", {"token": "tok"})["ok"] is True
     assert server.call_tool("profile", {"token": "tok", "key": "profile"})["ok"] is True
+    assert server.call_tool("memory_catalog", {"token": "tok"})["ok"] is True
+    assert server.call_tool("memory_list", {"token": "tok", "limit": 2})["ok"] is True
+    assert server.call_tool("memory_get", {"token": "tok", "id": "m1"})["ok"] is True
+    assert server.call_tool("memory_search", {"token": "tok", "text": "x"})["ok"] is True
     assert server.call_tool("unknown", {"token": "tok"})["ok"] is False
 
     created = server.create_server({})
@@ -108,6 +124,12 @@ def test_mcp_server_readonly_and_read_resource(monkeypatch) -> None:
 
         def profile(self, key):
             return {"ok": True, "key": key}
+
+        def memory_catalog(self):
+            return {"ok": True, "total": 0}
+
+        def memory_get(self, memory_id, view="full"):
+            return {"ok": True, "id": memory_id, "view": view}
 
     monkeypatch.setattr(server, "MemoryServiceInterface", _Svc)
     monkeypatch.setattr(server, "_audit", lambda *_a, **_k: None)
@@ -126,3 +148,10 @@ def test_mcp_server_readonly_and_read_resource(monkeypatch) -> None:
     prof = server.read_resource("profile", {})
     assert prof["ok"] is True
     assert prof["key"] == "profile"
+
+    catalog = server.read_resource("catalog", {})
+    assert catalog["ok"] is True
+
+    memory = server.read_resource("memory/m1", {})
+    assert memory["ok"] is True
+    assert memory["id"] == "m1"

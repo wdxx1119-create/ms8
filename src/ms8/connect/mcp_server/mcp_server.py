@@ -12,8 +12,20 @@ from typing import Any
 from ..scripts.common import connect_package_root, connect_root, load_yaml
 from .memory_service_interface import MemoryServiceInterface
 
-TOOL_NAMES = ("prepare_reply", "submit", "batch_submit", "query", "context", "status", "profile")
-RESOURCE_KEYS = ("long-term", "profile", "recent")
+TOOL_NAMES = (
+    "prepare_reply",
+    "submit",
+    "batch_submit",
+    "query",
+    "context",
+    "status",
+    "profile",
+    "memory_catalog",
+    "memory_list",
+    "memory_get",
+    "memory_search",
+)
+RESOURCE_KEYS = ("long-term", "profile", "recent", "catalog")
 _SUBMIT_GUARD_FILE = "submit_guard_state.json"
 _COOLDOWN_SECONDS = 180
 _MIN_LEN = 5
@@ -277,10 +289,44 @@ def call_tool(name: str, params: dict[str, Any] | None = None, config: dict[str,
         out = svc.profile(str(p.get("key") or p.get("resource") or "profile"))
         _audit("profile", bool(out.get("ok", False)), {"client": _get_client_name(p)})
         return out
+    if tool == "memory_catalog":
+        out = svc.memory_catalog()
+        _audit("memory_catalog", bool(out.get("ok", False)), {"client": _get_client_name(p)})
+        return out
+    if tool == "memory_list":
+        out = svc.memory_list(
+            offset=int(p.get("offset", 0) or 0),
+            limit=int(p.get("limit", 100) or 100),
+            view=str(p.get("view") or "summary"),
+            source=str(p.get("source") or ""),
+            category=str(p.get("category") or ""),
+            status=str(p.get("status") or ""),
+        )
+        _audit("memory_list", bool(out.get("ok", False)), {"client": _get_client_name(p)})
+        return out
+    if tool == "memory_get":
+        out = svc.memory_get(
+            str(p.get("id") or p.get("memory_id") or ""),
+            view=str(p.get("view") or "full"),
+        )
+        _audit("memory_get", bool(out.get("ok", False)), {"client": _get_client_name(p)})
+        return out
+    if tool == "memory_search":
+        out = svc.memory_search(
+            str(p.get("text") or p.get("query") or ""),
+            limit=int(p.get("limit", 20) or 20),
+            view=str(p.get("view") or "summary"),
+        )
+        _audit("memory_search", bool(out.get("ok", False)), {"client": _get_client_name(p)})
+        return out
     return {"ok": False, "error": f"unknown_tool:{name}"}
 
 
 def read_resource(key: str, config: dict[str, Any] | None = None) -> dict[str, Any]:
     cfg = _load_config(config)
     svc = MemoryServiceInterface.from_config(cfg)
+    if key == "catalog":
+        return svc.memory_catalog()
+    if key.startswith("memory/"):
+        return svc.memory_get(key.split("/", 1)[1], view="full")
     return svc.profile(key)
