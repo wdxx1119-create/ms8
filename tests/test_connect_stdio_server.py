@@ -38,7 +38,7 @@ def test_handle_request_tools_and_resources(monkeypatch):
     monkeypatch.setattr(mcp_mod, "TOOL_NAMES", ["prepare_reply", "memory_list"])
     monkeypatch.setattr(mcp_mod, "RESOURCE_KEYS", ["profile", "catalog"])
     monkeypatch.setattr(mcp_mod, "call_tool", lambda name, args: {"ok": True, "name": name, "args": args})
-    monkeypatch.setattr(mcp_mod, "read_resource", lambda key: {"ok": True, "key": key})
+    monkeypatch.setattr(mcp_mod, "read_resource", lambda key, params=None: {"ok": True, "key": key, "params": params})
 
     tools = stdio_server.handle_request({"jsonrpc": "2.0", "id": 3, "method": "tools/list"})
     assert tools is not None

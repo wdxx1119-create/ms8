@@ -153,5 +153,69 @@ def test_mcp_server_readonly_and_read_resource(monkeypatch) -> None:
     assert catalog["ok"] is True
 
     memory = server.read_resource("memory/m1", {})
-    assert memory["ok"] is True
-    assert memory["id"] == "m1"
+    assert memory["ok"] is False
+    assert memory["error"] == "dynamic_memory_resource_disabled"
+
+
+
+def test_mcp_audit_read_requires_explicit_flag_and_token(monkeypatch) -> None:
+    class _Svc:
+        @classmethod
+        def from_config(cls, _cfg):
+            return cls()
+
+        def memory_catalog(self, include_blocked=False):
+            return {"ok": True, "include_blocked": include_blocked}
+
+    monkeypatch.setattr(server, "MemoryServiceInterface", _Svc)
+    monkeypatch.setattr(server, "_load_config", lambda _cfg=None: {})
+    monkeypatch.setattr(server, "_audit", lambda *_a, **_k: None)
+    monkeypatch.setenv("MS8_CONNECT_CLIENT_TOKEN", "tok")
+    monkeypatch.delenv("MS8_CONNECT_AUDIT_READ", raising=False)
+
+    denied = server.call_tool("memory_catalog", {"token": "tok", "include_blocked": True})
+    assert denied["ok"] is False
+    assert denied["error_code"] == "E_MCP_AUDIT_READ_FORBIDDEN"
+
+    monkeypatch.setenv("MS8_CONNECT_AUDIT_READ", "1")
+    allowed = server.call_tool("memory_catalog", {"token": "tok", "include_blocked": True})
+    assert allowed["ok"] is True
+    assert allowed["include_blocked"] is True
+
+
+def test_mcp_memory_invalid_arguments_are_structured(monkeypatch) -> None:
+    class _Svc:
+        @classmethod
+        def from_config(cls, _cfg):
+            return cls()
+
+        def memory_list(self, **_kwargs):
+            raise ValueError("limit must be between 1 and 500")
+
+    monkeypatch.setattr(server, "MemoryServiceInterface", _Svc)
+    monkeypatch.setattr(server, "_load_config", lambda _cfg=None: {})
+    monkeypatch.setattr(server, "_audit", lambda *_a, **_k: None)
+    monkeypatch.delenv("MS8_CONNECT_CLIENT_TOKEN", raising=False)
+    out = server.call_tool("memory_list", {"limit": 501})
+    assert out["ok"] is False
+    assert out["error_code"] == "E_MCP_INVALID_REQUEST"
+
+
+def test_resource_read_enforces_configured_client_token(monkeypatch) -> None:
+    class _Svc:
+        @classmethod
+        def from_config(cls, _cfg):
+            return cls()
+
+        def memory_catalog(self):
+            return {"ok": True}
+
+    monkeypatch.setattr(server, "MemoryServiceInterface", _Svc)
+    monkeypatch.setattr(server, "_load_config", lambda _cfg=None: {})
+    monkeypatch.setattr(server, "_audit", lambda *_a, **_k: None)
+    monkeypatch.setenv("MS8_CONNECT_CLIENT_TOKEN", "tok")
+    denied = server.read_resource("catalog", params={})
+    assert denied["ok"] is False
+    assert denied["error"] == "invalid_client_token"
+    allowed = server.read_resource("catalog", params={"token": "tok"})
+    assert allowed["ok"] is True
