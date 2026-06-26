@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - candidate/v0.2.14
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
