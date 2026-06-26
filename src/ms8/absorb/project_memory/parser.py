@@ -5,8 +5,12 @@ from __future__ import annotations
 import configparser
 import hashlib
 import json
-import tomllib
 from pathlib import Path
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - Python 3.10
+    import tomli as tomllib
 
 from ..parser import ParsedDocument, parse_document as absorb_parse_document
 
