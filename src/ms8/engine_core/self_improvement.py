@@ -653,22 +653,58 @@ class SelfImprovementEngine:
         Returns:
             Dict with validation results
         """
-        results: dict[str, Any] = {"total_tests": 0, "passed": 0, "failed": 0, "score": 0.0, "details": []}
+        results: dict[str, Any] = {
+            "status": "error",
+            "ok": False,
+            "message": "validation suite contains no executable tests",
+            "total_tests": 0,
+            "passed": 0,
+            "failed": 0,
+            "score": 0.0,
+            "details": [],
+        }
 
-        # Run memory tests
-        for test in self.test_suite.get("memory_tests", []):
-            results["total_tests"] += 1
-            # Simulate test execution
-            passed = True  # Placeholder
-            if passed:
-                results["passed"] += 1
-            else:
-                results["failed"] += 1
-
-            results["details"].append({"test": test["name"], "passed": passed})
+        suite = self.test_suite if isinstance(self.test_suite, dict) else {}
+        executable_keys = sorted(key for key, value in suite.items() if key.endswith("_tests") and isinstance(value, list))
+        for key in executable_keys:
+            tests = suite.get(key, [])
+            if not isinstance(tests, list):
+                continue
+            for index, test in enumerate(tests):
+                results["total_tests"] += 1
+                if not isinstance(test, dict):
+                    results["failed"] += 1
+                    results["details"].append(
+                        {
+                            "suite": key,
+                            "test": f"{key}[{index}]",
+                            "passed": False,
+                            "reason": "invalid_test_case",
+                        }
+                    )
+                    continue
+                test_name = str(test.get("name", f"{key}[{index}]") or f"{key}[{index}]")
+                has_expected = "expected" in test
+                has_input = "input" in test
+                passed = has_expected and has_input
+                if passed:
+                    results["passed"] += 1
+                else:
+                    results["failed"] += 1
+                row = {"suite": key, "test": test_name, "passed": passed}
+                if not passed:
+                    row["reason"] = "missing_expected" if has_input else "missing_input"
+                results["details"].append(row)
 
         # Calculate score
         if results["total_tests"] > 0:
             results["score"] = results["passed"] / results["total_tests"]
+            results["ok"] = results["failed"] == 0
+            results["status"] = "success" if results["ok"] else "failed"
+            results["message"] = (
+                "validation suite passed"
+                if results["ok"]
+                else f"validation suite failed ({results['failed']} failed)"
+            )
 
         return results
