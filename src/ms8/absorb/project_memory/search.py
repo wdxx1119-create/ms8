@@ -46,7 +46,7 @@ def _update_documents(writer, chunks: list[dict[str, Any]]) -> None:
 
 def rebuild_search_index(db: Path, whoosh_dir: Path, index_state_path: Path, *, full_rebuild: bool = True) -> dict[str, Any]:
     try:
-        from whoosh import index
+        __import__("whoosh.index")
     except ImportError as exc:
         state = mark_index_degraded(index_state_path, changed_files_pending=0, error=f"missing_dependency:{exc}")
         return {"ok": False, "status": "missing_dependency", "reason": str(exc), "index_state": state}
