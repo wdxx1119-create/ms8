@@ -26,6 +26,8 @@
 
 ## Validation
 
-- `python3 -m pytest`
-- Result: `1255 passed, 5 skipped`
-- Coverage: `79.91%`
+- Python 3.10, 3.11, 3.12, and 3.13 test suites passed in GitHub Actions.
+- Ruff, mypy, and doctor smoke checks passed.
+- Wheel and source distribution passed `twine check` and clean-environment installation checks.
+- Online clean-room installation and isolated Ubuntu/macOS release tests passed.
+- Release artifacts include directly verifiable SHA-256 checksums.
