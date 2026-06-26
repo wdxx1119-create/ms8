@@ -157,7 +157,7 @@ def stats(db: Path) -> dict[str, Any]:
     with connection(db) as conn:
         file_count = int(conn.execute("SELECT COUNT(*) FROM file_records WHERE status != 'DELETED'").fetchone()[0])
         chunk_count = int(conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0])
-        file_types = Counter()
+        file_types: Counter[str] = Counter()
         for row in conn.execute("SELECT file_type FROM file_records WHERE status != 'DELETED'"):
             file_types[str(row["file_type"] or "")] += 1
         last_scan_at = conn.execute("SELECT MAX(last_seen) FROM file_records").fetchone()[0] or ""
