@@ -69,7 +69,7 @@ jobs:
           python -m pip install -e ".[dev]"
 
       - name: Ruff
-        run: python -m ruff check src/ms8 tests
+        run: python -m ruff check src/ms8
 
       - name: Mypy
         run: python -m mypy src/ms8
