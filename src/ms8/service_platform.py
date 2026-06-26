@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import plistlib
 import locale
+import plistlib
 import re
 import subprocess
 import sys
