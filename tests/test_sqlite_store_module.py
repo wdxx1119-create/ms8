@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 from ms8.engine_core import sqlite_store as mod
@@ -23,41 +24,40 @@ def _build_config(tmp_path: Path, *, with_kg: bool) -> dict:
 
 
 def _create_kg_schema(path: Path) -> None:
-    conn = sqlite3.connect(path)
-    cur = conn.cursor()
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS entities (
-            id INTEGER PRIMARY KEY,
-            canonical_name TEXT,
-            name_key TEXT UNIQUE,
-            entity_type TEXT,
-            importance REAL,
-            access_count INTEGER,
-            created_at TEXT,
-            updated_at TEXT,
-            source_memory_ref TEXT
+    with closing(sqlite3.connect(path)) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS entities (
+                id INTEGER PRIMARY KEY,
+                canonical_name TEXT,
+                name_key TEXT UNIQUE,
+                entity_type TEXT,
+                importance REAL,
+                access_count INTEGER,
+                created_at TEXT,
+                updated_at TEXT,
+                source_memory_ref TEXT
+            )
+            """
         )
-        """
-    )
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS relations (
-            id INTEGER PRIMARY KEY,
-            subject_entity_id INTEGER,
-            object_entity_id INTEGER,
-            relation_type TEXT,
-            strength REAL,
-            confidence REAL,
-            access_count INTEGER,
-            created_at TEXT,
-            updated_at TEXT,
-            source_memory_ref TEXT
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS relations (
+                id INTEGER PRIMARY KEY,
+                subject_entity_id INTEGER,
+                object_entity_id INTEGER,
+                relation_type TEXT,
+                strength REAL,
+                confidence REAL,
+                access_count INTEGER,
+                created_at TEXT,
+                updated_at TEXT,
+                source_memory_ref TEXT
+            )
+            """
         )
-        """
-    )
-    conn.commit()
-    conn.close()
+        conn.commit()
 
 
 def test_add_entity_and_relation_basics(tmp_path, monkeypatch):
@@ -93,13 +93,12 @@ def test_kg_bridge_entity_and_relation_mirror(tmp_path, monkeypatch):
     rels = store.get_entity_relations("Claude")
     assert any(item[0] == "MS8" and item[1] == "supports" for item in rels)
 
-    conn = sqlite3.connect(kg_path)
-    cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM entities")
-    entities_count = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM relations")
-    relations_count = cur.fetchone()[0]
-    conn.close()
+    with closing(sqlite3.connect(kg_path)) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM entities")
+        entities_count = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM relations")
+        relations_count = cur.fetchone()[0]
     assert entities_count >= 2
     assert relations_count >= 1
 

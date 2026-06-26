@@ -486,6 +486,187 @@ def _inspect_absorb_health(_core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+def _inspect_project_memory_health(_core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
+    try:
+        from ms8.absorb.project_memory.health import project_status
+        from ms8.absorb.project_memory.scope import list_projects, project_dir_paths
+    except ImportError as exc:
+        return {"status": "blocked", "reason": "project_memory_unavailable", "error": str(exc)}
+    projects = list_projects()
+    if not projects:
+        return _ok(action="inspect_project_memory_health", projects=0, suggested_commands=["ms8 absorb project-memory init <dir>"])
+    rows: list[dict[str, Any]] = []
+    commands: list[str] = []
+    for item in projects:
+        name = str(item.get("name", "") or "").strip()
+        if not name:
+            continue
+        paths = project_dir_paths(name)
+        status = project_status(
+            name=name,
+            root=str(item.get("root", "") or ""),
+            db_path=paths["db_path"],
+            whoosh_dir=paths["whoosh_dir"],
+            output_dir=paths["output_dir"],
+            index_state_path=paths["index_state_path"],
+            build_state_path=paths["build_state_path"],
+        )
+        rows.append(
+            {
+                "name": name,
+                "index_status": str(status.get("index_status", "")),
+                "changed_files_pending": int(status.get("changed_files_pending", 0) or 0),
+                "db_query_ok": bool(status.get("db_query_ok", False)),
+            }
+        )
+        if not bool(status.get("db_query_ok", False)):
+            commands.append(f"ms8 absorb project-memory scan --name {name}")
+        if str(status.get("index_status", "")) in {"missing", "stale", "degraded", "broken"}:
+            commands.append(f"ms8 absorb project-memory index --name {name}")
+        if str(status.get("build_last_error", "") or ""):
+            commands.append(f"ms8 absorb project-memory build --name {name}")
+    if not commands:
+        commands.append("ms8 absorb project-memory status")
+    return _ok(
+        action="inspect_project_memory_health",
+        projects=len(rows),
+        project_rows=rows[:10],
+        suggested_commands=list(dict.fromkeys(commands))[:10],
+    )
+
+
+def _inspect_validation_suite(core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
+    if not hasattr(core, "run_validation_suite"):
+        return {"status": "blocked", "reason": "validation_suite_unavailable"}
+    try:
+        out = core.run_validation_suite()
+    except (AttributeError, OSError, RuntimeError, TypeError, ValueError) as exc:
+        return {"status": "blocked", "reason": "validation_suite_failed", "error": str(exc)}
+    if not isinstance(out, dict):
+        return {"status": "blocked", "reason": "validation_suite_invalid_payload", "type": str(type(out))}
+    commands = ["ms8 ops validation-suite"]
+    if int(out.get("total_tests", 0) or 0) <= 0:
+        commands.append("Add at least one validation suite test case before relying on validation health.")
+    return _ok(
+        action="inspect_validation_suite",
+        suite_status=str(out.get("status", "") or "unknown"),
+        ok=bool(out.get("ok", False)),
+        total_tests=int(out.get("total_tests", 0) or 0),
+        failed=int(out.get("failed", 0) or 0),
+        suggested_commands=commands,
+    )
+
+
+def _session_sync_paths(core: Any) -> tuple[Path, Path, Path, int]:
+    mem_settings = core.config.get("settings", {}).get("memory", {})
+    auto_cfg = mem_settings.get("auto_memory", {}) if isinstance(mem_settings.get("auto_memory", {}), dict) else {}
+    session_cfg = auto_cfg.get("session_ingestion", {}) if isinstance(auto_cfg.get("session_ingestion", {}), dict) else {}
+    workspace_dir = Path(str(core.config.get("workspace_dir", Path(core.config["memory_dir"]).parent)))
+    state_raw = str(session_cfg.get("state_file", "memory/openclaw_session_ingest_state.json"))
+    state_file = Path(state_raw)
+    if not state_file.is_absolute():
+        state_file = workspace_dir / state_file
+    lock_dir = state_file.with_suffix(state_file.suffix + ".lock")
+    lock_info = lock_dir / "owner.json"
+    stale_seconds = int(session_cfg.get("lock_stale_seconds", 3600) or 3600)
+    return state_file, lock_dir, lock_info, stale_seconds
+
+
+def _pid_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    if pid == os.getpid():
+        return True
+    try:
+        if os.name == "nt":
+            import ctypes
+
+            PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+            STILL_ACTIVE = 259
+            handle = ctypes.windll.kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+            if not handle:
+                return False
+            exit_code = ctypes.c_ulong()
+            ok = ctypes.windll.kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code))
+            ctypes.windll.kernel32.CloseHandle(handle)
+            return bool(ok and exit_code.value == STILL_ACTIVE)
+        os.kill(pid, 0)
+        return True
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+    except (AttributeError, RuntimeError, TypeError, ValueError):
+        return False
+
+
+def _dry_session_sync_lock(core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
+    state_file, lock_dir, lock_info, stale_seconds = _session_sync_paths(core)
+    owner: dict[str, Any] = {}
+    if lock_info.exists():
+        try:
+            payload = json.loads(lock_info.read_text(encoding="utf-8"))
+            if isinstance(payload, dict):
+                owner = payload
+        except (OSError, TypeError, ValueError, json.JSONDecodeError):
+            owner = {}
+    return _ok(
+        action="clear_session_sync_lock",
+        state_file=str(state_file),
+        lock_dir=str(lock_dir),
+        lock_present=lock_dir.exists(),
+        owner=owner,
+        stale_seconds=stale_seconds,
+    )
+
+
+def _clear_session_sync_lock(core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
+    state_file, lock_dir, lock_info, stale_seconds = _session_sync_paths(core)
+    owner: dict[str, Any] = {}
+    if lock_info.exists():
+        try:
+            payload = json.loads(lock_info.read_text(encoding="utf-8"))
+            if isinstance(payload, dict):
+                owner = payload
+        except (OSError, TypeError, ValueError, json.JSONDecodeError):
+            owner = {}
+    age_seconds = None
+    started_at = str(owner.get("started_at", "") or "")
+    if started_at:
+        try:
+            dt = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            age_seconds = max(0.0, (datetime.now(timezone.utc) - dt.astimezone(timezone.utc)).total_seconds())
+        except ValueError:
+            age_seconds = None
+    owner_pid = int(owner.get("pid", 0) or 0)
+    pid_live = _pid_alive(owner_pid) if owner_pid > 0 else False
+    if lock_dir.exists():
+        if owner and pid_live and (age_seconds is None or age_seconds < max(1, stale_seconds)):
+            return {"status": "blocked", "reason": "session_sync_active", "lock_dir": str(lock_dir), "owner": owner}
+        shutil.rmtree(lock_dir, ignore_errors=True)
+    reset_state = False
+    if state_file.exists():
+        try:
+            payload = json.loads(state_file.read_text(encoding="utf-8"))
+            if not isinstance(payload, dict):
+                raise ValueError("state_not_dict")
+            if not isinstance(payload.get("files", {}), dict) or not isinstance(payload.get("recent_hashes", []), list):
+                raise ValueError("state_schema_invalid")
+        except (OSError, TypeError, ValueError, json.JSONDecodeError):
+            state_file.parent.mkdir(parents=True, exist_ok=True)
+            atomic_write_json(state_file, {"files": {}, "recent_hashes": [], "last_sync_at": ""}, ensure_ascii=False, indent=2)
+            reset_state = True
+    return _ok(
+        action="clear_session_sync_lock",
+        removed_lock=bool(not lock_dir.exists()),
+        reset_state=reset_state,
+        state_file=str(state_file),
+        lock_dir=str(lock_dir),
+    )
+
+
 def _run_self_check_l1(core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
     return core.run_self_check(level="L1")
 
@@ -930,6 +1111,15 @@ POLICIES: dict[str, RepairPolicy] = {
     "l4_absorb_health": RepairPolicy(
         "l4_absorb_health", "inspect_absorb_health", "memory", "R1", target="memory:absorb"
     ),
+    "m11_project_memory_health": RepairPolicy(
+        "m11_project_memory_health", "inspect_project_memory_health", "memory", "R1", target="memory:project_memory"
+    ),
+    "m12_validation_suite_runtime": RepairPolicy(
+        "m12_validation_suite_runtime", "inspect_validation_suite", "memory", "R1", target="memory:validation_suite"
+    ),
+    "m13_session_sync_health": RepairPolicy(
+        "m13_session_sync_health", "clear_session_sync_lock", "memory", "R1", target="memory:session_sync"
+    ),
     "l5_llm_notice_state_health": RepairPolicy(
         "l5_llm_notice_state_health",
         "reinit_llm_notice_state",
@@ -1025,6 +1215,24 @@ HOOKS: dict[str, PolicyHooks] = {
         _inspect_absorb_health,
         _inspect_absorb_health,
         _noop,
+    ),
+    "inspect_project_memory_health": PolicyHooks(
+        _noop,
+        _inspect_project_memory_health,
+        _inspect_project_memory_health,
+        _noop,
+    ),
+    "inspect_validation_suite": PolicyHooks(
+        _noop,
+        _inspect_validation_suite,
+        _inspect_validation_suite,
+        _noop,
+    ),
+    "clear_session_sync_lock": PolicyHooks(
+        _noop,
+        _dry_session_sync_lock,
+        _clear_session_sync_lock,
+        _rollback_manual("clear_session_sync_lock"),
     ),
 }
 
