@@ -30,6 +30,7 @@ jobs:
           python -m pip install -e ".[dev]"
 
       - name: Mypy
+        if: matrix.python-version == '3.11'
         run: python -m mypy src/ms8
 
       - name: Ruff

@@ -30,6 +30,76 @@ from .runtime import (
 logger = logging.getLogger(__name__)
 
 
+def _self_check_snapshot(payload: dict) -> dict[str, object]:
+    """Normalize self-check payload for concise watch logging."""
+    raw = payload.get("result") if isinstance(payload.get("result"), dict) else payload
+    if not isinstance(raw, dict):
+        return {
+            "status": "unknown",
+            "pass": 0,
+            "warn": 0,
+            "fail": 0,
+            "error": 0,
+            "warn_ids": [],
+            "fail_ids": [],
+        }
+
+    status_raw = str(raw.get("status", "unknown")).strip().lower()
+    status = {
+        "ok": "pass",
+        "success": "pass",
+        "healthy": "pass",
+        "warning": "warn",
+        "warn": "warn",
+        "failed": "fail",
+        "fail": "fail",
+        "error": "error",
+    }.get(status_raw, status_raw or "unknown")
+
+    summary = raw.get("summary", {}) if isinstance(raw.get("summary", {}), dict) else {}
+    if summary:
+        summary_warn_ids: list[str] = []
+        summary_fail_ids: list[str] = []
+        results = raw.get("results", [])
+        if isinstance(results, list):
+            for row in results:
+                if not isinstance(row, dict):
+                    continue
+                check_id = str(row.get("check_id", "")).strip()
+                row_status = str(row.get("status", "")).strip().lower()
+                if row_status == "warn" and check_id:
+                    summary_warn_ids.append(check_id)
+                elif row_status in {"fail", "error"} and check_id:
+                    summary_fail_ids.append(check_id)
+        return {
+            "status": status,
+            "pass": int(summary.get("pass", 0) or 0),
+            "warn": int(summary.get("warn", 0) or 0),
+            "fail": int(summary.get("fail", 0) or 0),
+            "error": int(summary.get("error", 0) or 0),
+            "warn_ids": summary_warn_ids[:3],
+            "fail_ids": summary_fail_ids[:3],
+        }
+
+    counts = {"pass": 0, "warn": 0, "fail": 0, "error": 0}
+    warn_ids: list[str] = []
+    fail_ids: list[str] = []
+    results = raw.get("results", [])
+    if isinstance(results, list):
+        for row in results:
+            if not isinstance(row, dict):
+                continue
+            check_id = str(row.get("check_id", "")).strip()
+            row_status = str(row.get("status", "")).strip().lower()
+            if row_status in counts:
+                counts[row_status] += 1
+            if row_status == "warn" and check_id:
+                warn_ids.append(check_id)
+            elif row_status in {"fail", "error"} and check_id:
+                fail_ids.append(check_id)
+    return {"status": status, **counts, "warn_ids": warn_ids[:3], "fail_ids": fail_ids[:3]}
+
+
 def run_watch(interval_seconds: int = 1800, once: bool = False) -> int:
     ensure_runtime_dirs()
     if interval_seconds < 10:
@@ -46,7 +116,7 @@ def run_watch(interval_seconds: int = 1800, once: bool = False) -> int:
         graph_maint = run_graph_maintenance()
         reflection = run_reflection()
         synth_auto = run_synthetic_auto_confirm()
-        self_check = run_engine_self_check(level="L2")
+        self_check = _self_check_snapshot(run_engine_self_check(level="L2"))
         absorb = absorb_health_summary()
         maintenance = run_maintenance_now(force=True)
         if not maintenance.get("ok", False):
@@ -68,11 +138,21 @@ def run_watch(interval_seconds: int = 1800, once: bool = False) -> int:
             f"learning={learning.get('ran')} maintenance={maintenance.get('ran')} "
             f"kg_extract={kg_extract.get('ran')} tiering={tiering.get('ran')} "
             f"graph_maint={graph_maint.get('ran')} reflection={reflection.get('ran')} "
-            f"synth_auto={synth_auto.get('ran')} self_check={self_check.get('status', 'n/a')} "
+            f"synth_auto={synth_auto.get('ran')} "
+            f"self_check={self_check.get('status', 'unknown')} "
+            f"self_check_counts="
+            f"{self_check.get('pass', 0)}/{self_check.get('warn', 0)}/"
+            f"{self_check.get('fail', 0)}/{self_check.get('error', 0)} "
             f"absorb_risk={absorb.get('risk')} absorb_pending={absorb.get('pending_review')} "
             f"absorb_quarantine={absorb.get('quarantine')} "
             f"compression_repair={compression.get('ran')} duplicate_cluster={dedupe_status}"
         )
+        warn_ids = self_check.get("warn_ids", [])
+        fail_ids = self_check.get("fail_ids", [])
+        if isinstance(fail_ids, list) and fail_ids:
+            tick_message += f" self_check_fail_ids={','.join(str(x) for x in fail_ids)}"
+        if isinstance(warn_ids, list) and warn_ids:
+            tick_message += f" self_check_warn_ids={','.join(str(x) for x in warn_ids)}"
         if has_recent_activity(window_seconds=active_window):
             final_message = f"{tick_message} backup=skipped cleanup=skipped reason=recent_activity"
             logger.info(final_message)
