@@ -58,8 +58,8 @@ def _self_check_snapshot(payload: dict) -> dict[str, object]:
 
     summary = raw.get("summary", {}) if isinstance(raw.get("summary", {}), dict) else {}
     if summary:
-        warn_ids: list[str] = []
-        fail_ids: list[str] = []
+        summary_warn_ids: list[str] = []
+        summary_fail_ids: list[str] = []
         results = raw.get("results", [])
         if isinstance(results, list):
             for row in results:
@@ -68,17 +68,17 @@ def _self_check_snapshot(payload: dict) -> dict[str, object]:
                 check_id = str(row.get("check_id", "")).strip()
                 row_status = str(row.get("status", "")).strip().lower()
                 if row_status == "warn" and check_id:
-                    warn_ids.append(check_id)
+                    summary_warn_ids.append(check_id)
                 elif row_status in {"fail", "error"} and check_id:
-                    fail_ids.append(check_id)
+                    summary_fail_ids.append(check_id)
         return {
             "status": status,
             "pass": int(summary.get("pass", 0) or 0),
             "warn": int(summary.get("warn", 0) or 0),
             "fail": int(summary.get("fail", 0) or 0),
             "error": int(summary.get("error", 0) or 0),
-            "warn_ids": warn_ids[:3],
-            "fail_ids": fail_ids[:3],
+            "warn_ids": summary_warn_ids[:3],
+            "fail_ids": summary_fail_ids[:3],
         }
 
     counts = {"pass": 0, "warn": 0, "fail": 0, "error": 0}
