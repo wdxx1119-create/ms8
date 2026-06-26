@@ -55,7 +55,7 @@ def test_scan_skips_symlink_that_targets_file_outside_authorized_root(tmp_path: 
     assert result["files_scanned"] == 0
     assert result["files_skipped"] == 1
     assert result["skipped_reasons"]["symlink"] == 1
-    assert result["current_stats"]["files"] == 0
+    assert result["current_stats"]["file_count"] == 0
 
     # The test should remain valid even on platforms where link metadata differs.
     assert os.path.realpath(link) == str(outside)
