@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -8,8 +9,7 @@ from ms8.engine_core.maintenance.self_check import reporter
 
 
 def _mk_db(path: Path) -> None:
-    conn = sqlite3.connect(str(path))
-    try:
+    with closing(sqlite3.connect(str(path))) as conn:
         conn.execute("create table if not exists entities(id integer)")
         conn.execute("create table if not exists relations(id integer)")
         conn.execute("create table if not exists memory_anchors(id integer)")
@@ -17,8 +17,6 @@ def _mk_db(path: Path) -> None:
         conn.execute("insert into relations(id) values (1)")
         conn.execute("insert into memory_anchors(id) values (1)")
         conn.commit()
-    finally:
-        conn.close()
 
 
 def test_build_health_card_and_diff(monkeypatch, tmp_path: Path) -> None:

@@ -114,3 +114,48 @@ def test_doctor_degraded_returns_one_when_runtime_degraded(monkeypatch, tmp_path
     code = doctor.run_doctor()
     assert code == 1
 
+
+def test_doctor_self_check_guidance_for_new_closed_loop_checks(monkeypatch, capsys, tmp_path: Path) -> None:
+    _baseline(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        doctor,
+        "run_engine_self_check",
+        lambda level="L4": {
+            "schema_version": "1.0",
+            "status": "warning",
+            "summary": {"total": 3, "pass": 0, "warn": 3, "fail": 0, "error": 0, "exit_code": 1},
+            "results": [
+                {"check_id": "m11_project_memory_health", "status": "warn"},
+                {"check_id": "m12_validation_suite_runtime", "status": "warn"},
+                {"check_id": "m13_session_sync_health", "status": "warn"},
+            ],
+            "domain_summary": {"memory": {"total": 3, "pass": 0, "warn": 3, "fail": 0, "error": 0, "pass_rate": 0.0}},
+            "maturity_gate": {"memory_ready": True, "security_ready": True, "connect_ready": True, "overall_ready": True},
+        },
+    )
+    monkeypatch.setattr(doctor, "get_engine_monitoring_status", lambda: {"enabled": True, "alerts": []})
+    monkeypatch.setattr(
+        doctor,
+        "get_governance_report",
+        lambda: {
+            "noncanonical_records": 0,
+            "schema_invalid_count": 0,
+            "fallback_write_count": 0,
+            "fallback_total_count": 0,
+            "duplicate_groups": 0,
+            "pending_review": 0,
+            "pending_review_oldest_hours": 0.0,
+            "self_check_status": "warn",
+            "trend": {"window_24h": {"samples": 0, "risk": "green"}, "window_7d": {"samples": 0, "risk": "green"}},
+            "health_domains": {"memory_quality_health": "yellow"},
+        },
+    )
+    code = doctor.run_doctor()
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "m11_project_memory_health" in out
+    assert "ms8 absorb project-memory status" in out
+    assert "m12_validation_suite_runtime" in out
+    assert "ms8 ops validation-suite" in out
+    assert "m13_session_sync_health" in out
+    assert "ms8 ops self-repair-run --mode apply --check-id m13_session_sync_health" in out

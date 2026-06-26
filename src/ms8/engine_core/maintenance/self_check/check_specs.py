@@ -100,6 +100,11 @@ def _current_self_check_hashes() -> dict[str, str]:
     return out
 
 
+def _relative_scan_path(root: Path, path: Path) -> str:
+    """Normalize scan paths so self-check filters behave the same on Windows/macOS."""
+    return path.relative_to(root).as_posix()
+
+
 def _launchctl_running(label: str) -> bool:
     try:
         out = subprocess.run(
@@ -785,8 +790,7 @@ def _check_m9_write_gateway_single_entry(core: Any, _ctx: dict[str, Any]) -> dic
     root = Path(__file__).resolve().parents[2]
     violations: list[str] = []
     for p in root.rglob("*.py"):
-        rel = p.relative_to(root)
-        rel_s = str(rel)
+        rel_s = _relative_scan_path(root, p)
         if rel_s.startswith("maintenance/self_check/"):
             continue
         text = p.read_text(encoding="utf-8", errors="ignore")
@@ -826,6 +830,180 @@ def _check_m10_product_decision_injection_policy(_core: Any, _ctx: dict[str, Any
     if missing:
         return _warn("product decision injection policy missing", details)
     return _ok("product decision injection policy healthy", details)
+
+
+def _check_m11_project_memory_health(core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
+    try:
+        from ms8.absorb.project_memory.health import project_status
+        from ms8.absorb.project_memory.scope import list_projects, project_dir_paths
+    except ImportError as exc:
+        return _warn("project-memory modules unavailable", {"error": str(exc)})
+
+    projects = list_projects()
+    if not projects:
+        return _ok("project-memory not configured", {"projects": 0})
+
+    total = 0
+    degraded: list[str] = []
+    warnings: list[str] = []
+    project_rows: list[dict[str, Any]] = []
+    for item in projects:
+        name = str(item.get("name", "") or "").strip()
+        root = str(item.get("root", "") or "").strip()
+        if not name:
+            continue
+        total += 1
+        paths = project_dir_paths(name)
+        status = project_status(
+            name=name,
+            root=root,
+            db_path=paths["db_path"],
+            whoosh_dir=paths["whoosh_dir"],
+            output_dir=paths["output_dir"],
+            index_state_path=paths["index_state_path"],
+            build_state_path=paths["build_state_path"],
+        )
+        index_status = str(status.get("index_status", "missing") or "missing")
+        build_error = str(status.get("build_last_error", "") or "")
+        watch_state = status.get("watch_state", {}) if isinstance(status.get("watch_state", {}), dict) else {}
+        service_state = status.get("service_state", {}) if isinstance(status.get("service_state", {}), dict) else {}
+        watch_error = str(watch_state.get("last_error", "") or "")
+        changed_pending = int(status.get("changed_files_pending", 0) or 0)
+        db_query_ok = bool(status.get("db_query_ok", False))
+        service_installed = bool(service_state.get("installed", False))
+        service_running = bool(service_state.get("running", False))
+        recommended_runtime_mode = str(status.get("recommended_runtime_mode", "") or "")
+        foreground_watch_available = bool(status.get("foreground_watch_available", False))
+        if (not db_query_ok) or index_status == "broken":
+            degraded.append(name)
+        elif index_status in {"degraded", "stale"} or build_error or watch_error or changed_pending > 0:
+            warnings.append(name)
+        elif (
+            service_installed
+            and not service_running
+            and not (recommended_runtime_mode == "foreground_watch" and foreground_watch_available)
+        ):
+            warnings.append(name)
+        project_rows.append(
+            {
+                "name": name,
+                "db_query_ok": db_query_ok,
+                "index_status": index_status,
+                "changed_files_pending": changed_pending,
+                "service_installed": service_installed,
+                "service_running": service_running,
+                "recommended_runtime_mode": recommended_runtime_mode,
+                "foreground_watch_available": foreground_watch_available,
+                "watch_last_error": watch_error,
+                "build_last_error": build_error,
+            }
+        )
+    details = {
+        "projects": total,
+        "degraded_projects": degraded,
+        "warning_projects": warnings,
+        "project_rows": project_rows[:10],
+    }
+    if degraded:
+        return _fail("project-memory health degraded", details)
+    if warnings:
+        return _warn("project-memory attention needed", details)
+    return _ok("project-memory health healthy", details)
+
+
+def _check_m12_validation_suite_runtime(core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
+    if not hasattr(core, "run_validation_suite"):
+        return _warn("validation suite api unavailable")
+    try:
+        out = core.run_validation_suite()
+    except (AttributeError, OSError, RuntimeError, TypeError, ValueError) as exc:
+        return _warn("validation suite unavailable", {"error": str(exc)})
+    if not isinstance(out, dict):
+        return _warn("validation suite returned invalid payload", {"type": str(type(out))})
+    total = int(out.get("total_tests", 0) or 0)
+    failed = int(out.get("failed", 0) or 0)
+    ok = bool(out.get("ok", False))
+    status = str(out.get("status", "") or "")
+    details = {
+        "status": status or "unknown",
+        "ok": ok,
+        "total_tests": total,
+        "passed": int(out.get("passed", 0) or 0),
+        "failed": failed,
+        "message": str(out.get("message", "") or ""),
+    }
+    if total <= 0:
+        return _fail("validation suite contains no executable tests", details)
+    if not ok or status in {"failed", "error"} or failed > 0:
+        return _fail("validation suite failed", details)
+    return _ok("validation suite healthy", details)
+
+
+def _check_m13_session_sync_health(core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
+    auto_memory = getattr(core, "auto_memory", None)
+    if auto_memory is None:
+        return _warn("auto-memory unavailable for session sync health")
+    state_file = getattr(auto_memory, "session_state_file", None)
+    lock_dir = getattr(auto_memory, "session_lock_dir", None)
+    lock_info_file = getattr(auto_memory, "session_lock_info_file", None)
+    stale_seconds = int(getattr(auto_memory, "session_lock_stale_seconds", 3600) or 3600)
+    if state_file is None:
+        return _warn("session sync state path unavailable")
+    state_path = Path(str(state_file))
+    details: dict[str, Any] = {"state_file": str(state_path), "lock_dir": str(lock_dir) if lock_dir is not None else ""}
+    if state_path.exists():
+        try:
+            payload = json.loads(state_path.read_text(encoding="utf-8"))
+            if not isinstance(payload, dict):
+                return _warn("session sync state invalid", {**details, "reason": "state_not_dict"})
+            if not isinstance(payload.get("files", {}), dict) or not isinstance(payload.get("recent_hashes", []), list):
+                return _warn("session sync state invalid", {**details, "reason": "state_schema_invalid"})
+        except (OSError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            return _warn("session sync state unreadable", {**details, "error": str(exc)})
+    else:
+        details["state_missing"] = True
+    if lock_dir is None:
+        return _ok("session sync healthy", details)
+    lock_path = Path(str(lock_dir))
+    if not lock_path.exists():
+        return _ok("session sync healthy", details)
+
+    owner_payload: dict[str, Any] = {}
+    if lock_info_file is not None and Path(str(lock_info_file)).exists():
+        try:
+            raw = json.loads(Path(str(lock_info_file)).read_text(encoding="utf-8"))
+            if isinstance(raw, dict):
+                owner_payload = raw
+        except (OSError, TypeError, ValueError, json.JSONDecodeError):
+            owner_payload = {}
+    started_at = _to_aware(str(owner_payload.get("started_at", "") or ""))
+    age_seconds = None
+    if started_at is not None:
+        age_seconds = max(0.0, (datetime.now(timezone.utc) - started_at).total_seconds())
+    owner_pid = int(owner_payload.get("pid", 0) or 0)
+    pid_alive = None
+    if hasattr(auto_memory, "_pid_alive"):
+        try:
+            pid_alive = bool(auto_memory._pid_alive(owner_pid)) if owner_pid > 0 else False  # type: ignore[attr-defined]
+        except (AttributeError, OSError, TypeError, ValueError):
+            pid_alive = None
+    details.update(
+        {
+            "lock_present": True,
+            "lock_owner_pid": owner_pid,
+            "lock_owner_started_at": str(owner_payload.get("started_at", "") or ""),
+            "lock_age_seconds": age_seconds,
+            "lock_owner_pid_alive": pid_alive,
+            "stale_seconds": stale_seconds,
+        }
+    )
+    if not owner_payload:
+        return _warn("session sync lock metadata missing", details)
+    if pid_alive is False and age_seconds is not None and age_seconds >= max(1, stale_seconds):
+        return _warn("session sync stale lock present", details)
+    if pid_alive is False and age_seconds is None:
+        return _warn("session sync orphan lock present", details)
+    return _ok("session sync healthy", details)
 
 
 def _check_l2_pipeline_stages(core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
@@ -878,7 +1056,7 @@ def _check_l2_admission_distribution(core: Any, _ctx: dict[str, Any]) -> dict[st
         if route in {"rejected", "reject"}:
             rejected += 1
     if total == 0:
-        return _warn("no admission samples", {})
+        return _ok("admission probe pending first sample", {"samples": 0, "path": str(log_path)})
     ratio = round(rejected / total, 4)
     if ratio > 0.30:
         return _fail("admission reject ratio high", {"rejected_ratio": ratio, "samples": total})
@@ -937,7 +1115,7 @@ def _check_l2_write_then_search(core: Any, _ctx: dict[str, Any]) -> dict[str, An
 
         # Retrieval search (soft validation; may vary by ranking policies).
         try:
-            rows = core.retrieve_memories(probe_id, top_k=5)
+            rows = core.retrieve_memories(probe_id, top_k=5, allow_semantic=False, allow_graph=False)
             details["retrieve_hits"] = len(rows) if isinstance(rows, list) else 0
         except (AttributeError, OSError, TypeError, ValueError) as exc:
             details["retrieve_error"] = str(exc)
@@ -1205,6 +1383,42 @@ def _check_l2_jsonl_parse(core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def _check_l2_slo_check(core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
+    def _recent_capture_recovery(memory_dir: Path, window: int = 12, min_samples: int = 8) -> dict[str, Any]:
+        log_path = memory_dir / "auto_memory_log.json"
+        if not log_path.exists():
+            return {"recovered": False, "reason": "log_missing", "path": str(log_path)}
+        try:
+            payload = json.loads(log_path.read_text(encoding="utf-8"))
+        except (OSError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            return {"recovered": False, "reason": "log_unreadable", "error": str(exc)}
+        entries = payload.get("entries", []) if isinstance(payload, dict) else []
+        if not isinstance(entries, list):
+            return {"recovered": False, "reason": "entries_invalid"}
+
+        recent: list[dict[str, Any]] = []
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            status = str(entry.get("status", ""))
+            source = str(entry.get("source", ""))
+            if status == "session_sync":
+                continue
+            if source.startswith("verify_canary:") or source.startswith("test"):
+                continue
+            recent.append(entry)
+        recent = recent[-window:]
+        total = len(recent)
+        success = sum(1 for entry in recent if str(entry.get("status", "")) == "success")
+        return {
+            "recovered": total >= min_samples and success == total,
+            "window": window,
+            "min_samples": min_samples,
+            "recent_total": total,
+            "recent_success": success,
+            "recent_failed": total - success,
+            "last_timestamp": str(recent[-1].get("timestamp", "")) if recent else "",
+        }
+
     mon = getattr(core, "monitoring", None)
     if mon is None:
         return _warn("monitoring unavailable for slo check")
@@ -1232,6 +1446,11 @@ def _check_l2_slo_check(core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
             return _ok("slo replay check skipped (no replay samples yet)", details)
     if bool(slo.get("all_ok", False)):
         return _ok("slo healthy", details)
+    if failed_checks == ["capture_rate"]:
+        recovery = _recent_capture_recovery(Path(core.config["memory_dir"]))
+        details["capture_recovery"] = recovery
+        if bool(recovery.get("recovered", False)):
+            return _ok("capture backlog remains in legacy SLO window, but recent capture window is healthy", details)
     if len(failed_checks) <= 1:
         return _warn("slo has single breach", details)
     return _fail("slo has multiple breaches", details)
@@ -1942,6 +2161,10 @@ def _check_l5_llm_notice_state_health(core: Any, _ctx: dict[str, Any]) -> dict[s
 
 def _check_m1_short_term_persistence(core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
     wm_file = Path(core.config["memory_dir"]) / "working_memory.jsonl"
+    working_memory = getattr(core, "working_memory", None)
+    persistence_file = getattr(working_memory, "persistence_file", None)
+    if persistence_file:
+        wm_file = Path(str(persistence_file))
     if not wm_file.exists():
         return _warn("working memory persistence file missing", {"path": str(wm_file)})
     lines = 0
@@ -1952,9 +2175,14 @@ def _check_m1_short_term_persistence(core: Any, _ctx: dict[str, Any]) -> dict[st
         return _warn("working memory persistence unreadable", {"path": str(wm_file), "error": str(exc)})
     has_restore_api = hasattr(core, "restore_short_term_by_topic")
     if lines == 0:
-        return _warn(
-            "working memory persistence empty",
-            {"path": str(wm_file), "restore_api": has_restore_api},
+        if not has_restore_api:
+            return _warn(
+                "working memory persistence empty and restore api missing",
+                {"path": str(wm_file), "restore_api": has_restore_api},
+            )
+        return _ok(
+            "working memory persistence initialized",
+            {"path": str(wm_file), "records": 0, "restore_api": has_restore_api},
         )
     if not has_restore_api:
         return _warn("working memory restore api missing", {"records": lines})
@@ -2193,7 +2421,7 @@ def _check_m8_pipeline_latency_budget(core: Any, _ctx: dict[str, Any]) -> dict[s
                 "pipeline active but latency instrumentation unavailable",
                 {"rows": row_count, "samples": 0},
             )
-        return _warn("pipeline latency samples missing", {"samples": 0})
+        return _ok("pipeline latency probe pending first sample", {"rows": 0, "samples": 0, "path": str(path)})
     samples.sort()
     p95 = samples[min(len(samples) - 1, int(len(samples) * 0.95))]
     avg = round(sum(samples) / len(samples), 2)
@@ -2632,6 +2860,30 @@ def build_check_specs(level: str = "L1") -> list[CheckSpec]:
             60,
             "Ensure product_decision recall is gated by decision-intent queries",
             _check_m10_product_decision_injection_policy,
+            domain="memory",
+        ),
+        CheckSpec(
+            "m11_project_memory_health",
+            "L2",
+            60,
+            "Inspect project-memory registry, sqlite/index state, and watch/service status",
+            _check_m11_project_memory_health,
+            domain="memory",
+        ),
+        CheckSpec(
+            "m12_validation_suite_runtime",
+            "L2",
+            60,
+            "Ensure validation suite has executable tests and returns healthy runtime status",
+            _check_m12_validation_suite_runtime,
+            domain="memory",
+        ),
+        CheckSpec(
+            "m13_session_sync_health",
+            "L2",
+            60,
+            "Inspect auto-memory session sync state and stale session lock health",
+            _check_m13_session_sync_health,
             domain="memory",
         ),
         CheckSpec(

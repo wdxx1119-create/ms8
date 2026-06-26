@@ -89,7 +89,8 @@ def init_repository(path: Path | None = None) -> Path:
     db = path or db_path()
     db.parent.mkdir(parents=True, exist_ok=True)
     quarantine_dir().mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(db) as conn:
+    conn = sqlite3.connect(db)
+    try:
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA busy_timeout=5000")
         conn.execute(
@@ -156,6 +157,8 @@ def init_repository(path: Path | None = None) -> Path:
             )
             """
         )
+    finally:
+        conn.close()
     return db
 
 

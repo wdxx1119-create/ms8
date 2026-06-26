@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.2.14] - 2026-06-27
+
+### Added
+- Added the complete Project Memory workflow, including scan, index, build, submit, watch, search, health, and service support.
+- Expanded the MCP-facing memory surface for richer daily agent context.
+
+### Changed
+- Improved `doctor`, `watch`, service, and runtime-health interpretation and follow-up guidance.
+- Bound service startup to the active Python environment instead of relying on an unrelated `ms8` executable from `PATH`.
+- Strengthened Absorb parsing, local-material processing, and runtime-mode handling.
+
+### Fixed
+- Kept the default adapter registry template portable and free of local absolute-path metadata.
+- Tightened typed exception handling, cleanup behavior, and degraded-state reporting.
+- Corrected resource cleanup for Absorb SQLite handles and Ollama provider responses.
+
 ## [0.2.13] - 2026-06-16
 
 ### Fixed
