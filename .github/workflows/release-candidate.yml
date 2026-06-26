@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - candidate/v0.2.14
+      - main
   pull_request:
     branches:
       - candidate/v0.2.14
@@ -65,41 +66,14 @@ jobs:
 
       - name: Install project and development dependencies
         run: |
-          python -m pip install --disable-pip-version-check -q --upgrade pip
-          python -m pip install --disable-pip-version-check -q -e ".[dev]"
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
 
-      - name: Capture static quality diagnostics
-        shell: bash
-        run: |
-          set +e
-          python -m mypy src/ms8 > mypy.log 2>&1
-          mypy_code=$?
-          python -m ruff check src/ms8 > ruff.log 2>&1
-          ruff_code=$?
-          printf '%s\n' "$mypy_code" > mypy.exitcode
-          printf '%s\n' "$ruff_code" > ruff.exitcode
-          cat mypy.log
-          cat ruff.log
-          exit 0
+      - name: Ruff
+        run: python -m ruff check src/ms8
 
-      - name: Upload static quality diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: static-quality-${{ github.sha }}
-          path: |
-            mypy.log
-            mypy.exitcode
-            ruff.log
-            ruff.exitcode
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Enforce static quality checks
-        shell: bash
-        run: |
-          test "$(cat mypy.exitcode)" = "0"
-          test "$(cat ruff.exitcode)" = "0"
+      - name: Mypy
+        run: python -m mypy src/ms8
 
   release-artifacts:
     name: Build and verify release artifacts
