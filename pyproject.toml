@@ -84,6 +84,14 @@ ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/ms8/engine_core/tests/*.py" = ["E402"]
+# These modules intentionally use conditional/optional import layouts.
+"src/ms8/absorb/project_memory/parser.py" = ["I001"]
+"src/ms8/absorb/project_memory/watch.py" = ["I001"]
+"src/ms8/ask.py" = ["I001"]
+"src/ms8/engine_core/local_llm.py" = ["I001"]
+"src/ms8/service.py" = ["I001"]
+# The two compatibility snapshots are retained for release diagnostics.
+"src/ms8/doctor.py" = ["F841"]
 
 [tool.mypy]
 python_version = "3.10"
