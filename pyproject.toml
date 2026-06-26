@@ -91,5 +91,8 @@ ignore_missing_imports = true
 strict = false
 
 [[tool.mypy.overrides]]
-module = "ms8.engine_core.auto_memory"
+module = [
+  "ms8.engine_core.auto_memory",
+  "ms8.engine_core.maintenance.self_repair.repair_policies",
+]
 disable_error_code = ["attr-defined"]
