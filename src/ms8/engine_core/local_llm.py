@@ -3,6 +3,7 @@ Local LLM Client - Ollama Integration
 支持多模型、智能路由、语义缓存
 """
 
+import atexit
 import asyncio
 import hashlib
 import json
@@ -29,12 +30,42 @@ try:
 except ImportError:
     np = None
 
+_OLLAMA_CLIENTS: list[Any] = []
+
+
+def _close_ollama_client(client: Any) -> None:
+    close_fn = getattr(client, "close", None)
+    if callable(close_fn):
+        try:
+            close_fn()
+            return
+        except (OSError, RuntimeError, TypeError, ValueError):
+            return
+    inner = getattr(client, "_client", None)
+    inner_close = getattr(inner, "close", None)
+    if callable(inner_close):
+        try:
+            inner_close()
+        except (OSError, RuntimeError, TypeError, ValueError):
+            return
+
+
+def _close_registered_ollama_clients() -> None:
+    while _OLLAMA_CLIENTS:
+        client = _OLLAMA_CLIENTS.pop()
+        _close_ollama_client(client)
+
+
+atexit.register(_close_registered_ollama_clients)
+
 
 def _create_ollama_client():
     if ollama is None:
         return None
     host = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
-    return ollama.Client(host=host, trust_env=False)
+    client = ollama.Client(host=host, trust_env=False)
+    _OLLAMA_CLIENTS.append(client)
+    return client
 
 
 @dataclass

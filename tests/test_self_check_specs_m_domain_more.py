@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -138,14 +139,11 @@ def test_m7_m8_branches(tmp_path: Path) -> None:
     assert out_m7_missing["status"] == "warn"
 
     kg = tmp_path / "knowledge_graph.db"
-    conn = sqlite3.connect(kg)
-    try:
+    with closing(sqlite3.connect(kg)) as conn:
         conn.execute("CREATE TABLE entities(id INTEGER PRIMARY KEY, access_count INTEGER)")
         rows = [(i, 0) for i in range(1, 61)]
         conn.executemany("INSERT INTO entities(id, access_count) VALUES (?, ?)", rows)
         conn.commit()
-    finally:
-        conn.close()
     out_m7_warn = cs._check_m7_kg_access_feedback(core, {})
     assert out_m7_warn["status"] == "warn"
 
@@ -169,3 +167,86 @@ def test_m7_m8_branches(tmp_path: Path) -> None:
     )
     out_m8_ok = cs._check_m8_pipeline_latency_budget(core, {})
     assert out_m8_ok["status"] == "pass"
+
+
+def test_m11_m12_m13_branches(tmp_path: Path, monkeypatch) -> None:
+    core = _Core(tmp_path)
+    core.config["workspace_dir"] = str(tmp_path)
+    core.config["settings"]["memory"]["auto_memory"] = {
+        "session_ingestion": {
+            "state_file": "memory/openclaw_session_ingest_state.json",
+            "lock_stale_seconds": 1,
+        }
+    }
+
+    project_row = {"name": "demo", "root": str(tmp_path / "demo")}
+    monkeypatch.setattr("ms8.absorb.project_memory.scope.list_projects", lambda: [project_row])
+    monkeypatch.setattr(
+        "ms8.absorb.project_memory.health.project_status",
+        lambda **_kwargs: {
+            "db_query_ok": True,
+            "index_status": "ready",
+            "changed_files_pending": 0,
+            "build_last_error": "",
+            "watch_state": {"last_error": ""},
+            "service_state": {"installed": True, "running": False},
+            "recommended_runtime_mode": "foreground_watch",
+            "foreground_watch_available": True,
+        },
+    )
+    out_pm_warn = cs._check_m11_project_memory_health(core, {})
+    assert out_pm_warn["status"] == "pass"
+
+    monkeypatch.setattr("ms8.absorb.project_memory.scope.list_projects", lambda: [])
+    out_pm_empty = cs._check_m11_project_memory_health(core, {})
+    assert out_pm_empty["status"] == "pass"
+
+    core.run_validation_suite = lambda: {  # type: ignore[attr-defined]
+        "status": "error",
+        "ok": False,
+        "message": "validation suite contains no executable tests",
+        "total_tests": 0,
+        "passed": 0,
+        "failed": 0,
+    }
+    out_vs_fail = cs._check_m12_validation_suite_runtime(core, {})
+    assert out_vs_fail["status"] == "fail"
+
+    core.run_validation_suite = lambda: {  # type: ignore[attr-defined]
+        "status": "success",
+        "ok": True,
+        "message": "validation suite passed",
+        "total_tests": 1,
+        "passed": 1,
+        "failed": 0,
+    }
+    out_vs_ok = cs._check_m12_validation_suite_runtime(core, {})
+    assert out_vs_ok["status"] == "pass"
+
+    class _Auto:
+        session_state_file = tmp_path / "memory" / "openclaw_session_ingest_state.json"
+        session_lock_dir = tmp_path / "memory" / "openclaw_session_ingest_state.json.lock"
+        session_lock_info_file = session_lock_dir / "owner.json"
+        session_lock_stale_seconds = 1
+
+        @staticmethod
+        def _pid_alive(_pid: int) -> bool:
+            return False
+
+    core.auto_memory = _Auto()  # type: ignore[attr-defined]
+    _Auto.session_state_file.parent.mkdir(parents=True, exist_ok=True)
+    _Auto.session_state_file.write_text("{", encoding="utf-8")
+    out_sync_bad = cs._check_m13_session_sync_health(core, {})
+    assert out_sync_bad["status"] == "warn"
+
+    _Auto.session_state_file.write_text(
+        json.dumps({"files": {}, "recent_hashes": [], "last_sync_at": ""}),
+        encoding="utf-8",
+    )
+    _Auto.session_lock_dir.mkdir(parents=True, exist_ok=True)
+    _Auto.session_lock_info_file.write_text(
+        json.dumps({"pid": 999999, "started_at": "2000-01-01T00:00:00+00:00"}),
+        encoding="utf-8",
+    )
+    out_sync_stale = cs._check_m13_session_sync_health(core, {})
+    assert out_sync_stale["status"] == "warn"

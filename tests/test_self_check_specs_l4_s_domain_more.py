@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import sqlite3
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -166,16 +168,11 @@ def test_m_domain_and_s_domain_branches(tmp_path: Path) -> None:
     assert out_m6["status"] in {"warn", "pass"}
 
     # m7 kg access feedback
-    import sqlite3
-
     kg = tmp_path / "knowledge_graph.db"
-    conn = sqlite3.connect(kg)
-    try:
+    with closing(sqlite3.connect(kg)) as conn:
         conn.execute("CREATE TABLE entities(id INTEGER PRIMARY KEY, access_count INTEGER)")
         conn.execute("INSERT INTO entities(id, access_count) VALUES (1, 0), (2, 0), (3, 1)")
         conn.commit()
-    finally:
-        conn.close()
     assert cs._check_m7_kg_access_feedback(core, {})["status"] in {"warn", "pass"}
 
     # m8 latency budget with small sample should pass

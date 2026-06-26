@@ -167,9 +167,45 @@ def test_baseline_request_dry_and_apply(tmp_path: Path) -> None:
 
 def test_get_policy_and_get_hooks() -> None:
     assert rp.get_policy("l1_core_files") is not None
+    assert rp.get_policy("m11_project_memory_health") is not None
     assert rp.get_policy("unknown") is None
     assert rp.get_hooks("rebuild_index") is not None
+    assert rp.get_hooks("clear_session_sync_lock") is not None
     assert rp.get_hooks("unknown") is None
+
+
+def test_project_memory_validation_and_session_sync_hooks(tmp_path: Path, monkeypatch) -> None:
+    fake_home = tmp_path / "home"
+    monkeypatch.setattr(rp, "get_ms8_home", lambda: fake_home)
+    core = _Core(
+        config={
+            "memory_dir": str(tmp_path / "memory"),
+            "workspace_dir": str(tmp_path / "workspace"),
+            "settings": {"memory": {"auto_memory": {"session_ingestion": {"state_file": "memory/openclaw_session_ingest_state.json", "lock_stale_seconds": 1}}}},
+        }
+    )
+    monkeypatch.setattr("ms8.absorb.project_memory.scope.list_projects", lambda: [])
+    out_pm = rp._inspect_project_memory_health(core, {})
+    assert out_pm["status"] == "ok"
+    assert out_pm["projects"] == 0
+
+    core.run_validation_suite = lambda: {"status": "error", "ok": False, "total_tests": 0, "failed": 0}  # type: ignore[attr-defined]
+    out_vs = rp._inspect_validation_suite(core, {})
+    assert out_vs["status"] == "ok"
+    assert out_vs["total_tests"] == 0
+
+    state_file, lock_dir, lock_info, _stale = rp._session_sync_paths(core)
+    state_file.parent.mkdir(parents=True, exist_ok=True)
+    state_file.write_text("{", encoding="utf-8")
+    lock_dir.mkdir(parents=True, exist_ok=True)
+    lock_info.write_text(
+        json.dumps({"pid": 999999, "started_at": "2000-01-01T00:00:00+00:00"}),
+        encoding="utf-8",
+    )
+    out_lock = rp._clear_session_sync_lock(core, {})
+    assert out_lock["status"] == "ok"
+    assert out_lock["removed_lock"] is True
+    assert out_lock["reset_state"] is True
 
 
 def test_cleanup_backups_and_fix_shadow_permissions(tmp_path: Path) -> None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 from ms8.engine_core.maintenance.self_check import check_specs as cs
@@ -13,17 +14,13 @@ class _Core:
 
 
 def _create_db(path: Path) -> None:
-    conn = sqlite3.connect(path)
-    try:
+    with closing(sqlite3.connect(path)) as conn:
         conn.execute("CREATE TABLE IF NOT EXISTS t(id INTEGER PRIMARY KEY, v TEXT)")
         conn.commit()
-    finally:
-        conn.close()
 
 
 def _create_kg(path: Path, orphan: int = 0) -> None:
-    conn = sqlite3.connect(path)
-    try:
+    with closing(sqlite3.connect(path)) as conn:
         conn.execute("CREATE TABLE IF NOT EXISTS entities(id INTEGER PRIMARY KEY, name TEXT)")
         conn.execute(
             "CREATE TABLE IF NOT EXISTS relations("
@@ -40,8 +37,6 @@ def _create_kg(path: Path, orphan: int = 0) -> None:
                 (10 + i, 999, 2),
             )
         conn.commit()
-    finally:
-        conn.close()
 
 
 def test_l2_sqlite_integrity_ok(tmp_path: Path) -> None:
