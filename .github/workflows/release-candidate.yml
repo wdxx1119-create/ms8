@@ -177,7 +177,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          shasum -a 256 dist/*.whl dist/*.tar.gz > dist/SHA256SUMS
+          (cd dist && shasum -a 256 *.whl *.tar.gz > SHA256SUMS)
           cat dist/SHA256SUMS
           {
             echo "### Release candidate artifacts"
