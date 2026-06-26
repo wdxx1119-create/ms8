@@ -31,6 +31,11 @@ MAX_BYTES = 2_000_000
 
 
 def _is_allowed(path: Path) -> tuple[bool, str]:
+    # Never follow project-local links to content outside the authorized root.
+    # A symlink can otherwise make an apparently in-scope path expose arbitrary
+    # local files to parsing and memory submission.
+    if path.is_symlink():
+        return False, "symlink"
     if any(part in EXCLUDED_DIRS for part in path.parts):
         return False, "excluded_pattern"
     if path.name.startswith("."):
@@ -46,13 +51,32 @@ def _is_allowed(path: Path) -> tuple[bool, str]:
 
 
 def scan_project(*, project_name: str, project_root: Path, db_path: Path, index_state_path: Path) -> dict[str, Any]:
+    project_root = project_root.expanduser()
+    if not project_root.exists() or not project_root.is_dir():
+        return {
+            "ok": False,
+            "name": project_name,
+            "status": "invalid_project_root",
+            "error": "project_root_missing_or_not_directory",
+            "project_root": str(project_root),
+            "next_actions": ["verify the registered project path and run project-memory init again"],
+        }
+
+    project_root = project_root.resolve()
     init_repository(db_path)
     files_found = 0
     files_scanned = 0
     files_unchanged = 0
     files_skipped = 0
     chunks_created = 0
-    skipped_reasons = {"binary": 0, "too_large": 0, "excluded_pattern": 0, "hidden": 0, "unsupported": 0}
+    skipped_reasons = {
+        "binary": 0,
+        "too_large": 0,
+        "excluded_pattern": 0,
+        "hidden": 0,
+        "unsupported": 0,
+        "symlink": 0,
+    }
     seen_relative_paths: set[str] = set()
     changed_paths: set[str] = set()
     deleted_paths: list[str] = []
