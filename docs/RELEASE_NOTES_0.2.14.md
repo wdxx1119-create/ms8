@@ -27,5 +27,5 @@
 ## Validation
 
 - `python3 -m pytest`
-- Result: `1255 passed, 5 skipped`
-- Coverage: `79.91%`
+- Result: `1259 passed, 5 skipped`
+- Coverage: `79.93%`
