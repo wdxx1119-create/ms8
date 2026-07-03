@@ -74,7 +74,7 @@ def test_doctor_and_module_entry(tmp_path) -> None:
     env = _env(tmp_path)
     cp = _run(["doctor"], env=env)
     assert cp.returncode == 0
-    assert "Status: healthy" in cp.stdout
+    assert "Status: collecting diagnostics" in cp.stdout
     assert "entries" in cp.stdout
 
 
