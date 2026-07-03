@@ -97,6 +97,7 @@ def test_run_doctor_healthy_exit_and_layer_output(monkeypatch, capsys, tmp_path:
     assert "memory_quality_health: healthy" in out
     assert "security_governance_health: healthy" in out
     assert "Overall: healthy" in out
+    assert "Status: collecting diagnostics" in out
     assert "policy license: status=disabled enabled=False" in out
     assert "absorb: risk=green roots=1 pending=0 quarantine=0 autosubmit=False tier=OFF" in out
     assert "absorb next:" not in out
@@ -176,6 +177,8 @@ def test_run_doctor_absorb_warning_prints_shortest_action(monkeypatch, capsys, t
     out = capsys.readouterr().out
     assert "absorb: risk=yellow" in out
     assert "absorb next: ms8 absorb review list" in out
+    assert "watch next: ms8 absorb review list" in out
+    assert "watch also: ms8 ops governance" in out
 
 
 def test_run_doctor_with_hint_handles_permission_error(monkeypatch, capsys) -> None:

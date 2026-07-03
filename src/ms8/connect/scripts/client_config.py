@@ -17,6 +17,17 @@ SERVER_NAME = "ms8-memory"
 LEGACY_PATH_HINT = "openclaw-memory-auto/mcp_server/mcp_server.py"
 
 
+def _is_windows() -> bool:
+    return sys.platform == "win32"
+
+
+def _appdata_roaming() -> Path:
+    raw = str(os.environ.get("APPDATA", "")).strip()
+    if raw:
+        return Path(raw).expanduser()
+    return Path.home() / "AppData" / "Roaming"
+
+
 def _as_str_list(value: object) -> list[str]:
     if isinstance(value, (list, tuple, set)):
         return [str(item) for item in value]
@@ -25,6 +36,13 @@ def _as_str_list(value: object) -> list[str]:
 
 def _cherry_candidates() -> list[Path]:
     home = Path.home()
+    if _is_windows():
+        appdata = _appdata_roaming()
+        return [
+            appdata / "CherryStudio" / "mcp.json",
+            appdata / "Cherry Studio" / "mcp.json",
+            home / ".cherrystudio" / "mcp.json",
+        ]
     return [
         home / "Library" / "Application Support" / "CherryStudio" / "mcp.json",
         home / "Library" / "Application Support" / "Cherry Studio" / "mcp.json",
@@ -42,7 +60,10 @@ def _resolve_cherry_path() -> Path:
 
 
 def _vscode_global_storage_candidates(extension_ids: list[str], filename: str = "mcp.json") -> list[Path]:
-    base = Path.home() / "Library" / "Application Support" / "Code" / "User" / "globalStorage"
+    if _is_windows():
+        base = _appdata_roaming() / "Code" / "User" / "globalStorage"
+    else:
+        base = Path.home() / "Library" / "Application Support" / "Code" / "User" / "globalStorage"
     return [base / ext / filename for ext in extension_ids]
 
 
@@ -116,10 +137,27 @@ def _claude_code_candidates() -> list[Path]:
 def _resolve_claude_code_path() -> Path:
     return _first_existing_or_fallback(_claude_code_candidates(), _claude_code_candidates()[0])
 
+
+def _claude_desktop_candidates() -> list[Path]:
+    home = Path.home()
+    if _is_windows():
+        appdata = _appdata_roaming()
+        return [
+            appdata / "Claude" / "claude_desktop_config.json",
+            home / ".claude" / "claude_desktop_config.json",
+        ]
+    return [
+        home / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json",
+    ]
+
+
+def _resolve_claude_desktop_path() -> Path:
+    return _first_existing_or_fallback(_claude_desktop_candidates(), _claude_desktop_candidates()[0])
+
 BUILTIN_AGENT_PROFILES: dict[str, dict[str, object]] = {
     "claude_desktop": {
         "aliases": ("claude", "claude_desktop"),
-        "path": Path.home() / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json",
+        "path_resolver": _resolve_claude_desktop_path,
         "snippet_file": "claude_desktop_config.json",
         "config_format": "json",
         "merge_strategy": "upsert",
@@ -404,6 +442,18 @@ def target_discovery(target: str | None = "all") -> dict[str, dict[str, object]]
         elif name == "claude_code":
             candidates = [str(p) for p in _claude_code_candidates()]
             resolved = str(_resolve_claude_code_path())
+            out[name] = {
+                "strategy": "candidate_scan_then_fallback",
+                "candidates": candidates,
+                "resolved": resolved,
+                "resolved_exists": Path(resolved).exists(),
+                "config_format": str(profile.get("config_format", "json")),
+                "merge_strategy": str(profile.get("merge_strategy", "upsert")),
+                "verify_keys": _as_str_list(profile.get("verify_keys", ())),
+            }
+        elif name == "claude_desktop":
+            candidates = [str(p) for p in _claude_desktop_candidates()]
+            resolved = str(_resolve_claude_desktop_path())
             out[name] = {
                 "strategy": "candidate_scan_then_fallback",
                 "candidates": candidates,

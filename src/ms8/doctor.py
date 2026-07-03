@@ -258,13 +258,13 @@ def _watch_follow_up_actions(
     actions: list[str] = []
     if runtime_health == "degraded":
         actions.append("ms8 watch --once")
+    if absorb_actions:
+        actions.append(absorb_actions[0])
+    actions.extend(shadow_actions[:2])
     if memory_quality_health != "healthy":
         actions.append("ms8 ops governance")
     if security_governance_health != "healthy":
         actions.append("ms8 ops self-check-report")
-    if absorb_actions:
-        actions.append(absorb_actions[0])
-    actions.extend(shadow_actions[:2])
     deduped: list[str] = []
     seen: set[str] = set()
     for action in actions:
@@ -293,7 +293,7 @@ def run_doctor() -> int:
     print(f"Log dir: {get_log_dir()}")
     print(f"Install mode: {detect_install_mode()}")
     runtime_status = "healthy"
-    print(f"Status: {runtime_status}\n")
+    print("Status: collecting diagnostics\n")
     print("Checks:")
     print(" ✅ runtime dir: OK")
     print(" ✅ data dir: OK")
