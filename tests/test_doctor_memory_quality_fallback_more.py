@@ -85,6 +85,7 @@ def test_memory_quality_fallback_degraded_on_capture_and_compression(monkeypatch
     out = capsys.readouterr().out
     assert code == 0
     assert "memory_quality_health: degraded" in out
+    assert "Overall: degraded" in out
 
 
 def test_memory_quality_fallback_warn_and_allow_degraded(monkeypatch, capsys, tmp_path: Path) -> None:
