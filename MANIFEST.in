@@ -12,3 +12,4 @@ prune restored_connect_from_pyc
 prune repo_public
 prune src/ms8/engine_core/tests
 prune experiments
+prune tests
