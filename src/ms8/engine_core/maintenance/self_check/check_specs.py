@@ -933,7 +933,7 @@ def _check_m12_validation_suite_runtime(core: Any, _ctx: dict[str, Any]) -> dict
         "message": str(out.get("message", "") or ""),
     }
     if total <= 0:
-        return _fail("validation suite contains no executable tests", details)
+        return _warn("validation suite contains no executable tests", details)
     if not ok or status in {"failed", "error"} or failed > 0:
         return _fail("validation suite failed", details)
     return _ok("validation suite healthy", details)

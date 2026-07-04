@@ -10,6 +10,7 @@ from pathlib import Path
 
 from . import __version__
 from .absorb.cli import run_absorb_cli
+from .absorb.project_memory.cli import run_project_memory_cli
 from .agent_native import run_agent_cli
 from .ask import run_ask
 from .dashboard import run_dashboard
@@ -481,6 +482,39 @@ def _build_parser() -> argparse.ArgumentParser:
 
     p_absorb = sub.add_parser("absorb", help="authorized local document absorption")
     p_absorb_sub = p_absorb.add_subparsers(dest="absorb_cmd")
+    p_project_memory = p_absorb_sub.add_parser("project-memory", help="manage local project-memory indexes")
+    p_project_memory_sub = p_project_memory.add_subparsers(dest="pm_cmd")
+    p_pm_init = p_project_memory_sub.add_parser("init", help="register a project directory")
+    p_pm_init.add_argument("project_dir")
+    p_pm_init.add_argument("--name", default=None)
+    p_project_memory_sub.add_parser("list", help="list registered projects")
+    for _pm_cmd in ("scan", "index", "build", "submit", "status", "doctor", "watch", "service-install", "service-remove", "service-status", "enable-auto-write", "disable-auto-write"):
+        _pm_parser = p_project_memory_sub.add_parser(_pm_cmd)
+        _pm_parser.add_argument("--name", default=None)
+        if _pm_cmd == "index":
+            _pm_parser.add_argument("--full", action="store_true")
+        elif _pm_cmd in {"build", "submit"}:
+            _pm_parser.add_argument("--force", action="store_true")
+        elif _pm_cmd == "watch":
+            _pm_parser.add_argument("--duration", type=float, default=None)
+            _pm_parser.add_argument("--no-index", action="store_true")
+            _pm_parser.add_argument("--build", action="store_true")
+            _pm_parser.add_argument("--submit-summary", action="store_true")
+        elif _pm_cmd == "service-install":
+            _pm_parser.add_argument("--no-build", action="store_true")
+            _pm_parser.add_argument("--no-submit-summary", action="store_true")
+            _pm_parser.add_argument("--no-index", action="store_true")
+    p_pm_search = p_project_memory_sub.add_parser("search", help="search one registered project")
+    p_pm_search.add_argument("query")
+    p_pm_search.add_argument("--name", default=None)
+    p_pm_search.add_argument("--limit", type=int, default=10)
+    p_pm_search.add_argument("--pretty", action="store_true")
+    for _pm_cmd in ("service-install-all", "service-remove-all", "service-status-all"):
+        _pm_parser = p_project_memory_sub.add_parser(_pm_cmd)
+        if _pm_cmd == "service-install-all":
+            _pm_parser.add_argument("--no-build", action="store_true")
+            _pm_parser.add_argument("--no-submit-summary", action="store_true")
+            _pm_parser.add_argument("--no-index", action="store_true")
     p_absorb_add = p_absorb_sub.add_parser("add", help="authorize one local directory")
     p_absorb_add.add_argument("path")
     p_absorb_add.add_argument("--confirm-high-risk", action="store_true", help="allow high-risk roots after confirmation")
@@ -1127,6 +1161,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "ask":
             return run_ask(query=args.query, limit=args.limit)
         if args.command == "absorb":
+            if args.absorb_cmd == "project-memory":
+                return run_project_memory_cli(args)
             return run_absorb_cli(args)
         if args.command == "labs":
             return _run_labs_command(args)
