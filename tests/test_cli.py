@@ -120,6 +120,21 @@ def test_engine_status_and_watch_once(tmp_path) -> None:
     assert "watch tick:" in cp.stdout
 
 
+def test_project_memory_cli_route(tmp_path) -> None:
+    env = _env(tmp_path)
+    project = tmp_path / "proj"
+    project.mkdir()
+    (project / "README.md").write_text("# Demo\nproject memory route\n", encoding="utf-8")
+
+    cp = _run(["absorb", "project-memory", "init", str(project), "--name", "demo"], env=env)
+    assert cp.returncode == 0
+    assert '"name": "demo"' in cp.stdout
+
+    cp = _run(["absorb", "project-memory", "service-status-all"], env=env)
+    assert cp.returncode == 0
+    assert '"ok": true' in cp.stdout
+
+
 def test_first_run_prints_connect_bootstrap_summary(tmp_path) -> None:
     env = _env(tmp_path)
     cp = _run(["engine", "status"], env=env)
