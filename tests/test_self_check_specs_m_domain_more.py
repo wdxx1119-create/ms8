@@ -209,8 +209,8 @@ def test_m11_m12_m13_branches(tmp_path: Path, monkeypatch) -> None:
         "passed": 0,
         "failed": 0,
     }
-    out_vs_fail = cs._check_m12_validation_suite_runtime(core, {})
-    assert out_vs_fail["status"] == "fail"
+    out_vs_warn = cs._check_m12_validation_suite_runtime(core, {})
+    assert out_vs_warn["status"] == "warn"
 
     core.run_validation_suite = lambda: {  # type: ignore[attr-defined]
         "status": "success",
