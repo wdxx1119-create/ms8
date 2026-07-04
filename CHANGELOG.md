@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.2.15] - 2026-07-04
+
+### Fixed
+- Restored the `ms8 absorb project-memory ...` CLI route for the packaged project-memory workflow.
+- Treated empty validation-suite state in fresh runtimes as a warning instead of a hard self-check failure.
+
+### Packaging
+- Excluded test fixtures from source distributions so release artifacts avoid synthetic secret samples and stay cleaner for downstream scanners.
+
 ## [0.2.14] - 2026-06-27
 
 ### Added
