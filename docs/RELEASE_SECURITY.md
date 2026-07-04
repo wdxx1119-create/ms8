@@ -8,7 +8,7 @@ Use API token publishing without writing credentials into repository files.
 
 ```bash
 export TWINE_USERNAME="__token__"
-export TWINE_PASSWORD="pypi-***"
+export TWINE_PASSWORD="<your-pypi-token>"
 ```
 
 - `TWINE_USERNAME` must be `__token__`
