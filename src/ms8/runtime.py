@@ -1638,8 +1638,8 @@ def get_llm_guide_runtime() -> dict[str, Any]:
             },
         },
         "env_examples": [
-            "export OPENAI_API_KEY='sk-...'",
-            "export OPENROUTER_API_KEY='sk-or-...'",
+            "export OPENAI_API_KEY='<your-openai-api-key>'",
+            "export OPENROUTER_API_KEY='<your-openrouter-api-key>'",
             "export OLLAMA_HOST='http://127.0.0.1:11434'",
         ],
     }

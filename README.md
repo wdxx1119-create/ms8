@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.2.14-blue" alt="version">
+  <img src="https://img.shields.io/badge/version-0.2.15-blue" alt="version">
   <img src="https://img.shields.io/badge/python-3.10--3.13-green" alt="python">
   <img src="https://img.shields.io/badge/license-GPL--3.0--or--later-orange" alt="license">
   <img src="https://img.shields.io/badge/tests-unit%20%2B%20integration-brightgreen" alt="tests">
@@ -87,7 +87,7 @@ ms8 agent run install --profile DEFAULT_SAFE
 >
 > ```bash
 > python -m build --wheel --outdir dist
-> pip install --force-reinstall dist/ms8-0.2.14-py3-none-any.whl
+> pip install --force-reinstall dist/ms8-0.2.15-py3-none-any.whl
 > ```
 
 ### Agent 权限模式（差异对比）
