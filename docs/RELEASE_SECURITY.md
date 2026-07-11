@@ -29,9 +29,11 @@ For each candidate commit, `.github/workflows/release-candidate.yml` produces an
 
 - the wheel;
 - the source distribution;
-- `ms8-<version>.cdx.json`, a CycloneDX JSON SBOM generated from the clean core wheel environment;
+- `ms8-<version>.cdx.json`, a CycloneDX JSON SBOM generated from the exact installed runtime dependency closure;
 - `SHA256SUMS`, covering wheel, source distribution, and SBOM;
-- `wheel-audit.log`, preserving strict installed-wheel audit output.
+- `wheel-audit-requirements.txt`, the exact pinned dependency closure used for audit;
+- `wheel-audit.json`, the strict vulnerability report;
+- `wheel-audit.log`, preserving audit execution output.
 
 The workflow also:
 
@@ -40,12 +42,22 @@ The workflow also:
 - installs wheel and source distribution in separate clean virtual environments;
 - runs `pip check`;
 - verifies packaged MCP and recovery entry points;
-- performs a strict vulnerability audit of the installed core wheel environment;
+- performs a strict vulnerability audit of the installed runtime dependency closure without querying the unpublished candidate root package;
 - creates GitHub build provenance attestations for wheel and source distribution;
 - creates an SBOM attestation binding the CycloneDX document to the wheel;
-- blocks the candidate if audit, SBOM validation, checksum generation, provenance, or SBOM attestation fails.
+- blocks the candidate if audit, SBOM validation, checksum generation, provenance, or SBOM attestation fails;
+- publishes `release-candidate/aggregate` as a commit status so successful push-triggered candidates are directly auditable.
 
-The attestation workflow requests only:
+## Job-scoped permissions
+
+The workflow default is read-only:
+
+```yaml
+permissions:
+  contents: read
+```
+
+Only the release-artifact job receives OIDC and attestation rights:
 
 ```yaml
 permissions:
@@ -54,16 +66,28 @@ permissions:
   attestations: write
 ```
 
+Only the final aggregate-status job receives commit-status write access:
+
+```yaml
+permissions:
+  contents: read
+  statuses: write
+```
+
+Static analysis and macOS runtime-boundary jobs do not receive either permission set.
+
 ## Dependency security gate
 
-`.github/workflows/dependency-audit.yml` installs MS8 into a dedicated target environment and runs `pip-audit` from a separate tool environment. This keeps the auditor and its own dependencies out of the target dependency inventory.
+`.github/workflows/dependency-audit.yml` installs MS8 into a dedicated target environment and runs `pip-audit` from a separate tool environment. The reusable `scripts/audit_installed_environment.py` helper computes the exact transitive runtime dependency closure, writes fully pinned requirements, and audits them with strict `--no-deps` semantics. The unpublished MS8 candidate itself and unrelated environment tooling are not sent to the vulnerability service.
 
 The gate emits:
 
+- `audit-requirements.txt`;
 - `pip-audit.json`;
-- `ms8-dependencies.cdx.json`.
+- `ms8-dependencies.cdx.json`;
+- `dependency-audit.log`.
 
-Both artifacts are uploaded even when the audit fails. A known vulnerability, incomplete strict audit, missing report, or failed SBOM generation makes the workflow fail.
+All evidence is uploaded even when the audit fails. A known vulnerability, unresolved declared runtime dependency, incomplete strict audit, missing report, or failed SBOM generation makes the workflow fail.
 
 ## Safe candidate flow
 
@@ -81,9 +105,11 @@ bash scripts/release_checklist.sh
 
 2. Push the exact candidate commit to a `candidate/**` branch. If repository rules prevent that namespace, use a dedicated `rc-*` branch such as `rc-v0.2.16`.
 
-3. Confirm normal CI succeeds for the PR head and Release Candidate validation succeeds for the exact candidate commit.
+3. Confirm normal CI succeeds for the PR head.
 
-4. Confirm all installation profiles succeeded:
+4. Confirm the candidate commit has a successful `release-candidate/aggregate` status. This status is published only after static quality, macOS runtime tests, artifact audit, SBOM validation, checksum generation, provenance, and SBOM attestation all succeed.
+
+5. Confirm all installation profiles succeeded:
 
 ```text
 core
@@ -94,35 +120,35 @@ policy
 full
 ```
 
-5. Download the candidate evidence bundle and verify `SHA256SUMS`.
+6. Download the candidate evidence bundle and verify `SHA256SUMS`.
 
-6. Verify GitHub artifact provenance for the wheel and source distribution:
+7. Verify GitHub artifact provenance for the wheel and source distribution:
 
 ```bash
 gh attestation verify dist/ms8-<version>-py3-none-any.whl -R wdxx1119-create/ms8
 gh attestation verify dist/ms8-<version>.tar.gz -R wdxx1119-create/ms8
 ```
 
-7. Verify the wheel's SBOM attestation using the same repository identity and retained SBOM evidence.
+8. Verify the wheel's SBOM attestation using the same repository identity and retained SBOM evidence.
 
-8. Confirm the candidate commit, artifact names, package metadata, changelog, and intended release tag all use the same version.
+9. Confirm the candidate commit, artifact names, package metadata, changelog, and intended release tag all use the same version.
 
-9. Dry-run uploads:
+10. Dry-run uploads:
 
 ```bash
 bash scripts/publish_testpypi.sh --dry-run
 bash scripts/publish_pypi.sh --dry-run
 ```
 
-10. Upload to TestPyPI:
+11. Upload to TestPyPI:
 
 ```bash
 bash scripts/publish_testpypi.sh
 ```
 
-11. Install from TestPyPI in a clean virtual environment and verify `ms8 doctor`, `ms8-recovery --help`, and the intended installation profile.
+12. Install from TestPyPI in a clean virtual environment and verify `ms8 doctor`, `ms8-recovery --help`, and the intended installation profile.
 
-12. Upload the already-verified artifacts to PyPI:
+13. Upload the already-verified artifacts to PyPI:
 
 ```bash
 bash scripts/publish_pypi.sh
