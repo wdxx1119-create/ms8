@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: ["main", "master"]
 
+permissions:
+  contents: read
+
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
@@ -37,9 +40,29 @@ jobs:
         run: python -m ruff check src/ms8
 
       - name: Pytest
+        if: matrix.python-version != '3.11'
         env:
           PYTHONPATH: src
         run: python -m pytest tests/ -q
+
+      - name: Pytest with coverage
+        if: matrix.python-version == '3.11'
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m pytest tests/ -q \
+            --cov=ms8 \
+            --cov-report=term-missing \
+            --cov-report=xml
+
+      - name: Upload coverage report
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-python-3.11
+          path: coverage.xml
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Doctor smoke
         env:
