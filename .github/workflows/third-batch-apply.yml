@@ -21,25 +21,31 @@ jobs:
           ref: reliability/third-batch-memory-safety
           fetch-depth: 0
 
-      - name: Apply fail-closed action evidence rules
+      - name: Replace action-gate functions by boundary
         run: |
           python - <<'PY'
+          import re
           from pathlib import Path
 
-          def replace_once(path: str, old: str, new: str) -> None:
+          def replace_pattern(path: str, pattern: str, replacement: str) -> None:
               target = Path(path)
               text = target.read_text(encoding="utf-8")
-              if old not in text:
-                  raise SystemExit(f"anchor not found: {path}: {old[:120]!r}")
-              target.write_text(text.replace(old, new, 1), encoding="utf-8")
+              updated, count = re.subn(pattern, lambda _match: replacement, text, count=1, flags=re.S | re.M)
+              if count != 1:
+                  raise SystemExit(f"expected one match in {path}, got {count}: {pattern}")
+              target.write_text(updated, encoding="utf-8")
 
-          replace_once(
+          replace_pattern(
               "src/ms8/memory_safety.py",
-              '''        if verification_state != "verified":
-                      reasons.append("action_provenance_not_verified")
-              unique_reasons = list(dict.fromkeys(reasons))
-              ''',
-              '''        if verification_state != "verified":
+              r'^    if lane == "action":\n.*?^    unique_reasons = list\(dict\.fromkeys\(reasons\)\)',
+              '''    if lane == "action":
+                  if row.get("can_act_on") is not True:
+                      reasons.append("action_not_authorized_by_record")
+                  if status != "verified":
+                      reasons.append("action_record_not_verified")
+                  if authority != "user_explicit":
+                      reasons.append("action_authority_not_user_explicit")
+                  if verification_state != "verified":
                       reasons.append("action_provenance_not_verified")
                   authorized_action = _normalized_text(row.get("authorized_action") or "")
                   requested_action = _normalized_text(query)
@@ -47,29 +53,20 @@ jobs:
                       reasons.append("action_scope_missing")
                   elif authorized_action.casefold() != requested_action.casefold():
                       reasons.append("action_scope_mismatch")
-              unique_reasons = list(dict.fromkeys(reasons))
-              ''',
+              unique_reasons = list(dict.fromkeys(reasons))''',
           )
-          replace_once(
+          replace_pattern(
               "src/ms8/memory_safety.py",
-              '''    selected_ids = {str(item).strip() for item in (memory_ids or []) if str(item).strip()}
-                  selected = [row for row in records if not selected_ids or str(row.get("id") or "") in selected_ids]
-                  decisions = [evaluate_memory_policy(row, query=action_text, purpose="action") for row in selected]
-                  eligible_ids = [str(item.get("record_id") or "") for item in decisions if item.get("allowed")]
-                  reason_counts: Counter[str] = Counter()
-                  for item in decisions:
-                      if not item.get("allowed"):
-                          reason_counts.update(str(code) for code in item.get("reason_codes", []))
-                  missing_ids = sorted(selected_ids - {str(row.get("id") or "") for row in selected})
-                  if not action_text:
-                      reason_counts.update(["action_required"])
-                  if missing_ids:
-                      reason_counts.update(["memory_id_not_found"])
-                  if eligible_ids and not explicit_user_confirmation:
-                      reason_counts.update(["human_confirmation_required"])
-                  allowed = bool(action_text and eligible_ids and explicit_user_confirmation and not missing_ids)
-              ''',
-              '''    selected_ids = {str(item).strip() for item in (memory_ids or []) if str(item).strip()}
+              r'^def pre_action_check\(\n.*?^def provenance_fingerprint',
+              '''def pre_action_check(
+                  *,
+                  action: str,
+                  records: list[dict[str, Any]],
+                  memory_ids: list[str] | None = None,
+                  explicit_user_confirmation: bool = False,
+              ) -> dict[str, Any]:
+                  action_text = _normalized_text(action)
+                  selected_ids = {str(item).strip() for item in (memory_ids or []) if str(item).strip()}
                   selected = [row for row in records if str(row.get("id") or "") in selected_ids]
                   decisions = [evaluate_memory_policy(row, query=action_text, purpose="action") for row in selected]
                   eligible_ids = [str(item.get("record_id") or "") for item in decisions if item.get("allowed")]
@@ -94,32 +91,61 @@ jobs:
                       and explicit_user_confirmation
                       and not missing_ids
                   )
-              ''',
+                  return {
+                      "ok": True,
+                      "decision": "allow" if allowed else "deny",
+                      "allowed": allowed,
+                      "execution_performed": False,
+                      "action": action_text,
+                      "requires_confirmation": bool(all_selected_eligible and not explicit_user_confirmation),
+                      "explicit_user_confirmation": bool(explicit_user_confirmation),
+                      "eligible_record_ids": eligible_ids,
+                      "evaluated_record_ids": [str(row.get("id") or "") for row in selected],
+                      "missing_record_ids": missing_ids,
+                      "reason_counts": dict(sorted(reason_counts.items())),
+                      "record_decisions": decisions,
+                  }
+
+
+              def provenance_fingerprint''',
           )
-          replace_once(
-              "src/ms8/memory_safety.py",
-              '        "requires_confirmation": bool(eligible_ids and not explicit_user_confirmation),\n',
-              '        "requires_confirmation": bool(all_selected_eligible and not explicit_user_confirmation),\n',
-          )
-          replace_once(
+          replace_pattern(
               "tests/test_third_batch_memory_safety.py",
-              '''    authorized["can_act_on"] = True
-                  authorized["provenance"]["verification_state"] = "verified"
-              ''',
-              '''    authorized["can_act_on"] = True
+              r'^def test_pre_action_requires_independent_authority_and_confirmation\(\) -> None:\n.*?^def test_engine_trace_counts_policy_reasons',
+              '''def test_pre_action_requires_independent_authority_and_confirmation() -> None:
+                  ordinary = build_canonical_record("User prefers local storage", "ask")
+                  denied = pre_action_check(
+                      action="delete remote copy",
+                      records=[ordinary],
+                      memory_ids=[ordinary["id"]],
+                      explicit_user_confirmation=True,
+                  )
+                  assert denied["allowed"] is False
+                  assert denied["reason_counts"]["action_not_authorized_by_record"] == 1
+
+                  authorized = build_canonical_record(
+                      "User explicitly authorizes this exact cleanup",
+                      "ask",
+                      status="verified",
+                  )
+                  authorized["can_act_on"] = True
                   authorized["authorized_action"] = "delete remote copy"
                   authorized["provenance"]["verification_state"] = "verified"
-              ''',
-          )
-          replace_once(
-              "tests/test_third_batch_memory_safety.py",
-              '''    assert allowed["allowed"] is True
-                  assert allowed["execution_performed"] is False
-
-
-              def test_engine_trace_counts_policy_reasons() -> None:
-              ''',
-              '''    assert allowed["allowed"] is True
+                  authorized["provenance"]["confidence"] = 1.0
+                  no_confirmation = pre_action_check(
+                      action="delete remote copy",
+                      records=[authorized],
+                      memory_ids=[authorized["id"]],
+                  )
+                  assert no_confirmation["allowed"] is False
+                  assert no_confirmation["requires_confirmation"] is True
+                  allowed = pre_action_check(
+                      action="delete remote copy",
+                      records=[authorized],
+                      memory_ids=[authorized["id"]],
+                      explicit_user_confirmation=True,
+                  )
+                  assert allowed["allowed"] is True
                   assert allowed["execution_performed"] is False
 
 
@@ -159,8 +185,7 @@ jobs:
                   assert mixed["reason_counts"]["action_not_authorized_by_record"] == 1
 
 
-              def test_engine_trace_counts_policy_reasons() -> None:
-              ''',
+              def test_engine_trace_counts_policy_reasons''',
           )
           PY
 
