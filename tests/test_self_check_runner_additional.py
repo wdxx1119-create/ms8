@@ -39,7 +39,7 @@ def test_run_self_check_concurrent_skip(monkeypatch, tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    # force lock contention branch
+    # force lock contention branch without depending on a platform lock module
     class _Lock:
         def __enter__(self):
             return self
@@ -65,7 +65,8 @@ def test_run_self_check_concurrent_skip(monkeypatch, tmp_path: Path) -> None:
     def _raise_blocking(*_a, **_k):
         raise BlockingIOError()
 
-    monkeypatch.setattr(check_runner.fcntl, "flock", _raise_blocking)
+    monkeypatch.setattr(check_runner, "_lock_file_nonblocking", _raise_blocking)
+    monkeypatch.setattr(check_runner, "_unlock_file", lambda *_a, **_k: None)
 
     class _Core:
         config = {
