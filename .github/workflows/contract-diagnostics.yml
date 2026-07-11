@@ -29,6 +29,7 @@ jobs:
               "GitHub Discussions（启用后）",
           )
 
+          output = []
           for path in sorted(Path("tests").rglob("*.py")):
               text = path.read_text(encoding="utf-8")
               matches = [
@@ -37,7 +38,19 @@ jobs:
                   if any(needle in line for needle in needles)
               ]
               if matches:
-                  print(f"FILE {path}")
-                  for number, line in matches:
-                      print(f"  {number}: {line}")
+                  output.append(f"FILE {path}")
+                  output.extend(f"  {number}: {line}" for number, line in matches)
+
+          Path("contract-diagnostics.txt").write_text(
+              "\n".join(output) + "\n",
+              encoding="utf-8",
+          )
           PY
+
+      - name: Upload diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-diagnostics
+          path: contract-diagnostics.txt
+          if-no-files-found: error
+          retention-days: 1
