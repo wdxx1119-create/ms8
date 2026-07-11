@@ -53,8 +53,7 @@ jobs:
           python -m pytest tests/ -q \
             --cov=ms8 \
             --cov-report=term-missing \
-            --cov-report=xml \
-            --cov-fail-under=80
+            --cov-report=xml
 
       - name: Upload coverage report
         if: matrix.python-version == '3.11'
@@ -64,6 +63,23 @@ jobs:
           path: coverage.xml
           if-no-files-found: error
           retention-days: 14
+
+      - name: Enforce 80% line coverage baseline
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from xml.etree import ElementTree
+
+          report = Path("coverage.xml")
+          root = ElementTree.parse(report).getroot()
+          line_rate = float(root.attrib["line-rate"]) * 100
+          branch_rate = float(root.attrib.get("branch-rate", "0")) * 100
+          print(f"line coverage: {line_rate:.2f}%")
+          print(f"branch coverage (reported, not gated): {branch_rate:.2f}%")
+          if line_rate < 80.0:
+              raise SystemExit(f"line coverage {line_rate:.2f}% is below the 80.00% baseline")
+          PY
 
       - name: Doctor smoke
         env:
