@@ -27,30 +27,75 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install project and auditor
+      - name: Prepare isolated target and audit environments
         run: |
-          python -m venv .audit-venv
-          .audit-venv/bin/python -m pip install --upgrade pip
-          .audit-venv/bin/python -m pip install -e . pip-audit
+          python -m venv .audit-target-venv
+          python -m venv .audit-tool-venv
+          .audit-target-venv/bin/python -m pip install --upgrade pip
+          .audit-target-venv/bin/python -m pip install .
+          .audit-tool-venv/bin/python -m pip install --upgrade pip
+          .audit-tool-venv/bin/python -m pip install pip-audit
+
+      - name: Resolve target site-packages
+        id: target
+        shell: bash
+        run: |
+          SITE_PACKAGES="$(
+            .audit-target-venv/bin/python - <<'PY'
+          import sysconfig
+
+          print(sysconfig.get_paths()["purelib"])
+          PY
+          )"
+          test -d "$SITE_PACKAGES"
+          echo "site_packages=$SITE_PACKAGES" >> "$GITHUB_OUTPUT"
 
       - name: Generate dependency audit report
         id: audit
         continue-on-error: true
         run: |
-          .audit-venv/bin/python -m pip_audit \
-            --local \
+          .audit-tool-venv/bin/python -m pip_audit \
+            --strict \
+            --path "${{ steps.target.outputs.site_packages }}" \
+            --progress-spinner off \
             --format json \
             --output pip-audit.json
 
-      - name: Upload dependency audit report
+      - name: Generate CycloneDX dependency SBOM
+        id: sbom
+        if: always()
+        continue-on-error: true
+        run: |
+          .audit-tool-venv/bin/python -m pip_audit \
+            --strict \
+            --path "${{ steps.target.outputs.site_packages }}" \
+            --progress-spinner off \
+            --format cyclonedx-json \
+            --output ms8-dependencies.cdx.json
+
+      - name: Upload dependency security artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pip-audit-report
-          path: pip-audit.json
-          if-no-files-found: error
+          path: |
+            pip-audit.json
+            ms8-dependencies.cdx.json
+          if-no-files-found: warn
           retention-days: 14
 
-      - name: Report audit result
-        if: steps.audit.outcome != 'success'
+      - name: Enforce dependency security gate
+        if: always()
+        shell: bash
         run: |
-          echo "::warning::pip-audit found one or more known vulnerabilities. Review the uploaded pip-audit-report artifact."
+          set -euo pipefail
+          test -s pip-audit.json
+          test -s ms8-dependencies.cdx.json
+          if [[ "${{ steps.audit.outcome }}" != "success" ]]; then
+            echo "::error::pip-audit found a known vulnerability or could not complete the strict audit."
+            exit 1
+          fi
+          if [[ "${{ steps.sbom.outcome }}" != "success" ]]; then
+            echo "::error::CycloneDX SBOM generation or its vulnerability audit failed."
+            exit 1
+          fi
