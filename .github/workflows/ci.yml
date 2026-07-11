@@ -43,14 +43,14 @@ jobs:
         if: matrix.python-version != '3.11'
         env:
           PYTHONPATH: src
-        run: python -m pytest tests/ -q
+        run: python -m pytest -q
 
       - name: Pytest with coverage
         if: matrix.python-version == '3.11'
         env:
           PYTHONPATH: src
         run: |
-          python -m pytest tests/ -q \
+          python -m pytest -q \
             --cov=ms8 \
             --cov-report=term-missing \
             --cov-report=xml
@@ -110,6 +110,7 @@ jobs:
         run: |
           python -m pip install dist/*.whl
           python -m ms8 version
+          ms8-recovery --help
 
   cleanroom-online-install:
     runs-on: ubuntu-latest
@@ -158,6 +159,7 @@ jobs:
           OPENCLAW_MEMORY_SESSION_INGEST_ENABLED="0" \
           MS8_DOCTOR_ALLOW_DEGRADED="1" \
           "$TMP_BASE/venv/bin/ms8" ask "cleanroom install"
+          "$TMP_BASE/venv/bin/ms8-recovery" --help
 
   windows-wheel-smoke:
     name: windows-wheel-smoke
@@ -202,6 +204,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             throw "cross-platform smoke failed with exit code $LASTEXITCODE"
           }
+          $recovery = Join-Path $venv "Scripts\ms8-recovery.exe"
+          & $recovery --help
 
       - name: Upload Windows smoke log
         if: always()
