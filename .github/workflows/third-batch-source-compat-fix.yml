@@ -30,7 +30,8 @@ jobs:
 
           path = Path("src/ms8/connect/mcp_server/mcp_server.py")
           text = path.read_text(encoding="utf-8")
-          old = '        payload.setdefault("source", _source_tag(_get_client_name(p)))\n'
+          submit_old = '        payload.setdefault("source", _source_tag(_get_client_name(p)))\n'
+          batch_old = '            payload.setdefault("source", _source_tag(_get_client_name(p)))\n'
           submit = (
               '        client_name = str(p.get("client") or p.get("client_name") or "").strip()\n'
               '        payload.setdefault("source", _source_tag(client_name or "submit"))\n'
@@ -39,10 +40,12 @@ jobs:
               '            client_name = str(p.get("client") or p.get("client_name") or "").strip()\n'
               '            payload.setdefault("source", _source_tag(client_name or "batch_submit"))\n'
           )
-          if text.count(old) != 2:
-              raise SystemExit(f"expected two source-tag anchors, found {text.count(old)}")
-          text = text.replace(old, submit, 1)
-          text = text.replace(old, batch, 1)
+          if text.count(submit_old) != 1:
+              raise SystemExit(f"expected one submit source-tag anchor, found {text.count(submit_old)}")
+          if text.count(batch_old) != 1:
+              raise SystemExit(f"expected one batch source-tag anchor, found {text.count(batch_old)}")
+          text = text.replace(submit_old, submit, 1)
+          text = text.replace(batch_old, batch, 1)
           ast.parse(text)
           path.write_text(text, encoding="utf-8")
 
