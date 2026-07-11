@@ -147,6 +147,19 @@ class MemoryServiceInterface:
             logger.warning("mcp_submit_failed err=%s", exc)
             return {"ok": False, "accepted": False, "error": str(exc), "error_code": "E_MCP_SUBMIT_FAILED"}
 
+    def pre_action_check(
+        self,
+        action: str,
+        *,
+        memory_ids: list[str] | None = None,
+        explicit_user_confirmation: bool = False,
+    ) -> dict[str, Any]:
+        return self._engine_adapter().pre_action_check(
+            action,
+            memory_ids=memory_ids,
+            explicit_user_confirmation=explicit_user_confirmation,
+        )
+
     def query(self, text: str, top_k: int = 5) -> dict[str, Any]:
         if not self.available():
             return self._core_unavailable()

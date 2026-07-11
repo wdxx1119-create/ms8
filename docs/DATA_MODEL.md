@@ -93,6 +93,14 @@ Do not infer that a file is authoritative solely from its extension. Use the rol
 
 Additional engine or migration fields may be present. Consumers must tolerate additive fields and should not discard unknown metadata during repair or migration.
 
+### Provenance object
+
+New canonical records include a `provenance` object with a content digest, source kind/reference, creator/recorder classes, observation and recording timestamps, validity interval, parent record IDs, transformation chain, verification state, confidence, and provenance schema version.
+
+Provenance is additive for backward compatibility: older records remain readable, while repair/backfill can add the object idempotently. A provenance object whose content digest does not match the canonical text is invalid and must not authorize recall, injection, or action.
+
+`confidence` is evidence quality, not action permission. `can_act_on` remains independently false by default. The pre-action gate requires explicit supporting record IDs, every selected record to be verified and eligible, an exact normalized `authorized_action` match, and a confirmation claim from the trusted host UI. The decision is advisory governance output only: MS8 reports `execution_performed=false` and does not execute the action.
+
 ## Required invariants
 
 A canonical record must currently include:
