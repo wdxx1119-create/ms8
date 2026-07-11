@@ -1,5 +1,7 @@
 name: Apply third-batch memory safety slice
 
+# Gate revision: nullable confidence typing is explicit.
+
 on:
   push:
     branches:
