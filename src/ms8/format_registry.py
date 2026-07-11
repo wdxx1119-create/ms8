@@ -14,7 +14,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-
 FORMAT_MANIFEST_NAME = "format_manifest.json"
 CURRENT_RUNTIME_FORMAT_VERSION = 1
 
