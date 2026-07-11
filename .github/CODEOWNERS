@@ -1,26 +1,26 @@
 # Default owners
-* @wdxxx1119-collab
+* @wdxx1119-create
 
 # Core engine and governance
-/src/ms8/engine_core/ @wdxxx1119-collab
-/src/ms8/app/ @wdxxx1119-collab
+/src/ms8/engine_core/ @wdxx1119-create
+/src/ms8/app/ @wdxx1119-create
 
 # Connect / MCP integration
-/src/ms8/connect/ @wdxxx1119-collab
+/src/ms8/connect/ @wdxx1119-create
 
 # Runtime / CLI surface
-/src/ms8/cli.py @wdxxx1119-collab
-/src/ms8/runtime.py @wdxxx1119-collab
-/src/ms8/doctor.py @wdxxx1119-collab
-/src/ms8/dashboard.py @wdxxx1119-collab
-/src/ms8/engine.py @wdxxx1119-collab
+/src/ms8/cli.py @wdxx1119-create
+/src/ms8/runtime.py @wdxx1119-create
+/src/ms8/doctor.py @wdxx1119-create
+/src/ms8/dashboard.py @wdxx1119-create
+/src/ms8/engine.py @wdxx1119-create
 
 # CI/CD workflows and release controls
-/.github/workflows/ @wdxxx1119-collab
+/.github/workflows/ @wdxx1119-create
 
 # Packaging and install scripts
-/pyproject.toml @wdxxx1119-collab
-/scripts/install_ms8.sh @wdxxx1119-collab
+/pyproject.toml @wdxx1119-create
+/scripts/install_ms8.sh @wdxx1119-create
 
 # Tests and governance contracts
-/tests/ @wdxxx1119-collab
+/tests/ @wdxx1119-create
