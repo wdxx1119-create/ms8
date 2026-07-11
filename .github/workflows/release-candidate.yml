@@ -94,7 +94,7 @@ jobs:
       - name: Install release tooling
         run: |
           python -m pip install --upgrade pip
-          python -m pip install build twine cyclonedx-bom
+          python -m pip install build twine pip-audit
 
       - name: Build wheel and source distribution
         run: |
@@ -142,7 +142,7 @@ jobs:
           )"
           ENV_DIR="$RUNNER_TEMP/ms8-wheel-venv"
           python -m venv "$ENV_DIR"
-          "$ENV_DIR/bin/python" -m pip install --upgrade pip
+          "$ENV_DIR/bin/python" -m pip install --upgrade pip setuptools wheel
           "$ENV_DIR/bin/python" -m pip install "dist/ms8-${EXPECTED_VERSION}-py3-none-any.whl"
           EXPECTED_VERSION="$EXPECTED_VERSION" "$ENV_DIR/bin/python" - <<'PY'
           import os
@@ -158,16 +158,43 @@ jobs:
           "$ENV_DIR/bin/python" -m pip check
           "$ENV_DIR/bin/ms8" version
 
-      - name: Generate and validate CycloneDX SBOM
+      - name: Generate installed-wheel CycloneDX SBOM
+        id: wheel_audit
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -uo pipefail
+          EXPECTED_VERSION="${{ steps.project_version.outputs.value }}"
+          ENV_DIR="$RUNNER_TEMP/ms8-wheel-venv"
+          SITE_PACKAGES="$(
+            "$ENV_DIR/bin/python" - <<'PY'
+          import sysconfig
+
+          print(sysconfig.get_paths()["purelib"])
+          PY
+          )"
+          SBOM="dist/ms8-${EXPECTED_VERSION}.cdx.json"
+          test -d "$SITE_PACKAGES"
+          {
+            python -m pip_audit \
+              --strict \
+              --path "$SITE_PACKAGES" \
+              --progress-spinner off \
+              --format cyclonedx-json \
+              --output "$SBOM"
+          } 2>&1 | tee dist/wheel-audit.log
+          exit "${PIPESTATUS[0]}"
+
+      - name: Validate installed-wheel CycloneDX SBOM
+        id: sbom_validation
+        if: always()
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
           EXPECTED_VERSION="${{ steps.project_version.outputs.value }}"
-          ENV_DIR="$RUNNER_TEMP/ms8-wheel-venv"
           SBOM="dist/ms8-${EXPECTED_VERSION}.cdx.json"
-          cyclonedx-py environment "$ENV_DIR/bin/python" \
-            --output-format JSON \
-            --output-file "$SBOM"
+          test -s "$SBOM"
           EXPECTED_VERSION="$EXPECTED_VERSION" SBOM="$SBOM" python - <<'PY'
           import json
           import os
@@ -175,6 +202,7 @@ jobs:
 
           payload = json.loads(Path(os.environ['SBOM']).read_text(encoding='utf-8'))
           assert payload.get('bomFormat') == 'CycloneDX'
+          assert payload.get('specVersion')
           components = payload.get('components', [])
           assert any(
               item.get('name', '').lower() == 'ms8'
@@ -197,7 +225,7 @@ jobs:
           )"
           ENV_DIR="$RUNNER_TEMP/ms8-sdist-venv"
           python -m venv "$ENV_DIR"
-          "$ENV_DIR/bin/python" -m pip install --upgrade pip
+          "$ENV_DIR/bin/python" -m pip install --upgrade pip setuptools wheel
           "$ENV_DIR/bin/python" -m pip install "dist/ms8-${EXPECTED_VERSION}.tar.gz"
           EXPECTED_VERSION="$EXPECTED_VERSION" "$ENV_DIR/bin/python" - <<'PY'
           import os
@@ -213,21 +241,34 @@ jobs:
           "$ENV_DIR/bin/python" -m pip check
 
       - name: Generate SHA-256 checksums
+        id: checksums
+        if: always()
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
-          (cd dist && shasum -a 256 *.whl *.tar.gz *.cdx.json > SHA256SUMS)
-          cat dist/SHA256SUMS
+          EXPECTED_VERSION="${{ steps.project_version.outputs.value }}"
+          cd dist
+          files=(
+            "ms8-${EXPECTED_VERSION}-py3-none-any.whl"
+            "ms8-${EXPECTED_VERSION}.tar.gz"
+          )
+          if [[ -s "ms8-${EXPECTED_VERSION}.cdx.json" ]]; then
+            files+=("ms8-${EXPECTED_VERSION}.cdx.json")
+          fi
+          shasum -a 256 "${files[@]}" > SHA256SUMS
+          cat SHA256SUMS
           {
             echo "### Release candidate artifacts"
             echo "- commit: $GITHUB_SHA"
-            echo "- SBOM: CycloneDX JSON generated from the installed wheel environment"
+            echo "- SBOM: CycloneDX JSON generated and vulnerability-audited from the installed wheel environment"
             echo '```text'
-            cat dist/SHA256SUMS
+            cat SHA256SUMS
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload independently verified artifacts
+      - name: Upload release candidate evidence
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ms8-v${{ steps.project_version.outputs.value }}-${{ github.sha }}
@@ -236,5 +277,30 @@ jobs:
             dist/ms8-${{ steps.project_version.outputs.value }}.tar.gz
             dist/ms8-${{ steps.project_version.outputs.value }}.cdx.json
             dist/SHA256SUMS
-          if-no-files-found: error
+            dist/wheel-audit.log
+          if-no-files-found: warn
           retention-days: 30
+
+      - name: Enforce installed-wheel security gate
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED_VERSION="${{ steps.project_version.outputs.value }}"
+          test -s "dist/ms8-${EXPECTED_VERSION}-py3-none-any.whl"
+          test -s "dist/ms8-${EXPECTED_VERSION}.tar.gz"
+          test -s "dist/ms8-${EXPECTED_VERSION}.cdx.json"
+          test -s "dist/SHA256SUMS"
+          test -e "dist/wheel-audit.log"
+          if [[ "${{ steps.wheel_audit.outcome }}" != "success" ]]; then
+            echo "::error::Installed-wheel pip-audit found a vulnerability or could not complete the strict audit."
+            exit 1
+          fi
+          if [[ "${{ steps.sbom_validation.outcome }}" != "success" ]]; then
+            echo "::error::Installed-wheel CycloneDX SBOM validation failed."
+            exit 1
+          fi
+          if [[ "${{ steps.checksums.outcome }}" != "success" ]]; then
+            echo "::error::Release candidate checksum generation failed."
+            exit 1
+          fi
