@@ -9,19 +9,39 @@ import shutil
 import sqlite3
 import tempfile
 import zipfile
+from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
-
-from . import __version__
-from .format_registry import CURRENT_FORMATS, load_format_manifest
-from .paths import get_ms8_home
-
 
 BACKUP_MANIFEST_NAME = "manifest.json"
 BACKUP_SCHEMA_VERSION = 1
 _TRANSIENT_SUFFIXES = (".lock", ".tmp", ".temp", ".swp")
 _TRANSIENT_DIRS = {"__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache"}
+
+
+def _get_ms8_home() -> Path:
+    from .paths import get_ms8_home
+
+    return get_ms8_home()
+
+
+def _current_version() -> str:
+    from . import __version__
+
+    return __version__
+
+
+def _current_formats() -> dict[str, Any]:
+    from .format_registry import CURRENT_FORMATS
+
+    return asdict(CURRENT_FORMATS)
+
+
+def _load_format_manifest(root: Path) -> dict[str, Any]:
+    from .format_registry import load_format_manifest
+
+    return load_format_manifest(root)
 
 
 def _utc_now() -> str:
@@ -40,9 +60,45 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _relative_path(name: str) -> Path:
+    raw = str(name)
+    if not raw or "\x00" in raw or "\\" in raw:
+        raise ValueError(f"unsafe relative path: {raw!r}")
+    components = raw.split("/")
+    if any(part in {"", ".", ".."} for part in components):
+        raise ValueError(f"unsafe relative path: {raw!r}")
+    pure = PurePosixPath(raw)
+    if pure.is_absolute() or not pure.parts:
+        raise ValueError(f"unsafe relative path: {raw!r}")
+    first = pure.parts[0]
+    if ":" in first:
+        raise ValueError(f"unsafe relative path: {raw!r}")
+    return Path(*pure.parts)
+
+
 def _safe_archive_member(name: str) -> bool:
-    path = PurePosixPath(name)
-    return bool(name) and not path.is_absolute() and ".." not in path.parts
+    if name == BACKUP_MANIFEST_NAME:
+        return True
+    if not name.startswith("runtime/"):
+        return False
+    try:
+        _relative_path(name.removeprefix("runtime/"))
+    except ValueError:
+        return False
+    return True
+
+
+def _safe_destination(target: Path, relative: Path) -> Path:
+    target = target.expanduser().resolve()
+    current = target
+    for part in relative.parts[:-1]:
+        current = current / part
+        if current.is_symlink():
+            raise ValueError(f"restore path crosses symlink: {relative.as_posix()}")
+    destination = target / relative
+    if destination.is_symlink():
+        raise ValueError(f"restore destination is a symlink: {relative.as_posix()}")
+    return destination
 
 
 def _is_sqlite(path: Path) -> bool:
@@ -55,11 +111,10 @@ def _is_sqlite(path: Path) -> bool:
 
 def _sqlite_snapshot(source: Path, destination: Path) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
-    source_uri = f"file:{source.resolve().as_posix()}?mode=ro"
+    source_uri = f"{source.resolve().as_uri()}?mode=ro"
     with sqlite3.connect(source_uri, uri=True) as source_db:
         with sqlite3.connect(destination) as destination_db:
             source_db.backup(destination_db)
-            destination_db.execute("PRAGMA wal_checkpoint(TRUNCATE)")
 
 
 def _should_skip(relative: Path) -> bool:
@@ -69,9 +124,7 @@ def _should_skip(relative: Path) -> bool:
         return True
     if any(part in _TRANSIENT_DIRS for part in relative.parts):
         return True
-    if relative.name == ".DS_Store" or relative.name.endswith(_TRANSIENT_SUFFIXES):
-        return True
-    return False
+    return relative.name == ".DS_Store" or relative.name.endswith(_TRANSIENT_SUFFIXES)
 
 
 def _stage_runtime(root: Path, stage: Path) -> tuple[list[dict[str, Any]], list[str]]:
@@ -114,7 +167,7 @@ def create_runtime_backup(
     output: Path | None = None,
     tag: str = "manual",
 ) -> dict[str, Any]:
-    root = Path(root or get_ms8_home()).expanduser().resolve()
+    root = Path(root or _get_ms8_home()).expanduser().resolve()
     root.mkdir(parents=True, exist_ok=True)
     backup_dir = root / "backups"
     backup_dir.mkdir(parents=True, exist_ok=True)
@@ -128,23 +181,24 @@ def create_runtime_backup(
         stage.mkdir(parents=True, exist_ok=True)
         files, skipped_symlinks = _stage_runtime(root, stage)
         try:
-            format_manifest = load_format_manifest(root)
+            format_manifest = _load_format_manifest(root)
         except ValueError as exc:
             format_manifest = {"runtime_format_version": -1, "error": str(exc)}
         manifest: dict[str, Any] = {
             "backup_schema_version": BACKUP_SCHEMA_VERSION,
             "created_at": _utc_now(),
-            "ms8_version": __version__,
+            "ms8_version": _current_version(),
             "source_root": str(root),
             "format_versions": format_manifest,
-            "current_supported_formats": CURRENT_FORMATS.__dict__,
+            "current_supported_formats": _current_formats(),
+            "consistency_scope": "per-file; SQLite uses backup API",
             "files": files,
             "skipped_symlinks": skipped_symlinks,
         }
         with zipfile.ZipFile(temporary_archive, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as bundle:
             bundle.writestr(BACKUP_MANIFEST_NAME, json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True))
             for row in files:
-                relative = Path(str(row["path"]))
+                relative = _relative_path(str(row["path"]))
                 bundle.write(stage / relative, arcname=f"runtime/{relative.as_posix()}")
         os.replace(temporary_archive, archive)
 
@@ -152,12 +206,13 @@ def create_runtime_backup(
     if not verification.get("ok", False):
         archive.unlink(missing_ok=True)
         return {"ok": False, "path": str(archive), "verification": verification}
+    manifest_payload = verification.get("manifest", {})
     return {
         "ok": True,
         "path": str(archive),
-        "file_count": len(verification.get("manifest", {}).get("files", [])),
+        "file_count": len(manifest_payload.get("files", [])) if isinstance(manifest_payload, dict) else 0,
         "sha256": _sha256(archive),
-        "skipped_symlinks": verification.get("manifest", {}).get("skipped_symlinks", []),
+        "skipped_symlinks": manifest_payload.get("skipped_symlinks", []) if isinstance(manifest_payload, dict) else [],
     }
 
 
@@ -169,9 +224,9 @@ def verify_runtime_backup(archive: Path) -> dict[str, Any]:
     try:
         with zipfile.ZipFile(archive, "r") as bundle:
             names = bundle.namelist()
-            for name in names:
-                if not _safe_archive_member(name):
-                    errors.append(f"unsafe_member:{name}")
+            if len(names) != len(set(names)):
+                errors.append("duplicate_archive_member")
+            errors.extend(f"unsafe_member:{name}" for name in names if not _safe_archive_member(name))
             if BACKUP_MANIFEST_NAME not in names:
                 errors.append("manifest_missing")
                 return {"ok": False, "archive": str(archive), "errors": errors}
@@ -190,18 +245,29 @@ def verify_runtime_backup(archive: Path) -> dict[str, Any]:
                 if not isinstance(row, dict):
                     errors.append("invalid_file_entry")
                     continue
-                relative = str(row.get("path", ""))
-                member = f"runtime/{relative}"
+                relative_name = str(row.get("path", ""))
+                try:
+                    relative = _relative_path(relative_name)
+                except ValueError:
+                    errors.append(f"missing_or_unsafe:{relative_name}")
+                    continue
+                member = f"runtime/{relative.as_posix()}"
+                if member in declared_names:
+                    errors.append(f"duplicate_manifest_path:{relative_name}")
                 declared_names.add(member)
-                if not _safe_archive_member(member) or member not in names:
-                    errors.append(f"missing_or_unsafe:{relative}")
+                if member not in names:
+                    errors.append(f"missing_or_unsafe:{relative_name}")
                     continue
                 payload = bundle.read(member)
                 actual = hashlib.sha256(payload).hexdigest()
                 if actual != str(row.get("sha256", "")):
-                    errors.append(f"checksum_mismatch:{relative}")
-                if len(payload) != int(row.get("size", -1)):
-                    errors.append(f"size_mismatch:{relative}")
+                    errors.append(f"checksum_mismatch:{relative_name}")
+                try:
+                    expected_size = int(row.get("size", -1))
+                except (TypeError, ValueError):
+                    expected_size = -1
+                if len(payload) != expected_size:
+                    errors.append(f"size_mismatch:{relative_name}")
             undeclared = [name for name in names if name.startswith("runtime/") and name not in declared_names]
             errors.extend(f"undeclared_member:{name}" for name in undeclared)
     except (OSError, zipfile.BadZipFile, json.JSONDecodeError, UnicodeDecodeError) as exc:
@@ -216,17 +282,18 @@ def verify_runtime_backup(archive: Path) -> dict[str, Any]:
 
 
 def plan_runtime_restore(archive: Path, *, target_root: Path | None = None) -> dict[str, Any]:
-    target = Path(target_root or get_ms8_home()).expanduser().resolve()
+    target = Path(target_root or _get_ms8_home()).expanduser().resolve()
     verification = verify_runtime_backup(archive)
     if not verification.get("ok", False):
         return {"ok": False, "target_root": str(target), "verification": verification}
-    files = verification["manifest"].get("files", [])
+    manifest = verification.get("manifest", {})
+    files = manifest.get("files", []) if isinstance(manifest, dict) else []
     create: list[str] = []
     overwrite: list[str] = []
     unchanged: list[str] = []
     for row in files:
-        relative = Path(str(row["path"]))
-        destination = target / relative
+        relative = _relative_path(str(row["path"]))
+        destination = _safe_destination(target, relative)
         if not destination.exists():
             create.append(relative.as_posix())
         elif destination.is_file() and _sha256(destination) == str(row["sha256"]):
@@ -259,8 +326,11 @@ def restore_runtime_backup(
     target_root: Path | None = None,
     apply: bool = False,
 ) -> dict[str, Any]:
-    target = Path(target_root or get_ms8_home()).expanduser().resolve()
-    plan = plan_runtime_restore(archive, target_root=target)
+    target = Path(target_root or _get_ms8_home()).expanduser().resolve()
+    try:
+        plan = plan_runtime_restore(archive, target_root=target)
+    except ValueError as exc:
+        return {"ok": False, "target_root": str(target), "applied": False, "error": str(exc)}
     if not plan.get("ok", False) or not apply:
         return {**plan, "applied": False, "dry_run": True}
 
@@ -274,20 +344,23 @@ def restore_runtime_backup(
         pre_restore_backup = str(result.get("path", ""))
 
     verification = verify_runtime_backup(archive)
+    manifest = verification.get("manifest", {})
+    rows = manifest.get("files", []) if isinstance(manifest, dict) else []
     with tempfile.TemporaryDirectory(prefix="ms8-restore-") as temp_dir:
         stage = Path(temp_dir)
         with zipfile.ZipFile(Path(archive).expanduser().resolve(), "r") as bundle:
-            for row in verification["manifest"]["files"]:
-                relative = Path(str(row["path"]))
+            for row in rows:
+                relative = _relative_path(str(row["path"]))
                 member = f"runtime/{relative.as_posix()}"
                 staged_file = stage / relative
                 staged_file.parent.mkdir(parents=True, exist_ok=True)
                 staged_file.write_bytes(bundle.read(member))
                 if _sha256(staged_file) != str(row["sha256"]):
                     return {**plan, "ok": False, "applied": False, "error": f"staged_checksum_mismatch:{relative}"}
-        for row in verification["manifest"]["files"]:
-            relative = Path(str(row["path"]))
-            _atomic_copy(stage / relative, target / relative)
+        for row in rows:
+            relative = _relative_path(str(row["path"]))
+            destination = _safe_destination(target, relative)
+            _atomic_copy(stage / relative, destination)
 
     audit_path = target / "memory" / "logs" / "restore_audit.jsonl"
     audit_path.parent.mkdir(parents=True, exist_ok=True)
