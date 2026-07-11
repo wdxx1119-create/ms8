@@ -8,9 +8,6 @@ updates:
       time: "09:00"
       timezone: Asia/Singapore
     open-pull-requests-limit: 5
-    labels:
-      - dependencies
-      - python
     commit-message:
       prefix: deps
 
@@ -22,8 +19,5 @@ updates:
       time: "09:30"
       timezone: Asia/Singapore
     open-pull-requests-limit: 5
-    labels:
-      - dependencies
-      - github-actions
     commit-message:
       prefix: ci
