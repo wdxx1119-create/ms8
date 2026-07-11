@@ -92,27 +92,29 @@ def build_memory_provenance(
         or f"{str(source or source_kind).strip()}:{str(record_id or '').strip()}"
     )
     authority_value = str(authority or "user_implicit").strip().lower()
-    verification_state = str(
-        nested.get("verification_state")
-        or meta.get("verification_state")
-        or (
-            "verified"
-            if str(status or "").strip().lower() == "verified"
-            else "user_asserted"
-            if authority_value == "user_explicit"
-            else "observed"
-            if authority_value == "system_observed"
-            else "unverified"
+    verification_state = (
+        str(
+            nested.get("verification_state")
+            or meta.get("verification_state")
+            or (
+                "verified"
+                if str(status or "").strip().lower() == "verified"
+                else "user_asserted"
+                if authority_value == "user_explicit"
+                else "observed"
+                if authority_value == "system_observed"
+                else "unverified"
+            )
         )
-    ).strip().lower()
+        .strip()
+        .lower()
+    )
     raw_confidence = nested.get(
         "confidence",
         meta.get("confidence", default_confidence(authority_value, status)),
     )
     try:
-        confidence = float(
-            default_confidence(authority_value, status) if raw_confidence is None else raw_confidence
-        )
+        confidence = float(default_confidence(authority_value, status) if raw_confidence is None else raw_confidence)
     except (TypeError, ValueError):
         confidence = default_confidence(authority_value, status)
     confidence = max(0.0, min(1.0, confidence))
@@ -127,12 +129,8 @@ def build_memory_provenance(
         "recorded_at": recorded_at,
         "valid_from": str(nested.get("valid_from") or meta.get("valid_from") or recorded_at),
         "valid_until": str(nested.get("valid_until") or meta.get("valid_until") or ""),
-        "parent_record_ids": _as_string_list(
-            nested.get("parent_record_ids", meta.get("parent_record_ids", []))
-        ),
-        "transformations": _as_transformations(
-            nested.get("transformations", meta.get("transformations", []))
-        ),
+        "parent_record_ids": _as_string_list(nested.get("parent_record_ids", meta.get("parent_record_ids", []))),
+        "transformations": _as_transformations(nested.get("transformations", meta.get("transformations", []))),
         "verification_state": verification_state,
         "confidence": confidence,
     }
@@ -233,7 +231,7 @@ def evaluate_memory_policy(
     purpose: str = "recall",
 ) -> dict[str, Any]:
     lane = str(purpose or "recall").strip().lower()
-    if lane not in {"recall", "inject", "action"}:
+    if lane not in {"recall", "browse", "inject", "action"}:
         lane = "recall"
     reasons: list[str] = []
     status = str(row.get("status", "")).strip().lower()
@@ -261,7 +259,7 @@ def evaluate_memory_policy(
         confidence = float(default_confidence(authority, status) if raw_confidence is None else raw_confidence)
     except (TypeError, ValueError):
         confidence = default_confidence(authority, status)
-    threshold = {"recall": 0.5, "inject": 0.7, "action": 0.85}[lane]
+    threshold = {"recall": 0.5, "browse": 0.5, "inject": 0.7, "action": 0.85}[lane]
     if confidence < threshold:
         reasons.append("low_confidence")
     scope = str(row.get("scope", "")).strip().lower()
@@ -270,7 +268,7 @@ def evaluate_memory_policy(
     if scope == "system_debug" and not _query_targets_system_debug(query):
         reasons.append("scope:system_debug")
     category = str(row.get("category", "")).strip().lower()
-    if category == "product_decision" and lane != "action":
+    if category == "product_decision" and lane not in {"action", "browse"}:
         lowered = str(query or "").lower()
         if not any(
             hint in lowered
@@ -348,11 +346,7 @@ def pre_action_check(
     if all_selected_eligible and not explicit_user_confirmation:
         reason_counts.update(["human_confirmation_required"])
     allowed = bool(
-        action_text
-        and selected_ids
-        and all_selected_eligible
-        and explicit_user_confirmation
-        and not missing_ids
+        action_text and selected_ids and all_selected_eligible and explicit_user_confirmation and not missing_ids
     )
     return {
         "ok": True,

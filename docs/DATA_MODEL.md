@@ -99,7 +99,7 @@ New canonical records include a `provenance` object with a content digest, sourc
 
 Provenance is additive for backward compatibility: older records remain readable, while repair/backfill can add the object idempotently. A provenance object whose content digest does not match the canonical text is invalid and must not authorize recall, injection, or action.
 
-`confidence` is evidence quality, not action permission. `can_act_on` remains independently false by default, and only a verified, explicit-user-authorized record with explicit confirmation may pass the pre-action gate.
+`confidence` is evidence quality, not action permission. `can_act_on` remains independently false by default. The pre-action gate requires explicit supporting record IDs, every selected record to be verified and eligible, an exact normalized `authorized_action` match, and a confirmation claim from the trusted host UI. The decision is advisory governance output only: MS8 reports `execution_performed=false` and does not execute the action.
 
 ## Required invariants
 

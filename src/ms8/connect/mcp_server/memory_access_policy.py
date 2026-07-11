@@ -39,7 +39,7 @@ def _is_expired(row: dict[str, Any]) -> bool:
 def memory_row_browsable(row: dict[str, Any]) -> bool:
     """Return whether a record is safe for default explicit MCP browsing."""
 
-    return bool(evaluate_memory_policy(row, query="", purpose="recall").get("allowed", False))
+    return bool(evaluate_memory_policy(row, query="", purpose="browse").get("allowed", False))
 
 
 def redact_memory_row(row: dict[str, Any]) -> dict[str, Any]:
