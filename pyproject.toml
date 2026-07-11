@@ -13,9 +13,12 @@ classifiers = [
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Natural Language :: Chinese (Simplified)",
     "Natural Language :: English",
-    "Operating System :: OS Independent",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.10",
@@ -43,7 +46,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/wdxx1119-create/ms8"
-Documentation = "https://github.com/wdxx1119-create/ms8/tree/main/docs"
+Documentation = "https://github.com/wdxx1119-create/ms8/blob/main/docs/README.md"
 Repository = "https://github.com/wdxx1119-create/ms8"
 Issues = "https://github.com/wdxx1119-create/ms8/issues"
 Changelog = "https://github.com/wdxx1119-create/ms8/blob/main/CHANGELOG.md"
