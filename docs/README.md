@@ -3,6 +3,7 @@
 ## 用户文档
 
 - [Quick Start](QUICK_START.md)：安装、首次写入、检索、MCP 接入、备份和卸载。
+- [Recovery and Migration](RECOVERY_AND_MIGRATION.md)：完整运行时备份、校验、恢复计划、恢复执行和格式迁移。
 - [Use Cases](USE_CASES.md)：多工具共享记忆、项目上下文、本地资料检索、隐私知识管理和受治理资料吸收。
 - [FAQ](FAQ.md)：数据位置、模型依赖、迁移、MCP 排查、平台差异和安全问题。
 - [Examples](../examples/README.md)：隔离 CLI 流程和只解析、不提交的本地文本示例。
