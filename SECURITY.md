@@ -5,7 +5,7 @@
 Security fixes are provided for:
 
 - Latest `0.2.x` release line
-- `main` / `master` development branch
+- `main` development branch
 
 Older branches are best-effort only.
 
