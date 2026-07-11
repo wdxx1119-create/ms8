@@ -17,6 +17,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  static-quality:
+    name: Static quality checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out candidate
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install project and development dependencies
+        run: |
+          python -m pip install --quiet --upgrade pip
+          python -m pip install --quiet -e ".[dev]"
+
+      - name: Ruff
+        run: python -m ruff check src/ms8
+
+      - name: Mypy
+        run: python -m mypy src/ms8
+
   macos-boundary:
     name: macOS package boundary
     runs-on: macos-latest
@@ -55,14 +81,9 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Run static quality checks
-        run: |
-          python -m ruff check src/ms8
-          python -m mypy src/ms8
-
   release-artifacts:
     name: Build, audit, and attest release artifacts
-    needs: macos-boundary
+    needs: [static-quality, macos-boundary]
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
