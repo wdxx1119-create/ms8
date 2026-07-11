@@ -25,6 +25,7 @@ jobs:
         run: |
           python - <<'PY'
           import re
+          import textwrap
           from pathlib import Path
 
           def replace_pattern(path: str, pattern: str, replacement: str) -> None:
@@ -38,154 +39,163 @@ jobs:
           replace_pattern(
               "src/ms8/memory_safety.py",
               r'^    if lane == "action":\n.*?^    unique_reasons = list\(dict\.fromkeys\(reasons\)\)',
-              '''    if lane == "action":
-                  if row.get("can_act_on") is not True:
-                      reasons.append("action_not_authorized_by_record")
-                  if status != "verified":
-                      reasons.append("action_record_not_verified")
-                  if authority != "user_explicit":
-                      reasons.append("action_authority_not_user_explicit")
-                  if verification_state != "verified":
-                      reasons.append("action_provenance_not_verified")
-                  authorized_action = _normalized_text(row.get("authorized_action") or "")
-                  requested_action = _normalized_text(query)
-                  if not authorized_action:
-                      reasons.append("action_scope_missing")
-                  elif authorized_action.casefold() != requested_action.casefold():
-                      reasons.append("action_scope_mismatch")
-              unique_reasons = list(dict.fromkeys(reasons))''',
+              textwrap.dedent(
+                  '''\
+                  if lane == "action":
+                      if row.get("can_act_on") is not True:
+                          reasons.append("action_not_authorized_by_record")
+                      if status != "verified":
+                          reasons.append("action_record_not_verified")
+                      if authority != "user_explicit":
+                          reasons.append("action_authority_not_user_explicit")
+                      if verification_state != "verified":
+                          reasons.append("action_provenance_not_verified")
+                      authorized_action = _normalized_text(row.get("authorized_action") or "")
+                      requested_action = _normalized_text(query)
+                      if not authorized_action:
+                          reasons.append("action_scope_missing")
+                      elif authorized_action.casefold() != requested_action.casefold():
+                          reasons.append("action_scope_mismatch")
+                  unique_reasons = list(dict.fromkeys(reasons))'''
+              ),
           )
           replace_pattern(
               "src/ms8/memory_safety.py",
               r'^def pre_action_check\(\n.*?^def provenance_fingerprint',
-              '''def pre_action_check(
-                  *,
-                  action: str,
-                  records: list[dict[str, Any]],
-                  memory_ids: list[str] | None = None,
-                  explicit_user_confirmation: bool = False,
-              ) -> dict[str, Any]:
-                  action_text = _normalized_text(action)
-                  selected_ids = {str(item).strip() for item in (memory_ids or []) if str(item).strip()}
-                  selected = [row for row in records if str(row.get("id") or "") in selected_ids]
-                  decisions = [evaluate_memory_policy(row, query=action_text, purpose="action") for row in selected]
-                  eligible_ids = [str(item.get("record_id") or "") for item in decisions if item.get("allowed")]
-                  reason_counts: Counter[str] = Counter()
-                  for item in decisions:
-                      if not item.get("allowed"):
-                          reason_counts.update(str(code) for code in item.get("reason_codes", []))
-                  missing_ids = sorted(selected_ids - {str(row.get("id") or "") for row in selected})
-                  all_selected_eligible = bool(decisions) and len(eligible_ids) == len(decisions)
-                  if not action_text:
-                      reason_counts.update(["action_required"])
-                  if not selected_ids:
-                      reason_counts.update(["supporting_memory_required"])
-                  if missing_ids:
-                      reason_counts.update(["memory_id_not_found"])
-                  if all_selected_eligible and not explicit_user_confirmation:
-                      reason_counts.update(["human_confirmation_required"])
-                  allowed = bool(
-                      action_text
-                      and selected_ids
-                      and all_selected_eligible
-                      and explicit_user_confirmation
-                      and not missing_ids
-                  )
-                  return {
-                      "ok": True,
-                      "decision": "allow" if allowed else "deny",
-                      "allowed": allowed,
-                      "execution_performed": False,
-                      "action": action_text,
-                      "requires_confirmation": bool(all_selected_eligible and not explicit_user_confirmation),
-                      "explicit_user_confirmation": bool(explicit_user_confirmation),
-                      "eligible_record_ids": eligible_ids,
-                      "evaluated_record_ids": [str(row.get("id") or "") for row in selected],
-                      "missing_record_ids": missing_ids,
-                      "reason_counts": dict(sorted(reason_counts.items())),
-                      "record_decisions": decisions,
-                  }
+              textwrap.dedent(
+                  '''\
+                  def pre_action_check(
+                      *,
+                      action: str,
+                      records: list[dict[str, Any]],
+                      memory_ids: list[str] | None = None,
+                      explicit_user_confirmation: bool = False,
+                  ) -> dict[str, Any]:
+                      action_text = _normalized_text(action)
+                      selected_ids = {str(item).strip() for item in (memory_ids or []) if str(item).strip()}
+                      selected = [row for row in records if str(row.get("id") or "") in selected_ids]
+                      decisions = [evaluate_memory_policy(row, query=action_text, purpose="action") for row in selected]
+                      eligible_ids = [str(item.get("record_id") or "") for item in decisions if item.get("allowed")]
+                      reason_counts: Counter[str] = Counter()
+                      for item in decisions:
+                          if not item.get("allowed"):
+                              reason_counts.update(str(code) for code in item.get("reason_codes", []))
+                      missing_ids = sorted(selected_ids - {str(row.get("id") or "") for row in selected})
+                      all_selected_eligible = bool(decisions) and len(eligible_ids) == len(decisions)
+                      if not action_text:
+                          reason_counts.update(["action_required"])
+                      if not selected_ids:
+                          reason_counts.update(["supporting_memory_required"])
+                      if missing_ids:
+                          reason_counts.update(["memory_id_not_found"])
+                      if all_selected_eligible and not explicit_user_confirmation:
+                          reason_counts.update(["human_confirmation_required"])
+                      allowed = bool(
+                          action_text
+                          and selected_ids
+                          and all_selected_eligible
+                          and explicit_user_confirmation
+                          and not missing_ids
+                      )
+                      return {
+                          "ok": True,
+                          "decision": "allow" if allowed else "deny",
+                          "allowed": allowed,
+                          "execution_performed": False,
+                          "action": action_text,
+                          "requires_confirmation": bool(all_selected_eligible and not explicit_user_confirmation),
+                          "explicit_user_confirmation": bool(explicit_user_confirmation),
+                          "eligible_record_ids": eligible_ids,
+                          "evaluated_record_ids": [str(row.get("id") or "") for row in selected],
+                          "missing_record_ids": missing_ids,
+                          "reason_counts": dict(sorted(reason_counts.items())),
+                          "record_decisions": decisions,
+                      }
 
 
-              def provenance_fingerprint''',
+                  def provenance_fingerprint'''
+              ),
           )
           replace_pattern(
               "tests/test_third_batch_memory_safety.py",
               r'^def test_pre_action_requires_independent_authority_and_confirmation\(\) -> None:\n.*?^def test_engine_trace_counts_policy_reasons',
-              '''def test_pre_action_requires_independent_authority_and_confirmation() -> None:
-                  ordinary = build_canonical_record("User prefers local storage", "ask")
-                  denied = pre_action_check(
-                      action="delete remote copy",
-                      records=[ordinary],
-                      memory_ids=[ordinary["id"]],
-                      explicit_user_confirmation=True,
-                  )
-                  assert denied["allowed"] is False
-                  assert denied["reason_counts"]["action_not_authorized_by_record"] == 1
+              textwrap.dedent(
+                  '''\
+                  def test_pre_action_requires_independent_authority_and_confirmation() -> None:
+                      ordinary = build_canonical_record("User prefers local storage", "ask")
+                      denied = pre_action_check(
+                          action="delete remote copy",
+                          records=[ordinary],
+                          memory_ids=[ordinary["id"]],
+                          explicit_user_confirmation=True,
+                      )
+                      assert denied["allowed"] is False
+                      assert denied["reason_counts"]["action_not_authorized_by_record"] == 1
 
-                  authorized = build_canonical_record(
-                      "User explicitly authorizes this exact cleanup",
-                      "ask",
-                      status="verified",
-                  )
-                  authorized["can_act_on"] = True
-                  authorized["authorized_action"] = "delete remote copy"
-                  authorized["provenance"]["verification_state"] = "verified"
-                  authorized["provenance"]["confidence"] = 1.0
-                  no_confirmation = pre_action_check(
-                      action="delete remote copy",
-                      records=[authorized],
-                      memory_ids=[authorized["id"]],
-                  )
-                  assert no_confirmation["allowed"] is False
-                  assert no_confirmation["requires_confirmation"] is True
-                  allowed = pre_action_check(
-                      action="delete remote copy",
-                      records=[authorized],
-                      memory_ids=[authorized["id"]],
-                      explicit_user_confirmation=True,
-                  )
-                  assert allowed["allowed"] is True
-                  assert allowed["execution_performed"] is False
-
-
-              def test_pre_action_fails_closed_without_explicit_or_uniform_support() -> None:
-                  authorized = build_canonical_record("Exact action authorization", "ask", status="verified")
-                  authorized["can_act_on"] = True
-                  authorized["authorized_action"] = "delete remote copy"
-                  authorized["provenance"]["verification_state"] = "verified"
-                  authorized["provenance"]["confidence"] = 1.0
-
-                  without_support = pre_action_check(
-                      action="delete remote copy",
-                      records=[authorized],
-                      explicit_user_confirmation=True,
-                  )
-                  assert without_support["allowed"] is False
-                  assert without_support["reason_counts"]["supporting_memory_required"] == 1
-
-                  mismatched = pre_action_check(
-                      action="send an email",
-                      records=[authorized],
-                      memory_ids=[authorized["id"]],
-                      explicit_user_confirmation=True,
-                  )
-                  assert mismatched["allowed"] is False
-                  assert mismatched["reason_counts"]["action_scope_mismatch"] == 1
-
-                  untrusted = build_canonical_record("Assistant suggested the same action", "mcp:assistant")
-                  mixed = pre_action_check(
-                      action="delete remote copy",
-                      records=[authorized, untrusted],
-                      memory_ids=[authorized["id"], untrusted["id"]],
-                      explicit_user_confirmation=True,
-                  )
-                  assert mixed["allowed"] is False
-                  assert authorized["id"] in mixed["eligible_record_ids"]
-                  assert mixed["reason_counts"]["action_not_authorized_by_record"] == 1
+                      authorized = build_canonical_record(
+                          "User explicitly authorizes this exact cleanup",
+                          "ask",
+                          status="verified",
+                      )
+                      authorized["can_act_on"] = True
+                      authorized["authorized_action"] = "delete remote copy"
+                      authorized["provenance"]["verification_state"] = "verified"
+                      authorized["provenance"]["confidence"] = 1.0
+                      no_confirmation = pre_action_check(
+                          action="delete remote copy",
+                          records=[authorized],
+                          memory_ids=[authorized["id"]],
+                      )
+                      assert no_confirmation["allowed"] is False
+                      assert no_confirmation["requires_confirmation"] is True
+                      allowed = pre_action_check(
+                          action="delete remote copy",
+                          records=[authorized],
+                          memory_ids=[authorized["id"]],
+                          explicit_user_confirmation=True,
+                      )
+                      assert allowed["allowed"] is True
+                      assert allowed["execution_performed"] is False
 
 
-              def test_engine_trace_counts_policy_reasons''',
+                  def test_pre_action_fails_closed_without_explicit_or_uniform_support() -> None:
+                      authorized = build_canonical_record("Exact action authorization", "ask", status="verified")
+                      authorized["can_act_on"] = True
+                      authorized["authorized_action"] = "delete remote copy"
+                      authorized["provenance"]["verification_state"] = "verified"
+                      authorized["provenance"]["confidence"] = 1.0
+
+                      without_support = pre_action_check(
+                          action="delete remote copy",
+                          records=[authorized],
+                          explicit_user_confirmation=True,
+                      )
+                      assert without_support["allowed"] is False
+                      assert without_support["reason_counts"]["supporting_memory_required"] == 1
+
+                      mismatched = pre_action_check(
+                          action="send an email",
+                          records=[authorized],
+                          memory_ids=[authorized["id"]],
+                          explicit_user_confirmation=True,
+                      )
+                      assert mismatched["allowed"] is False
+                      assert mismatched["reason_counts"]["action_scope_mismatch"] == 1
+
+                      untrusted = build_canonical_record("Assistant suggested the same action", "mcp:assistant")
+                      mixed = pre_action_check(
+                          action="delete remote copy",
+                          records=[authorized, untrusted],
+                          memory_ids=[authorized["id"], untrusted["id"]],
+                          explicit_user_confirmation=True,
+                      )
+                      assert mixed["allowed"] is False
+                      assert authorized["id"] in mixed["eligible_record_ids"]
+                      assert mixed["reason_counts"]["action_not_authorized_by_record"] == 1
+
+
+                  def test_engine_trace_counts_policy_reasons'''
+              ),
           )
           PY
 
