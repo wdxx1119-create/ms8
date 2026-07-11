@@ -10,6 +10,7 @@ Add a reliability layer that makes memory origin, confidence, action eligibility
 - A connected AI assistant may execute work, but MS8 does not execute user tasks through remembered facts.
 - Recall, injection, and action eligibility remain separate decisions.
 - Human authorization remains authoritative for external actions.
+- `pre_action_check` is advisory and always reports `execution_performed=false`.
 
 ## Phase 1 — Verifiable memory provenance
 
@@ -28,7 +29,8 @@ Acceptance criteria:
 - new canonical records contain a valid provenance object;
 - existing records remain readable;
 - backfill is additive, idempotent, dry-run capable, and auditable;
-- unknown fields survive repair and migration.
+- unknown fields survive repair and migration;
+- a mismatched content digest invalidates the provenance evidence.
 
 ## Phase 2 — Pre-action governance
 
@@ -38,8 +40,12 @@ Acceptance criteria:
 
 - `can_recall` and `can_inject` never imply `can_act_on`;
 - default canonical records cannot authorize actions;
+- the caller must provide explicit supporting memory IDs;
+- every selected record must independently pass the action policy;
+- each selected record must be verified, user-explicit, high-confidence, and scoped to the exact normalized action;
+- missing, mixed, expired, revoked, sensitive, or low-confidence evidence fails closed;
+- explicit human confirmation is still required after all evidence checks pass;
 - action decisions include allow/deny, reason codes, required confirmation, and supporting record IDs;
-- unverified, expired, revoked, sensitive, or low-confidence records cannot authorize an action;
 - the interface is reusable by CLI, MCP, and other adapters without granting execution capability.
 
 ## Phase 3 — Explainable low-confidence refusal
@@ -72,4 +78,4 @@ Acceptance criteria:
 
 ## Delivery gates
 
-Each phase must include direct unit tests, compatibility tests, documentation updates, and full repository CI. No automatic PyPI publication is introduced.
+Each phase must include direct unit tests, compatibility tests, documentation updates, and full repository CI. The final branch must not contain one-shot source-rewrite workflows, patch scripts, or temporary snapshot workflows. No automatic PyPI publication is introduced.
