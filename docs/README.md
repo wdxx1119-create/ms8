@@ -3,6 +3,7 @@
 ## 用户文档
 
 - [Quick Start](QUICK_START.md)：安装、首次写入、检索、MCP 接入、备份和卸载。
+- [Installation Profiles](INSTALL_PROFILES.md)：基础、LLM、Absorb、OCR、策略和完整安装层级。
 - [Recovery and Migration](RECOVERY_AND_MIGRATION.md)：完整运行时备份、校验、恢复计划、恢复执行和格式迁移。
 - [Use Cases](USE_CASES.md)：多工具共享记忆、项目上下文、本地资料检索、隐私知识管理和受治理资料吸收。
 - [FAQ](FAQ.md)：数据位置、模型依赖、迁移、MCP 排查、平台差异和安全问题。
@@ -20,9 +21,11 @@
 - [README](../README.md)：项目概览、核心能力、状态和主要入口。
 - [Roadmap](../ROADMAP.md)：Alpha 重点、Beta 准入条件和后续方向。
 - [Changelog](../CHANGELOG.md)：版本变化和发布记录。
+- [0.2.16 Release Candidate Notes](RELEASE_0.2.16.md)：候选范围、兼容性和验收清单。
 - [MCP Connect Guide](../src/ms8/connect/CONNECT_GUIDE.md)：连接 AI 工具的完整流程。
 - [Security Policy](../SECURITY.md)：支持版本、漏洞报告和协调披露流程。
 - [Release Security](RELEASE_SECURITY.md)：开发者发布与安全流程。
+- [Trusted Publishing Preparation](TRUSTED_PUBLISHING_SETUP.md)：未来 OIDC 发布的配置边界；当前不启用自动上传。
 
 ## 贡献与社区
 
