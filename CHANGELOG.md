@@ -12,6 +12,7 @@ All notable changes to this project are documented in this file.
 - Added Python 3.11 coverage report artifacts.
 - Added installed-wheel smoke coverage for packaged MCP resources, the Absorb text parser, and persisted `ms8 ask` records.
 - Added Windows installed-wheel smoke validation under Unicode and space-containing paths.
+- Added CycloneDX JSON SBOMs for dependency audits and verified release-candidate wheel environments.
 
 ### Changed
 - Enforced Dependency Review for high- and critical-severity dependency changes.
@@ -19,6 +20,7 @@ All notable changes to this project are documented in this file.
 - Made release candidate branch matching and artifact naming version-agnostic.
 - Standardized the active development branch on `main`.
 - Enforced an 80% line-coverage baseline on the Python 3.11 CI job.
+- Changed Python dependency auditing from report-only warnings to a blocking strict security gate while preserving JSON and SBOM artifacts.
 
 ### Fixed
 - Restored Windows CLI startup by providing the self-check runner with the narrow file-lock compatibility layer it requires.
@@ -26,6 +28,7 @@ All notable changes to this project are documented in this file.
 
 ### Security
 - Added least-privilege workflow permissions and scheduled code/dependency scanning.
+- Added strict installed-environment auditing and SHA-256-covered CycloneDX SBOMs to release-candidate evidence.
 
 ## [0.2.15] - 2026-07-04
 
