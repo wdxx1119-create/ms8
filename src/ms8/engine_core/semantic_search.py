@@ -4,6 +4,7 @@ Lightweight semantic recall for memory documents.
 
 from __future__ import annotations
 
+import importlib
 import json
 import logging
 import math
@@ -22,12 +23,15 @@ from .utils import list_daily_log_files
 
 logger = logging.getLogger(__name__)
 
-_ollama: ModuleType | None
-try:
-    import ollama as _ollama
-except ImportError:
-    _ollama = None
-ollama: ModuleType | None = _ollama
+
+def _load_ollama_module() -> ModuleType | None:
+    try:
+        return importlib.import_module("ollama")
+    except ImportError:
+        return None
+
+
+ollama = _load_ollama_module()
 
 
 class SemanticMemorySearch:

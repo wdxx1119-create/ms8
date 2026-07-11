@@ -2,105 +2,185 @@
 
 ## Goal
 
-Verify the exact candidate artifacts before any manual upload, without writing credentials into repository files.
+Verify the exact candidate artifacts and their GitHub provenance before any manual upload, without writing credentials into repository files.
 
-MS8 does not currently publish to PyPI automatically. The repository's Release Candidate workflow builds and verifies artifacts; publishing remains a separate maintainer action.
+MS8 does not currently publish to PyPI automatically. The Release Candidate workflow builds, audits, attests, and retains artifacts; publishing remains a separate maintainer action.
 
-## Required environment variables
+The candidate workflow runs only for `candidate/**` or `rc-*` branch pushes, or explicit manual dispatch. Ordinary pull requests and `main` pushes do not consume the full candidate path. The `rc-*` convention exists for repositories whose rulesets reserve or block creation of the `candidate/**` namespace.
+
+## Current publication credentials
+
+Until Trusted Publishing is explicitly enabled, manual upload scripts use environment variables:
 
 ```bash
 export TWINE_USERNAME="__token__"
 export TWINE_PASSWORD="<your-pypi-token>"
 ```
 
-- `TWINE_USERNAME` must be `__token__`
-- `TWINE_PASSWORD` is your PyPI/TestPyPI API token
+- `TWINE_USERNAME` must be `__token__`.
+- `TWINE_PASSWORD` is a PyPI or TestPyPI API token.
+- Never place either value in repository files, command examples committed with real values, workflow YAML, or project-local environment files.
+
+The planned OIDC migration and external configuration boundary are documented in [TRUSTED_PUBLISHING_SETUP.md](TRUSTED_PUBLISHING_SETUP.md). No automatic PyPI upload workflow is enabled for 0.2.16.
 
 ## Verified candidate artifacts
 
-For each candidate commit, `.github/workflows/release-candidate.yml` produces an artifact bundle containing:
+For each candidate commit, `.github/workflows/release-candidate.yml` produces an evidence bundle containing:
 
-- the wheel
-- the source distribution
-- `ms8-<version>.cdx.json`, a CycloneDX JSON SBOM generated from a clean environment containing the installed wheel
-- `SHA256SUMS`, covering the wheel, source distribution, and SBOM
+- the wheel;
+- the source distribution;
+- `ms8-<version>.cdx.json`, a CycloneDX JSON SBOM generated from the exact installed runtime dependency closure;
+- `SHA256SUMS`, covering wheel, source distribution, and SBOM;
+- `wheel-audit-requirements.txt`, the exact pinned dependency closure used for audit;
+- `wheel-audit.json`, the strict vulnerability report;
+- `wheel-audit.log`, preserving audit execution output.
 
 The workflow also:
 
-- validates package metadata and version-derived filenames
-- installs the wheel and source distribution in separate clean virtual environments
-- runs `pip check`
-- verifies packaged MCP resources
-- performs a strict vulnerability audit of the installed wheel environment while generating the SBOM
+- validates package metadata and version-derived filenames;
+- verifies that the core installation does not accidentally install Ollama;
+- installs wheel and source distribution in separate clean virtual environments;
+- runs `pip check`;
+- verifies packaged MCP and recovery entry points;
+- performs a strict vulnerability audit of the installed runtime dependency closure without querying the unpublished candidate root package;
+- creates GitHub build provenance attestations for wheel and source distribution;
+- creates an SBOM attestation binding the CycloneDX document to the wheel;
+- blocks the candidate if audit, SBOM validation, checksum generation, provenance, or SBOM attestation fails;
+- publishes `release-candidate/aggregate` as a commit status so successful push-triggered candidates are directly auditable.
 
-The SBOM and checksums improve auditability, but they are not a cryptographic signature or provenance attestation. A maintainer must still confirm that the downloaded bundle belongs to the reviewed commit shown in the workflow summary.
+## Job-scoped permissions
+
+The workflow default is read-only:
+
+```yaml
+permissions:
+  contents: read
+```
+
+Only the release-artifact job receives OIDC and attestation rights:
+
+```yaml
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+```
+
+Only the final aggregate-status job receives commit-status write access:
+
+```yaml
+permissions:
+  contents: read
+  statuses: write
+```
+
+Static analysis and macOS runtime-boundary jobs do not receive either permission set.
 
 ## Dependency security gate
 
-`.github/workflows/dependency-audit.yml` installs MS8 into a dedicated target environment and runs `pip-audit` from a separate tool environment. This keeps the auditor and its own dependencies out of the target dependency inventory.
+`.github/workflows/dependency-audit.yml` installs MS8 into a dedicated target environment and runs `pip-audit` from a separate tool environment. The reusable `scripts/audit_installed_environment.py` helper computes the exact transitive runtime dependency closure, writes fully pinned requirements, and audits them with strict `--no-deps` semantics. The unpublished MS8 candidate itself and unrelated environment tooling are not sent to the vulnerability service.
 
 The gate emits:
 
-- `pip-audit.json`
-- `ms8-dependencies.cdx.json`
+- `audit-requirements.txt`;
+- `pip-audit.json`;
+- `ms8-dependencies.cdx.json`;
+- `dependency-audit.log`.
 
-Both artifacts are uploaded even when the audit fails. A known vulnerability, incomplete strict audit, missing report, or failed SBOM generation makes the workflow fail.
+All evidence is uploaded even when the audit fails. A known vulnerability, unresolved declared runtime dependency, incomplete strict audit, missing report, or failed SBOM generation makes the workflow fail.
 
-## Safe flow
+## Safe candidate flow
 
-1. Run release gate:
+1. Run the local release gate:
+
+```bash
+python scripts/release_checklist.py
+```
+
+macOS/Linux may use the compatibility wrapper:
 
 ```bash
 bash scripts/release_checklist.sh
 ```
 
-2. Confirm the Release Candidate workflow succeeded for the exact commit being released.
+2. Push the exact candidate commit to a `candidate/**` branch. If repository rules prevent that namespace, use a dedicated `rc-*` branch such as `rc-v0.2.16`.
 
-3. Download the verified artifact bundle and check `SHA256SUMS` before using the files.
+3. Confirm normal CI succeeds for the PR head.
 
-4. Dry run uploads:
+4. Confirm the candidate commit has a successful `release-candidate/aggregate` status. This status is published only after static quality, macOS runtime tests, artifact audit, SBOM validation, checksum generation, provenance, and SBOM attestation all succeed.
+
+5. Confirm all installation profiles succeeded:
+
+```text
+core
+llm
+absorb
+ocr
+policy
+full
+```
+
+6. Download the candidate evidence bundle and verify `SHA256SUMS`.
+
+7. Verify GitHub artifact provenance for the wheel and source distribution:
+
+```bash
+gh attestation verify dist/ms8-<version>-py3-none-any.whl -R wdxx1119-create/ms8
+gh attestation verify dist/ms8-<version>.tar.gz -R wdxx1119-create/ms8
+```
+
+8. Verify the wheel's SBOM attestation using the same repository identity and retained SBOM evidence.
+
+9. Confirm the candidate commit, artifact names, package metadata, changelog, and intended release tag all use the same version.
+
+10. Dry-run uploads:
 
 ```bash
 bash scripts/publish_testpypi.sh --dry-run
 bash scripts/publish_pypi.sh --dry-run
 ```
 
-5. Upload to TestPyPI:
+11. Upload to TestPyPI:
 
 ```bash
 bash scripts/publish_testpypi.sh
 ```
 
-6. Install from TestPyPI in a clean venv and verify `ms8 doctor`.
+12. Install from TestPyPI in a clean virtual environment and verify `ms8 doctor`, `ms8-recovery --help`, and the intended installation profile.
 
-7. Upload to PyPI:
+13. Upload the already-verified artifacts to PyPI:
 
 ```bash
 bash scripts/publish_pypi.sh
 ```
 
+Do not rebuild between candidate verification and upload. Rebuilding creates different artifact bytes and invalidates the reviewed checksums and attestations.
+
 ## Security rules
 
-- Never commit tokens in source files, shell history snippets, or docs.
+- Never commit tokens in source files, shell history snippets, or documentation containing real values.
 - Never store plaintext credentials in project-local files.
 - Scope tokens minimally and rotate them after any suspected exposure.
-- Do not publish artifacts built outside the reviewed candidate workflow without repeating equivalent verification.
-- Treat SBOMs and checksums as evidence, not as authorization to publish.
+- Do not publish artifacts built outside the reviewed candidate workflow without repeating equivalent verification and attestation.
+- Treat checksums as integrity evidence, GitHub attestations as build-identity evidence, and neither as authorization to publish.
+- Require explicit maintainer approval before publication.
+- Do not add a PyPI publishing workflow until automated publishing is separately authorized.
 
 ## Emergency rotation checklist
 
 If a token is exposed:
 
-1. Revoke token in PyPI/TestPyPI account settings.
-2. Create a new token with minimal scope.
-3. Update local environment variable only.
-4. Re-run release with the new token.
+1. Revoke the token in PyPI or TestPyPI account settings.
+2. Create a new token with minimal project scope.
+3. Update only the maintainer's secure local environment.
+4. Clear exported values from the current shell.
+5. Re-run the release verification if the exposed token was used during the candidate process.
 
 Operational checklist file:
 
 - `scripts/revoke_checklist.md`
 
-Credential cleanup helper (current shell):
+Credential cleanup helper for the current shell:
 
 ```bash
 source scripts/clear_release_env.sh

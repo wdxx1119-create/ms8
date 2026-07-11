@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.2.16] - 2026-07-11
+
 ### Added
 - Added contributor, support, roadmap, documentation-index, and community governance files.
 - Added architecture, data-model, and threat-model documentation grounded in the current implementation.
@@ -18,6 +20,11 @@ All notable changes to this project are documented in this file.
 - Added the `ms8-recovery` entry point for verified full-runtime backup, archive verification, restore planning, restore application, format status, and migration execution.
 - Added an explicit runtime-format manifest and stepwise migration registry with pre-migration backup and audit records.
 - Added backup/restore roundtrip, SQLite snapshot, checksum-tamper, path-traversal, migration, and release-contract tests.
+- Added explicit `llm`, `absorb`, `ocr`, `policy`, and `full` installation profiles, while retaining `absorb-ocr` as a compatibility alias.
+- Added clean-room CI validation for every supported installation profile.
+- Added a weekly macOS/Windows boundary matrix for Python 3.10 and 3.13.
+- Added GitHub build provenance attestations for wheel and source distribution, plus an SBOM attestation bound to the wheel.
+- Added 0.2.16 candidate notes and Trusted Publishing preparation documentation without enabling automatic PyPI publication.
 
 ### Changed
 - Enforced Dependency Review for high- and critical-severity dependency changes.
@@ -29,11 +36,18 @@ All notable changes to this project are documented in this file.
 - Isolated the dependency audit target from the `pip-audit` tool environment.
 - Unified local, CI, and release-candidate pytest collection through `pyproject.toml` test paths.
 - Replaced the `.venv/bin/python`-specific release checklist with a cross-platform Python gate that validates tests, coverage, wheel, sdist, SBOM, vulnerabilities, and checksums.
+- Removed Ollama from the mandatory core dependency set; local-model support is now installed with `ms8[llm]` or `ms8[full]`.
+- Made the `ocr` profile include the complete Absorb parser dependency set.
+- Limited Release Candidate validation to `candidate/**` pushes or explicit manual dispatch.
+- Reduced repeated macOS candidate testing to one boundary job and moved pure-Python artifact construction and auditing to Ubuntu.
+- Added CI concurrency cancellation and explicit job timeouts.
+- Kept PyPI publication as a separate maintainer action for this release.
 
 ### Fixed
 - Restored Windows CLI startup with platform-specific non-blocking self-check locks (`msvcrt` on Windows and `fcntl` on POSIX).
 - Kept cross-platform release smoke output and isolated paths UTF-8-safe on Windows.
 - Removed the local 75% coverage exception so local release validation matches the repository's 80% baseline.
+- Prevented optional Ollama and document/OCR parser dependencies from leaking into the core wheel installation.
 
 ### Security
 - Added least-privilege workflow permissions and scheduled code/dependency scanning.
@@ -41,6 +55,7 @@ All notable changes to this project are documented in this file.
 - Included the release SBOM in SHA-256 checksums and retained release-candidate artifacts.
 - Added a strict vulnerability gate for the clean environment containing the installed release wheel.
 - Added SHA-256 verification, undeclared-file rejection, path-traversal rejection, SQLite-consistent snapshots, pre-restore backup, atomic file replacement, and restore/migration audit logs.
+- Added OIDC-backed GitHub artifact attestations with explicit `id-token: write` and `attestations: write` permissions only in the candidate workflow.
 
 ## [0.2.15] - 2026-07-04
 
