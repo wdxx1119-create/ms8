@@ -1,0 +1,56 @@
+name: Python Dependency Audit
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 3 * * 1"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "pyproject.toml"
+      - ".github/workflows/dependency-audit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  pip-audit:
+    name: Python Dependency Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install project and auditor
+        run: |
+          python -m venv .audit-venv
+          .audit-venv/bin/python -m pip install --upgrade pip
+          .audit-venv/bin/python -m pip install -e . pip-audit
+
+      - name: Generate dependency audit report
+        id: audit
+        continue-on-error: true
+        run: |
+          .audit-venv/bin/python -m pip_audit \
+            --local \
+            --format json \
+            --output pip-audit.json
+
+      - name: Upload dependency audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: pip-audit-report
+          path: pip-audit.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Report audit result
+        if: steps.audit.outcome != 'success'
+        run: |
+          echo "::warning::pip-audit found one or more known vulnerabilities. Review the uploaded pip-audit-report artifact."
