@@ -6,7 +6,7 @@ Verify the exact candidate artifacts and their GitHub provenance before any manu
 
 MS8 does not currently publish to PyPI automatically. The Release Candidate workflow builds, audits, attests, and retains artifacts; publishing remains a separate maintainer action.
 
-The candidate workflow runs only for `candidate/**` branch pushes or explicit manual dispatch. Ordinary pull requests use the normal CI workflow and do not consume the full candidate path.
+The candidate workflow runs only for `candidate/**` or `rc-*` branch pushes, or explicit manual dispatch. Ordinary pull requests and `main` pushes do not consume the full candidate path. The `rc-*` convention exists for repositories whose rulesets reserve or block creation of the `candidate/**` namespace.
 
 ## Current publication credentials
 
@@ -79,9 +79,9 @@ macOS/Linux may use the compatibility wrapper:
 bash scripts/release_checklist.sh
 ```
 
-2. Push the exact candidate commit to a `candidate/**` branch.
+2. Push the exact candidate commit to a `candidate/**` branch. If repository rules prevent that namespace, use a dedicated `rc-*` branch such as `rc-v0.2.16`.
 
-3. Confirm normal CI and Release Candidate validation both succeed for that commit.
+3. Confirm normal CI succeeds for the PR head and Release Candidate validation succeeds for the exact candidate commit.
 
 4. Confirm all installation profiles succeeded:
 
