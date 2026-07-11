@@ -7,12 +7,14 @@ lock constants required by the self-check runner.
 
 from __future__ import annotations
 
+import importlib
 import os
+from typing import Any
 
 try:  # pragma: no cover - available only on Windows
-    import msvcrt  # type: ignore[import-not-found]
+    msvcrt: Any = importlib.import_module("msvcrt")
 except ModuleNotFoundError:  # pragma: no cover - imported only by Windows bootstrap
-    msvcrt = None  # type: ignore[assignment]
+    msvcrt = None
 
 LOCK_EX = 2
 LOCK_NB = 4
