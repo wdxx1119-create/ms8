@@ -303,6 +303,12 @@ def evaluate_memory_policy(
             reasons.append("action_authority_not_user_explicit")
         if verification_state != "verified":
             reasons.append("action_provenance_not_verified")
+        authorized_action = _normalized_text(row.get("authorized_action") or "")
+        requested_action = _normalized_text(query)
+        if not authorized_action:
+            reasons.append("action_scope_missing")
+        elif authorized_action.casefold() != requested_action.casefold():
+            reasons.append("action_scope_mismatch")
     unique_reasons = list(dict.fromkeys(reasons))
     return {
         "allowed": not unique_reasons,
@@ -324,7 +330,7 @@ def pre_action_check(
 ) -> dict[str, Any]:
     action_text = _normalized_text(action)
     selected_ids = {str(item).strip() for item in (memory_ids or []) if str(item).strip()}
-    selected = [row for row in records if not selected_ids or str(row.get("id") or "") in selected_ids]
+    selected = [row for row in records if str(row.get("id") or "") in selected_ids]
     decisions = [evaluate_memory_policy(row, query=action_text, purpose="action") for row in selected]
     eligible_ids = [str(item.get("record_id") or "") for item in decisions if item.get("allowed")]
     reason_counts: Counter[str] = Counter()
@@ -332,20 +338,29 @@ def pre_action_check(
         if not item.get("allowed"):
             reason_counts.update(str(code) for code in item.get("reason_codes", []))
     missing_ids = sorted(selected_ids - {str(row.get("id") or "") for row in selected})
+    all_selected_eligible = bool(decisions) and len(eligible_ids) == len(decisions)
     if not action_text:
         reason_counts.update(["action_required"])
+    if not selected_ids:
+        reason_counts.update(["supporting_memory_required"])
     if missing_ids:
         reason_counts.update(["memory_id_not_found"])
-    if eligible_ids and not explicit_user_confirmation:
+    if all_selected_eligible and not explicit_user_confirmation:
         reason_counts.update(["human_confirmation_required"])
-    allowed = bool(action_text and eligible_ids and explicit_user_confirmation and not missing_ids)
+    allowed = bool(
+        action_text
+        and selected_ids
+        and all_selected_eligible
+        and explicit_user_confirmation
+        and not missing_ids
+    )
     return {
         "ok": True,
         "decision": "allow" if allowed else "deny",
         "allowed": allowed,
         "execution_performed": False,
         "action": action_text,
-        "requires_confirmation": bool(eligible_ids and not explicit_user_confirmation),
+        "requires_confirmation": bool(all_selected_eligible and not explicit_user_confirmation),
         "explicit_user_confirmation": bool(explicit_user_confirmation),
         "eligible_record_ids": eligible_ids,
         "evaluated_record_ids": [str(row.get("id") or "") for row in selected],
