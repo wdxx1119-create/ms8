@@ -93,8 +93,8 @@ jobs:
 
       - name: Install release tooling
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install build twine cyclonedx-bom
+          python -m pip install --upgrade pip setuptools
+          python -m pip install build twine cyclonedx-bom pip-audit
 
       - name: Build wheel and source distribution
         run: |
@@ -118,13 +118,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          EXPECTED_VERSION="$(python - <<'PY'
-          import tomllib
-          from pathlib import Path
-          data = tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8'))
-          print(data['project']['version'])
-          PY
-          )"
+          EXPECTED_VERSION="${{ steps.project_version.outputs.value }}"
           test -f "dist/ms8-${EXPECTED_VERSION}-py3-none-any.whl"
           test -f "dist/ms8-${EXPECTED_VERSION}.tar.gz"
           python -m twine check dist/*
@@ -133,16 +127,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          EXPECTED_VERSION="$(python - <<'PY'
-          import tomllib
-          from pathlib import Path
-          data = tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8'))
-          print(data['project']['version'])
-          PY
-          )"
+          EXPECTED_VERSION="${{ steps.project_version.outputs.value }}"
           ENV_DIR="$RUNNER_TEMP/ms8-wheel-venv"
           python -m venv "$ENV_DIR"
-          "$ENV_DIR/bin/python" -m pip install --upgrade pip
+          "$ENV_DIR/bin/python" -m pip install --upgrade pip setuptools
           "$ENV_DIR/bin/python" -m pip install "dist/ms8-${EXPECTED_VERSION}-py3-none-any.whl"
           EXPECTED_VERSION="$EXPECTED_VERSION" "$ENV_DIR/bin/python" - <<'PY'
           import os
@@ -158,29 +146,84 @@ jobs:
           "$ENV_DIR/bin/python" -m pip check
           "$ENV_DIR/bin/ms8" version
 
-      - name: Generate and validate CycloneDX SBOM
+      - name: Resolve installed-wheel audit paths
+        id: release_audit_paths
         shell: bash
         run: |
           set -euo pipefail
           EXPECTED_VERSION="${{ steps.project_version.outputs.value }}"
           ENV_DIR="$RUNNER_TEMP/ms8-wheel-venv"
-          SBOM="dist/ms8-${EXPECTED_VERSION}.cdx.json"
-          cyclonedx-py environment "$ENV_DIR/bin/python" \
+          SITE_PACKAGES="$(
+            "$ENV_DIR/bin/python" - <<'PY'
+          import sysconfig
+
+          print(sysconfig.get_paths()["purelib"])
+          PY
+          )"
+          test -d "$SITE_PACKAGES"
+          echo "site_packages=$SITE_PACKAGES" >> "$GITHUB_OUTPUT"
+          echo "audit_path=dist/ms8-${EXPECTED_VERSION}.audit.json" >> "$GITHUB_OUTPUT"
+          echo "sbom_path=dist/ms8-${EXPECTED_VERSION}.cdx.json" >> "$GITHUB_OUTPUT"
+
+      - name: Audit installed-wheel environment
+        id: release_audit
+        continue-on-error: true
+        shell: bash
+        run: |
+          python -m pip_audit \
+            --strict \
+            --path "${{ steps.release_audit_paths.outputs.site_packages }}" \
+            --progress-spinner off \
+            --timeout 60 \
+            --format json \
+            --output "${{ steps.release_audit_paths.outputs.audit_path }}"
+
+      - name: Generate installed-wheel CycloneDX SBOM
+        id: release_sbom
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          cyclonedx-py environment "$RUNNER_TEMP/ms8-wheel-venv/bin/python" \
             --output-format JSON \
-            --output-file "$SBOM"
-          EXPECTED_VERSION="$EXPECTED_VERSION" SBOM="$SBOM" python - <<'PY'
+            --output-file "${{ steps.release_audit_paths.outputs.sbom_path }}"
+
+      - name: Validate installed-wheel security evidence
+        id: validate_release_evidence
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          AUDIT_PATH="${{ steps.release_audit_paths.outputs.audit_path }}" \
+          SBOM_PATH="${{ steps.release_audit_paths.outputs.sbom_path }}" \
+          EXPECTED_VERSION="${{ steps.project_version.outputs.value }}" \
+          python - <<'PY'
           import json
           import os
           from pathlib import Path
 
-          payload = json.loads(Path(os.environ['SBOM']).read_text(encoding='utf-8'))
-          assert payload.get('bomFormat') == 'CycloneDX'
-          components = payload.get('components', [])
+          audit_path = Path(os.environ["AUDIT_PATH"])
+          sbom_path = Path(os.environ["SBOM_PATH"])
+          expected_version = os.environ["EXPECTED_VERSION"]
+
+          audit = json.loads(audit_path.read_text(encoding="utf-8"))
+          dependencies = audit.get("dependencies")
+          assert isinstance(dependencies, list) and dependencies
+          vulnerabilities = [
+              vulnerability
+              for dependency in dependencies
+              if isinstance(dependency, dict)
+              for vulnerability in dependency.get("vulns", [])
+          ]
+          assert not vulnerabilities, vulnerabilities
+
+          sbom = json.loads(sbom_path.read_text(encoding="utf-8"))
+          assert sbom.get("bomFormat") == "CycloneDX"
+          components = [item for item in sbom.get("components", []) if isinstance(item, dict)]
           assert any(
-              item.get('name', '').lower() == 'ms8'
-              and item.get('version') == os.environ['EXPECTED_VERSION']
-              for item in components
-              if isinstance(item, dict)
+              str(component.get("name", "")).strip().lower() == "ms8"
+              and str(component.get("version", "")).strip() == expected_version
+              for component in components
           )
           PY
 
@@ -188,16 +231,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          EXPECTED_VERSION="$(python - <<'PY'
-          import tomllib
-          from pathlib import Path
-          data = tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8'))
-          print(data['project']['version'])
-          PY
-          )"
+          EXPECTED_VERSION="${{ steps.project_version.outputs.value }}"
           ENV_DIR="$RUNNER_TEMP/ms8-sdist-venv"
           python -m venv "$ENV_DIR"
-          "$ENV_DIR/bin/python" -m pip install --upgrade pip
+          "$ENV_DIR/bin/python" -m pip install --upgrade pip setuptools
           "$ENV_DIR/bin/python" -m pip install "dist/ms8-${EXPECTED_VERSION}.tar.gz"
           EXPECTED_VERSION="$EXPECTED_VERSION" "$ENV_DIR/bin/python" - <<'PY'
           import os
@@ -213,28 +250,76 @@ jobs:
           "$ENV_DIR/bin/python" -m pip check
 
       - name: Generate SHA-256 checksums
+        id: release_checksums
+        if: always()
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
-          (cd dist && shasum -a 256 *.whl *.tar.gz *.cdx.json > SHA256SUMS)
+          EXPECTED_VERSION="${{ steps.project_version.outputs.value }}"
+          test -s "dist/ms8-${EXPECTED_VERSION}-py3-none-any.whl"
+          test -s "dist/ms8-${EXPECTED_VERSION}.tar.gz"
+          test -s "dist/ms8-${EXPECTED_VERSION}.audit.json"
+          test -s "dist/ms8-${EXPECTED_VERSION}.cdx.json"
+          (cd dist && shasum -a 256 *.whl *.tar.gz *.audit.json *.cdx.json > SHA256SUMS)
           cat dist/SHA256SUMS
           {
             echo "### Release candidate artifacts"
             echo "- commit: $GITHUB_SHA"
+            echo "- audit: strict JSON report for the installed wheel environment"
             echo "- SBOM: CycloneDX JSON generated from the installed wheel environment"
             echo '```text'
             cat dist/SHA256SUMS
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload independently verified artifacts
+      - name: Upload release security evidence
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ms8-v${{ steps.project_version.outputs.value }}-${{ github.sha }}
           path: |
             dist/ms8-${{ steps.project_version.outputs.value }}-py3-none-any.whl
             dist/ms8-${{ steps.project_version.outputs.value }}.tar.gz
+            dist/ms8-${{ steps.project_version.outputs.value }}.audit.json
             dist/ms8-${{ steps.project_version.outputs.value }}.cdx.json
             dist/SHA256SUMS
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30
+
+      - name: Enforce release security evidence gate
+        if: always()
+        shell: bash
+        run: |
+          set -uo pipefail
+          EXPECTED_VERSION="${{ steps.project_version.outputs.value }}"
+          FAILED=0
+
+          if [[ "${{ steps.release_audit.outcome }}" != "success" ]]; then
+            echo "::error::The installed-wheel strict vulnerability audit failed."
+            FAILED=1
+          fi
+          if [[ "${{ steps.release_sbom.outcome }}" != "success" ]]; then
+            echo "::error::The installed-wheel CycloneDX SBOM command failed."
+            FAILED=1
+          fi
+          if [[ "${{ steps.validate_release_evidence.outcome }}" != "success" ]]; then
+            echo "::error::The installed-wheel audit report or SBOM failed validation."
+            FAILED=1
+          fi
+          if [[ "${{ steps.release_checksums.outcome }}" != "success" ]]; then
+            echo "::error::Release evidence checksum generation failed."
+            FAILED=1
+          fi
+
+          for FILE in \
+            "dist/ms8-${EXPECTED_VERSION}.audit.json" \
+            "dist/ms8-${EXPECTED_VERSION}.cdx.json" \
+            "dist/SHA256SUMS"; do
+            if [[ ! -s "$FILE" ]]; then
+              echo "::error::Required release evidence is missing or empty: $FILE"
+              FAILED=1
+            fi
+          done
+
+          exit "$FAILED"
