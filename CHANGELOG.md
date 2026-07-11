@@ -12,6 +12,7 @@ All notable changes to this project are documented in this file.
 ### Changed
 - Made recall and injection filtering expose per-reason policy counts and low-confidence degradation evidence.
 - Made provenance repair additive, idempotent, dry-run capable, and auditable while preserving older canonical records.
+- Preserved explicit MCP browsing of governed product-decision records while keeping search-intent filtering on query-driven recall.
 
 ### Security
 - Required explicit supporting memory IDs, verified user-explicit authority, exact action-scope matching, uniform evidence eligibility, and explicit human confirmation before an action decision can be allowed.
@@ -91,3 +92,55 @@ All notable changes to this project are documented in this file.
 - Improved `doctor`, `watch`, service, and runtime-health interpretation and follow-up guidance.
 - Bound service startup to the active Python environment instead of relying on an unrelated `ms8` executable from `PATH`.
 - Strengthened Absorb parsing, local-material processing, and runtime-mode handling.
+
+### Fixed
+- Kept the default adapter registry template portable and free of local absolute-path metadata.
+- Tightened typed exception handling, cleanup behavior, and degraded-state reporting.
+- Corrected resource cleanup for Absorb SQLite handles and Ollama provider responses.
+
+## [0.2.13] - 2026-06-16
+
+### Fixed
+- Aligned package, runtime, README, and changelog version metadata with `pyproject.toml`.
+- Aligned README license display with the repository's `GPL-3.0-or-later` license metadata.
+- Included MCP YAML and JSON resource files in wheel/sdist package data.
+
+### Changed
+- Replaced local machine-specific adapter registry probe paths with portable template metadata.
+
+## [0.2.12] - 2026-06-08
+
+### Changed
+- Restored the published Python support range to the actually verified window: `3.10` to `3.13`.
+- Removed private policy-core build/release workflows from the main MS8 repository so the public/private boundary is clean.
+- Tightened CI to the supported Python matrix and fixed a mypy regression in the admission pipeline.
+
+### Fixed
+- Removed stray duplicate packaging artifacts (`* 2`) before build so release artifacts stay clean.
+- Kept the main release path stable while preserving private policy-core distribution outside the public MS8 repo.
+- Published `ms8-policy-core` `0.1.1` as an optional closed-backend enhancement with encrypted private-key detection, while keeping the default MS8 install cross-platform.
+
+## [0.2.0] - 2026-05-31
+
+### Added
+- Pluggable policy engine interface with open/closed backends.
+- Policy backend loader with strict fail-closed mode support.
+- Policy attack sample report and governance gate integration.
+- Expanded automated test suite and coverage reporting workflow.
+- Release isolation and artifact inspection scripts.
+
+### Changed
+- Memory admission path now prefers policy-engine decisions with safe local fallback.
+- Doctor/dashboard now expose policy engine and policy-attack sample health signals.
+- Governance report now includes policy attack sample status in layered health.
+- CI workflow now enforces mypy, ruff, pytest coverage reporting, and doctor smoke checks.
+
+### Security
+- Closed backend contract validation and strict policy backend loading paths.
+- Governance gate supports policy-attack failure as release blocker.
+
+## Version Strategy
+
+- `0.2.x`: policy-engine contract stabilization and release engineering hardening.
+- `0.3.x`: closed strategy enhancement, retrieval/governance refinement, and distribution polish.
+- `1.0.0`: production validation milestone after sustained external usage and operational stability.
