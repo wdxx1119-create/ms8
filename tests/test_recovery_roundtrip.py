@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import sqlite3
 import zipfile
 from pathlib import Path
+
+import pytest
 
 from ms8.recovery import (
     BACKUP_MANIFEST_NAME,
@@ -30,6 +34,23 @@ def _create_runtime(root: Path) -> None:
         connection.execute("CREATE TABLE file_records (file_id TEXT PRIMARY KEY, status TEXT NOT NULL)")
         connection.execute("INSERT INTO file_records VALUES (?, ?)", ("f1", "LOCAL_INDEXED"))
         connection.commit()
+
+
+def _write_single_file_archive(archive: Path, relative: str, payload: bytes = b"x") -> None:
+    manifest = {
+        "backup_schema_version": 1,
+        "files": [
+            {
+                "path": relative,
+                "size": len(payload),
+                "sha256": hashlib.sha256(payload).hexdigest(),
+                "snapshot_kind": "copy",
+            }
+        ],
+    }
+    with zipfile.ZipFile(archive, "w") as bundle:
+        bundle.writestr(BACKUP_MANIFEST_NAME, json.dumps(manifest))
+        bundle.writestr(f"runtime/{relative}", payload)
 
 
 def test_runtime_backup_restore_roundtrip_including_sqlite(tmp_path: Path) -> None:
@@ -83,16 +104,36 @@ def test_backup_verification_detects_modified_payload(tmp_path: Path) -> None:
     assert "checksum_mismatch:config.json" in result["errors"]
 
 
-def test_backup_verification_rejects_path_traversal(tmp_path: Path) -> None:
-    archive = tmp_path / "malicious.zip"
-    manifest = {
-        "backup_schema_version": 1,
-        "files": [{"path": "../../escape.txt", "size": 1, "sha256": "0" * 64}],
-    }
-    with zipfile.ZipFile(archive, "w") as bundle:
-        bundle.writestr(BACKUP_MANIFEST_NAME, json.dumps(manifest))
-        bundle.writestr("runtime/../../escape.txt", b"x")
+def test_backup_verification_rejects_posix_path_traversal(tmp_path: Path) -> None:
+    archive = tmp_path / "malicious-posix.zip"
+    _write_single_file_archive(archive, "../../escape.txt")
 
     result = verify_runtime_backup(archive)
     assert result["ok"] is False
     assert any(error.startswith("unsafe_member:") or error.startswith("missing_or_unsafe:") for error in result["errors"])
+
+
+@pytest.mark.parametrize("relative", ["C:/escape.txt", "..\\escape.txt"])
+def test_backup_verification_rejects_windows_escape_paths(tmp_path: Path, relative: str) -> None:
+    archive = tmp_path / "malicious-windows.zip"
+    _write_single_file_archive(archive, relative)
+
+    result = verify_runtime_backup(archive)
+    assert result["ok"] is False
+    assert any(error.startswith("unsafe_member:") or error.startswith("missing_or_unsafe:") for error in result["errors"])
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Windows hosted runners may not allow unprivileged symlink creation")
+def test_restore_plan_rejects_target_symlink_escape(tmp_path: Path) -> None:
+    archive = tmp_path / "symlink.zip"
+    _write_single_file_archive(archive, "linked/escape.txt")
+    assert verify_runtime_backup(archive)["ok"] is True
+
+    target = tmp_path / "target"
+    outside = tmp_path / "outside"
+    target.mkdir()
+    outside.mkdir()
+    (target / "linked").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="crosses symlink"):
+        plan_runtime_restore(archive, target_root=target)
