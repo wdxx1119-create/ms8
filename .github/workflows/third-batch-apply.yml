@@ -1,6 +1,4 @@
-name: Apply third-batch memory safety slice
-
-# Gate revision: targeted tests use --no-cov; full coverage remains in normal CI.
+name: Apply third-batch action-gate hardening
 
 on:
   push:
@@ -13,9 +11,9 @@ permissions:
   contents: write
 
 jobs:
-  apply:
+  harden:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 25
     steps:
       - name: Checkout branch
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -23,93 +21,169 @@ jobs:
           ref: reliability/third-batch-memory-safety
           fetch-depth: 0
 
-      - name: Apply existing-file changes
-        run: python scripts/patch_third_batch_existing.py
+      - name: Apply fail-closed action evidence rules
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              target = Path(path)
+              text = target.read_text(encoding="utf-8")
+              if old not in text:
+                  raise SystemExit(f"anchor not found: {path}: {old[:120]!r}")
+              target.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          replace_once(
+              "src/ms8/memory_safety.py",
+              '''        if verification_state != "verified":
+                      reasons.append("action_provenance_not_verified")
+              unique_reasons = list(dict.fromkeys(reasons))
+              ''',
+              '''        if verification_state != "verified":
+                      reasons.append("action_provenance_not_verified")
+                  authorized_action = _normalized_text(row.get("authorized_action") or "")
+                  requested_action = _normalized_text(query)
+                  if not authorized_action:
+                      reasons.append("action_scope_missing")
+                  elif authorized_action.casefold() != requested_action.casefold():
+                      reasons.append("action_scope_mismatch")
+              unique_reasons = list(dict.fromkeys(reasons))
+              ''',
+          )
+          replace_once(
+              "src/ms8/memory_safety.py",
+              '''    selected_ids = {str(item).strip() for item in (memory_ids or []) if str(item).strip()}
+                  selected = [row for row in records if not selected_ids or str(row.get("id") or "") in selected_ids]
+                  decisions = [evaluate_memory_policy(row, query=action_text, purpose="action") for row in selected]
+                  eligible_ids = [str(item.get("record_id") or "") for item in decisions if item.get("allowed")]
+                  reason_counts: Counter[str] = Counter()
+                  for item in decisions:
+                      if not item.get("allowed"):
+                          reason_counts.update(str(code) for code in item.get("reason_codes", []))
+                  missing_ids = sorted(selected_ids - {str(row.get("id") or "") for row in selected})
+                  if not action_text:
+                      reason_counts.update(["action_required"])
+                  if missing_ids:
+                      reason_counts.update(["memory_id_not_found"])
+                  if eligible_ids and not explicit_user_confirmation:
+                      reason_counts.update(["human_confirmation_required"])
+                  allowed = bool(action_text and eligible_ids and explicit_user_confirmation and not missing_ids)
+              ''',
+              '''    selected_ids = {str(item).strip() for item in (memory_ids or []) if str(item).strip()}
+                  selected = [row for row in records if str(row.get("id") or "") in selected_ids]
+                  decisions = [evaluate_memory_policy(row, query=action_text, purpose="action") for row in selected]
+                  eligible_ids = [str(item.get("record_id") or "") for item in decisions if item.get("allowed")]
+                  reason_counts: Counter[str] = Counter()
+                  for item in decisions:
+                      if not item.get("allowed"):
+                          reason_counts.update(str(code) for code in item.get("reason_codes", []))
+                  missing_ids = sorted(selected_ids - {str(row.get("id") or "") for row in selected})
+                  all_selected_eligible = bool(decisions) and len(eligible_ids) == len(decisions)
+                  if not action_text:
+                      reason_counts.update(["action_required"])
+                  if not selected_ids:
+                      reason_counts.update(["supporting_memory_required"])
+                  if missing_ids:
+                      reason_counts.update(["memory_id_not_found"])
+                  if all_selected_eligible and not explicit_user_confirmation:
+                      reason_counts.update(["human_confirmation_required"])
+                  allowed = bool(
+                      action_text
+                      and selected_ids
+                      and all_selected_eligible
+                      and explicit_user_confirmation
+                      and not missing_ids
+                  )
+              ''',
+          )
+          replace_once(
+              "src/ms8/memory_safety.py",
+              '        "requires_confirmation": bool(eligible_ids and not explicit_user_confirmation),\n',
+              '        "requires_confirmation": bool(all_selected_eligible and not explicit_user_confirmation),\n',
+          )
+          replace_once(
+              "tests/test_third_batch_memory_safety.py",
+              '''    authorized["can_act_on"] = True
+                  authorized["provenance"]["verification_state"] = "verified"
+              ''',
+              '''    authorized["can_act_on"] = True
+                  authorized["authorized_action"] = "delete remote copy"
+                  authorized["provenance"]["verification_state"] = "verified"
+              ''',
+          )
+          replace_once(
+              "tests/test_third_batch_memory_safety.py",
+              '''    assert allowed["allowed"] is True
+                  assert allowed["execution_performed"] is False
+
+
+              def test_engine_trace_counts_policy_reasons() -> None:
+              ''',
+              '''    assert allowed["allowed"] is True
+                  assert allowed["execution_performed"] is False
+
+
+              def test_pre_action_fails_closed_without_explicit_or_uniform_support() -> None:
+                  authorized = build_canonical_record("Exact action authorization", "ask", status="verified")
+                  authorized["can_act_on"] = True
+                  authorized["authorized_action"] = "delete remote copy"
+                  authorized["provenance"]["verification_state"] = "verified"
+                  authorized["provenance"]["confidence"] = 1.0
+
+                  without_support = pre_action_check(
+                      action="delete remote copy",
+                      records=[authorized],
+                      explicit_user_confirmation=True,
+                  )
+                  assert without_support["allowed"] is False
+                  assert without_support["reason_counts"]["supporting_memory_required"] == 1
+
+                  mismatched = pre_action_check(
+                      action="send an email",
+                      records=[authorized],
+                      memory_ids=[authorized["id"]],
+                      explicit_user_confirmation=True,
+                  )
+                  assert mismatched["allowed"] is False
+                  assert mismatched["reason_counts"]["action_scope_mismatch"] == 1
+
+                  untrusted = build_canonical_record("Assistant suggested the same action", "mcp:assistant")
+                  mixed = pre_action_check(
+                      action="delete remote copy",
+                      records=[authorized, untrusted],
+                      memory_ids=[authorized["id"], untrusted["id"]],
+                      explicit_user_confirmation=True,
+                  )
+                  assert mixed["allowed"] is False
+                  assert authorized["id"] in mixed["eligible_record_ids"]
+                  assert mixed["reason_counts"]["action_not_authorized_by_record"] == 1
+
+
+              def test_engine_trace_counts_policy_reasons() -> None:
+              ''',
+          )
+          PY
 
       - name: Install development dependencies
         run: |
           python -m pip install --quiet --upgrade pip
           python -m pip install --quiet -e ".[dev]"
 
-      - name: Normalize generated source
+      - name: Validate action-gate hardening
         run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          path = Path("src/ms8/recovery.py")
-          text = path.read_text(encoding="utf-8")
-          broken = 'handle.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")'
-          fixed = 'handle.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\\n")'
-          if broken not in text:
-              raise SystemExit("generated restore audit newline anchor not found")
-          path.write_text(text.replace(broken, fixed, 1), encoding="utf-8")
-          PY
-          python -m ruff check --fix src/ms8/engine.py
-
-      - name: Ruff
-        shell: bash
-        run: |
-          set -o pipefail
-          python -m ruff check \
-            src/ms8/memory_safety.py \
-            src/ms8/record_policy.py \
-            src/ms8/engine.py \
-            src/ms8/recovery.py \
-            src/ms8/connect/mcp_server/mcp_server.py \
-            src/ms8/connect/mcp_server/memory_access_policy.py \
-            src/ms8/connect/mcp_server/memory_service_interface.py \
-            src/ms8/connect/mcp_server/stdio_server.py \
-            tests/test_third_batch_memory_safety.py \
-            tests/test_third_batch_mcp_action_gate.py \
-            tests/test_third_batch_recovery_chaos.py 2>&1 | tee third-batch-ruff.log
-
-      - name: Mypy
-        shell: bash
-        run: |
-          set -o pipefail
-          python -m mypy src/ms8 2>&1 | tee third-batch-mypy.log
-
-      - name: Targeted pytest
-        shell: bash
-        run: |
-          set -o pipefail
+          python -m ruff check src/ms8/memory_safety.py tests/test_third_batch_memory_safety.py
+          python -m mypy src/ms8
           python -m pytest -q --tb=short --no-cov \
             tests/test_third_batch_memory_safety.py \
             tests/test_third_batch_mcp_action_gate.py \
             tests/test_third_batch_recovery_chaos.py \
-            tests/test_record_policy_and_review_edges.py \
             tests/test_engine_retrieval_gateway.py \
-            tests/test_connect_stdio_server.py \
-            tests/test_recovery_roundtrip.py 2>&1 | tee third-batch-pytest.log
+            tests/test_connect_stdio_server.py
 
-      - name: Upload diagnostics
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: third-batch-diagnostics-${{ github.sha }}
-          path: |
-            third-batch-ruff.log
-            third-batch-mypy.log
-            third-batch-pytest.log
-          if-no-files-found: warn
-          retention-days: 3
-
-      - name: Commit validated existing-file changes
+      - name: Commit validated hardening
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            src/ms8/record_policy.py \
-            src/ms8/engine.py \
-            src/ms8/recovery.py \
-            src/ms8/connect/mcp_server/mcp_server.py \
-            src/ms8/connect/mcp_server/memory_access_policy.py \
-            src/ms8/connect/mcp_server/memory_service_interface.py \
-            src/ms8/connect/mcp_server/stdio_server.py \
-            docs/DATA_MODEL.md
-          if git diff --cached --quiet; then
-            echo "No validated existing-file changes to commit."
-            exit 0
-          fi
-          git commit -m "reliability: wire provenance action gate and restore chaos handling"
+          git add src/ms8/memory_safety.py tests/test_third_batch_memory_safety.py
+          git commit -m "security: fail closed on action evidence selection"
           git push origin HEAD:reliability/third-batch-memory-safety
