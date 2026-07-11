@@ -1,0 +1,151 @@
+name: Finalize third-batch memory safety slice
+
+on:
+  push:
+    branches:
+      - "reliability/third-batch-memory-safety"
+    paths:
+      - ".github/workflows/third-batch-finalize.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: reliability/third-batch-memory-safety
+          fetch-depth: 0
+
+      - name: Apply browse and documentation compatibility fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              target = Path(path)
+              text = target.read_text(encoding="utf-8")
+              if old not in text:
+                  raise SystemExit(f"anchor not found in {path}: {old[:120]!r}")
+              target.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          replace_once(
+              "src/ms8/memory_safety.py",
+              '    if lane not in {"recall", "inject", "action"}:\n',
+              '    if lane not in {"recall", "browse", "inject", "action"}:\n',
+          )
+          replace_once(
+              "src/ms8/memory_safety.py",
+              '    threshold = {"recall": 0.5, "inject": 0.7, "action": 0.85}[lane]\n',
+              '    threshold = {"recall": 0.5, "browse": 0.5, "inject": 0.7, "action": 0.85}[lane]\n',
+          )
+          replace_once(
+              "src/ms8/memory_safety.py",
+              '    if category == "product_decision" and lane != "action":\n',
+              '    if category == "product_decision" and lane not in {"action", "browse"}:\n',
+          )
+          replace_once(
+              "src/ms8/connect/mcp_server/memory_access_policy.py",
+              '    return bool(evaluate_memory_policy(row, query="", purpose="recall").get("allowed", False))\n',
+              '    return bool(evaluate_memory_policy(row, query="", purpose="browse").get("allowed", False))\n',
+          )
+
+          plan = Path("docs/THIRD_BATCH_MEMORY_SAFETY_PLAN.md")
+          plan_text = plan.read_text(encoding="utf-8")
+          plan_text = plan_text.replace(
+              '- action decisions include allow/deny, reason codes, required confirmation, and supporting record IDs;\n'
+              '- unverified, expired, revoked, sensitive, or low-confidence records cannot authorize an action;\n'
+              '- the interface is reusable by CLI, MCP, and other adapters without granting execution capability.\n',
+              '- action decisions include allow/deny, reason codes, required confirmation, and explicit supporting record IDs;\n'
+              '- every selected supporting record must independently pass the action gate; one trusted record cannot override an untrusted record;\n'
+              '- each authorizing record must bind to the exact normalized `authorized_action`; broad preferences cannot authorize a different action;\n'
+              '- unverified, expired, revoked, sensitive, low-confidence, missing, or mixed-trust records cannot authorize an action;\n'
+              '- `explicit_user_confirmation` is a claim supplied by the trusted host UI, not proof produced by memory; MS8 never executes the action;\n'
+              '- the interface is reusable by CLI, MCP, and other adapters without granting execution capability.\n',
+          )
+          plan.write_text(plan_text, encoding="utf-8")
+
+          data_model = Path("docs/DATA_MODEL.md")
+          model_text = data_model.read_text(encoding="utf-8")
+          model_text = model_text.replace(
+              '`confidence` is evidence quality, not action permission. `can_act_on` remains independently false by default, and only a verified, explicit-user-authorized record with explicit confirmation may pass the pre-action gate.\n',
+              '`confidence` is evidence quality, not action permission. `can_act_on` remains independently false by default. The pre-action gate requires explicit supporting record IDs, every selected record to be verified and eligible, an exact normalized `authorized_action` match, and a confirmation claim from the trusted host UI. The decision is advisory governance output only: MS8 reports `execution_performed=false` and does not execute the action.\n',
+          )
+          data_model.write_text(model_text, encoding="utf-8")
+
+          Path("tests/test_third_batch_browse_policy.py").write_text(
+              '''from __future__ import annotations
+
+          from ms8.connect.mcp_server.memory_access_policy import memory_row_browsable
+          from ms8.memory_safety import evaluate_memory_policy
+          from ms8.record_policy import build_canonical_record
+
+
+          def test_explicit_browse_does_not_apply_search_intent_filter() -> None:
+              row = build_canonical_record("Release strategy chooses staged rollout", "ask")
+              row["category"] = "product_decision"
+              assert memory_row_browsable(row) is True
+              search_decision = evaluate_memory_policy(row, query="unrelated topic", purpose="recall")
+              assert search_decision["allowed"] is False
+              assert "query_intent_mismatch" in search_decision["reason_codes"]
+
+
+          def test_explicit_browse_still_blocks_labs_and_low_authority_records() -> None:
+              labs = build_canonical_record("Experimental candidate", "labs:test")
+              assert memory_row_browsable(labs) is False
+
+              inferred = build_canonical_record("Assistant inferred a preference", "mcp:assistant")
+              inferred["authority"] = "assistant_inferred"
+              inferred["provenance"]["verification_state"] = "unverified"
+              inferred["provenance"]["confidence"] = 0.2
+              assert memory_row_browsable(inferred) is False
+          ''',
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Install development dependencies
+        run: |
+          python -m pip install --quiet --upgrade pip
+          python -m pip install --quiet -e ".[dev]"
+
+      - name: Validate finalized slice
+        run: |
+          python -m ruff format \
+            src/ms8/memory_safety.py \
+            src/ms8/connect/mcp_server/memory_access_policy.py \
+            tests/test_third_batch_browse_policy.py
+          python -m ruff check --fix --exit-zero \
+            src/ms8/memory_safety.py \
+            src/ms8/connect/mcp_server/memory_access_policy.py \
+            tests/test_third_batch_browse_policy.py
+          python -m ruff check \
+            src/ms8/memory_safety.py \
+            src/ms8/connect/mcp_server/memory_access_policy.py \
+            tests/test_third_batch_browse_policy.py
+          python -m mypy src/ms8
+          python -m pytest -q --tb=short --no-cov \
+            tests/test_third_batch_memory_safety.py \
+            tests/test_third_batch_mcp_action_gate.py \
+            tests/test_third_batch_recovery_chaos.py \
+            tests/test_third_batch_browse_policy.py \
+            tests/test_engine_retrieval_gateway.py \
+            tests/test_connect_stdio_server.py
+
+      - name: Commit clean finalized slice
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/third-batch-finalize.yml
+          git add \
+            src/ms8/memory_safety.py \
+            src/ms8/connect/mcp_server/memory_access_policy.py \
+            docs/THIRD_BATCH_MEMORY_SAFETY_PLAN.md \
+            docs/DATA_MODEL.md \
+            tests/test_third_batch_browse_policy.py
+          git commit -m "reliability: preserve explicit browsing and document action evidence"
+          git push origin HEAD:reliability/third-batch-memory-safety
