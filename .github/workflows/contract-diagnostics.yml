@@ -14,43 +14,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Locate repository contract assertions
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
         run: |
-          python - <<'PY'
-          from pathlib import Path
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
 
-          needles = (
-              "candidate/v0.2.14",
-              "ms8-v0.2.14",
-              "dist/ms8-0.2.14",
-              "master",
-              "coverage enforcement workflow",
-              "pytest coverage",
-              "GitHub Discussions（启用后）",
-          )
-
-          output = []
-          for path in sorted(Path("tests").rglob("*.py")):
-              text = path.read_text(encoding="utf-8")
-              matches = [
-                  (number, line)
-                  for number, line in enumerate(text.splitlines(), start=1)
-                  if any(needle in line for needle in needles)
-              ]
-              if matches:
-                  output.append(f"FILE {path}")
-                  output.extend(f"  {number}: {line}" for number, line in matches)
-
-          Path("contract-diagnostics.txt").write_text(
-              "\n".join(output) + "\n",
-              encoding="utf-8",
-          )
-          PY
+      - name: Capture first pytest failure
+        env:
+          PYTHONPATH: src
+        run: |
+          set +e
+          python -m pytest tests/ -q -x > pytest-failure.txt 2>&1
+          code=$?
+          echo "pytest_exit_code=$code" >> pytest-failure.txt
+          exit 0
 
       - name: Upload diagnostics
         uses: actions/upload-artifact@v4
         with:
           name: contract-diagnostics
-          path: contract-diagnostics.txt
+          path: pytest-failure.txt
           if-no-files-found: error
           retention-days: 1
