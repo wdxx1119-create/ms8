@@ -103,13 +103,17 @@ macOS/Linux may use the compatibility wrapper:
 bash scripts/release_checklist.sh
 ```
 
-2. Push the exact candidate commit to a `candidate/**` branch. If repository rules prevent that namespace, use a dedicated `rc-*` branch such as `rc-v0.2.16`.
+2. Push the exact PR head to a `candidate/**` branch. If repository rules prevent that namespace, use a dedicated `rc-*` branch such as `rc-v0.2.16`.
 
 3. Confirm normal CI succeeds for the PR head.
 
-4. Confirm the candidate commit has a successful `release-candidate/aggregate` status. This status is published only after static quality, macOS runtime tests, artifact audit, SBOM validation, checksum generation, provenance, and SBOM attestation all succeed.
+4. Confirm the pre-merge candidate commit has a successful `release-candidate/aggregate` status before merging.
 
-5. Confirm all installation profiles succeeded:
+5. Merge the reviewed PR. If the merge method creates a different commit SHA, as squash, rebase, and ordinary merge usually do, move the candidate branch to the exact final `main` commit that will receive the release tag and run Release Candidate validation again.
+
+6. Treat only the evidence bundle and attestations generated from the exact intended tag target as authoritative. Confirm that commit has a successful `release-candidate/aggregate` status after static quality, macOS runtime tests, artifact audit, SBOM validation, checksum generation, provenance, and SBOM attestation all succeed.
+
+7. Confirm all installation profiles succeeded:
 
 ```text
 core
@@ -120,41 +124,41 @@ policy
 full
 ```
 
-6. Download the candidate evidence bundle and verify `SHA256SUMS`.
+8. Download the authoritative candidate evidence bundle and verify `SHA256SUMS`.
 
-7. Verify GitHub artifact provenance for the wheel and source distribution:
+9. Verify GitHub artifact provenance for the wheel and source distribution:
 
 ```bash
 gh attestation verify dist/ms8-<version>-py3-none-any.whl -R wdxx1119-create/ms8
 gh attestation verify dist/ms8-<version>.tar.gz -R wdxx1119-create/ms8
 ```
 
-8. Verify the wheel's SBOM attestation using the same repository identity and retained SBOM evidence.
+10. Verify the wheel's SBOM attestation using the same repository identity and retained SBOM evidence.
 
-9. Confirm the candidate commit, artifact names, package metadata, changelog, and intended release tag all use the same version.
+11. Confirm the candidate commit, artifact names, package metadata, changelog, intended release tag, and tag target commit all use the same version and identity.
 
-10. Dry-run uploads:
+12. Dry-run uploads:
 
 ```bash
 bash scripts/publish_testpypi.sh --dry-run
 bash scripts/publish_pypi.sh --dry-run
 ```
 
-11. Upload to TestPyPI:
+13. Upload to TestPyPI:
 
 ```bash
 bash scripts/publish_testpypi.sh
 ```
 
-12. Install from TestPyPI in a clean virtual environment and verify `ms8 doctor`, `ms8-recovery --help`, and the intended installation profile.
+14. Install from TestPyPI in a clean virtual environment and verify `ms8 doctor`, `ms8-recovery --help`, and the intended installation profile.
 
-13. Upload the already-verified artifacts to PyPI:
+15. Upload the already-verified authoritative artifacts to PyPI:
 
 ```bash
 bash scripts/publish_pypi.sh
 ```
 
-Do not rebuild between candidate verification and upload. Rebuilding creates different artifact bytes and invalidates the reviewed checksums and attestations.
+Do not rebuild between authoritative candidate verification and upload. Rebuilding creates different artifact bytes and invalidates the reviewed checksums and attestations.
 
 ## Security rules
 
