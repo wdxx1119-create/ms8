@@ -27,7 +27,7 @@
 - 可复现缺陷：使用 Bug report Issue Form。
 - 文档错误：使用 Documentation issue Issue Form。
 - 明确的功能建议：使用 Feature request 模板。
-- 使用交流和开放式讨论：GitHub Discussions（启用后）。
+- 使用交流和开放式讨论：[GitHub Discussions](https://github.com/wdxx1119-create/ms8/discussions)。
 - 安全漏洞：不要公开提交 Issue，请通过 GitHub Security Advisory 私密报告。
 
 所有公开日志、示例和复现材料都必须移除密钥、个人记忆、PII、绝对用户路径和未授权资料。
