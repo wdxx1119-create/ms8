@@ -18,6 +18,10 @@ All notable changes to this project are documented in this file.
 - Standardized the active development branch on `main`.
 - Enforced an 80% line-coverage baseline on the Python 3.11 CI job.
 
+### Fixed
+- Restored Windows CLI startup by providing the self-check runner with the narrow file-lock compatibility layer it requires.
+- Kept cross-platform release smoke output and isolated paths UTF-8-safe on Windows.
+
 ### Security
 - Added least-privilege workflow permissions and scheduled code/dependency scanning.
 
