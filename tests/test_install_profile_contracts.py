@@ -46,19 +46,19 @@ def test_optional_profiles_have_explicit_capability_closure() -> None:
     assert ocr <= full
 
 
-def test_candidate_version_is_consistent_across_release_surfaces() -> None:
+def test_release_version_is_consistent_across_release_surfaces() -> None:
     version = _project()["version"]
     source = (ROOT / "src" / "ms8" / "__init__.py").read_text(encoding="utf-8")
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-    candidate_notes = (ROOT / "docs" / f"RELEASE_NOTES_{version}.md").read_text(encoding="utf-8")
+    release_notes = (ROOT / "docs" / f"RELEASE_NOTES_{version}.md").read_text(encoding="utf-8")
 
     assert version == "0.2.16"
     assert f'__version__ = "{version}"' in source
     assert f"version-{version}-blue" in readme
     assert f"dist/ms8-{version}-py3-none-any.whl" in readme
     assert f"## [{version}] - 2026-07-11" in changelog
-    assert f"MS8 {version} Release Candidate Notes" in candidate_notes
+    assert f"MS8 {version} Release Notes" in release_notes
 
 
 def test_ci_verifies_each_supported_install_profile() -> None:
