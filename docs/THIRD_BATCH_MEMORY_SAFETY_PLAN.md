@@ -4,6 +4,8 @@
 
 Add a reliability layer that makes memory origin, confidence, action eligibility, and recovery behavior explicit without turning MS8 into a task orchestrator.
 
+Implementation is complete on the feature branch; merge remains gated on the final repository CI and release-candidate evidence for the exact reviewed commit.
+
 ## Product boundary
 
 - MS8 records and governs context memory.
