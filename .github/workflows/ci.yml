@@ -197,7 +197,20 @@ jobs:
           }
           & $python -m pip install $wheel.FullName
           $smokeRoot = Join-Path $base "runtime 数据"
-          & $python scripts\release_smoke.py --base-dir $smokeRoot
+          $smokeLog = Join-Path $env:RUNNER_TEMP "windows-smoke.log"
+          & $python scripts\release_smoke.py --base-dir $smokeRoot *>&1 | Tee-Object -FilePath $smokeLog
+          if ($LASTEXITCODE -ne 0) {
+            throw "cross-platform smoke failed with exit code $LASTEXITCODE"
+          }
+
+      - name: Upload Windows smoke log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-wheel-smoke-log
+          path: ${{ runner.temp }}/windows-smoke.log
+          if-no-files-found: warn
+          retention-days: 7
 
   release-isolated:
     name: release-isolated (${{ matrix.os }})
