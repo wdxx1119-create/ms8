@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Added
+- Added contributor, support, roadmap, documentation-index, and community governance files.
+- Added CodeQL analysis, Python dependency auditing, and dependency-change review workflows.
+- Added Python 3.11 coverage report artifacts.
+- Added installed-wheel smoke coverage for packaged MCP resources, the Absorb text parser, and persisted `ms8 ask` records.
+
+### Changed
+- Enforced Dependency Review for high- and critical-severity dependency changes.
+- Strengthened release candidate and isolated package validation.
+- Made release candidate branch matching and artifact naming version-agnostic.
+- Standardized the active development branch on `main`.
+
+### Security
+- Added least-privilege workflow permissions and scheduled code/dependency scanning.
+
 ## [0.2.15] - 2026-07-04
 
 ### Fixed
@@ -55,14 +72,14 @@ All notable changes to this project are documented in this file.
 - Pluggable policy engine interface with open/closed backends.
 - Policy backend loader with strict fail-closed mode support.
 - Policy attack sample report and governance gate integration.
-- Expanded automated test suite and coverage enforcement workflow.
+- Expanded automated test suite and coverage reporting workflow.
 - Release isolation and artifact inspection scripts.
 
 ### Changed
 - Memory admission path now prefers policy-engine decisions with safe local fallback.
 - Doctor/dashboard now expose policy engine and policy-attack sample health signals.
 - Governance report now includes policy attack sample status in layered health.
-- CI workflow now enforces mypy, ruff, pytest coverage, and doctor smoke checks.
+- CI workflow now enforces mypy, ruff, pytest coverage reporting, and doctor smoke checks.
 
 ### Security
 - Closed backend contract validation and strict policy backend loading paths.
