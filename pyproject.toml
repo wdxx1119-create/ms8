@@ -61,7 +61,7 @@ dev = [
   "pip-audit"
 ]
 policy = [
-  "ms8-policy-core>=0.1.1,<0.2"
+  "ms8-policy-core>=0.1.0,<0.2"
 ]
 llm = [
   "ollama>=0.4.0"
@@ -89,7 +89,7 @@ absorb-ocr = [
   "pillow>=10.0.0"
 ]
 full = [
-  "ms8-policy-core>=0.1.1,<0.2",
+  "ms8-policy-core>=0.1.0,<0.2",
   "ollama>=0.4.0",
   "watchdog>=4.0.0",
   "pypdf>=4.0.0",
