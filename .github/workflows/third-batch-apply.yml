@@ -194,6 +194,11 @@ jobs:
           python -m pip install --quiet --upgrade pip
           python -m pip install --quiet -e ".[dev]"
 
+      - name: Format generated hardening
+        run: |
+          python -m ruff format src/ms8/memory_safety.py tests/test_third_batch_memory_safety.py
+          python -m ruff check --fix src/ms8/memory_safety.py tests/test_third_batch_memory_safety.py
+
       - name: Ruff
         run: python -m ruff check src/ms8/memory_safety.py tests/test_third_batch_memory_safety.py
 
