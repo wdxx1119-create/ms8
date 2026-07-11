@@ -29,6 +29,7 @@ def test_optional_profiles_have_explicit_capability_closure() -> None:
     extras = _project()["optional-dependencies"]
 
     assert "ollama>=0.4.0" in extras["llm"]
+    assert extras["policy"] == ["ms8-policy-core>=0.1.0,<0.2"]
 
     absorb = set(extras["absorb"])
     assert {"watchdog>=4.0.0", "pypdf>=4.0.0", "python-docx>=1.1.0"} <= absorb
