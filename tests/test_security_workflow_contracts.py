@@ -62,7 +62,7 @@ def test_dependency_audit_is_isolated_blocking_and_evidence_preserving() -> None
     assert "exit 1" in workflow
 
 
-def test_release_candidate_audits_preserves_evidence_and_blocks() -> None:
+def test_release_candidate_audits_attests_preserves_evidence_and_blocks() -> None:
     workflow = _workflow("release-candidate.yml")
 
     assert "python -m pip install build twine pip-audit" in workflow
@@ -81,10 +81,30 @@ def test_release_candidate_audits_preserves_evidence_and_blocks() -> None:
     assert "assert payload.get('bomFormat') == 'CycloneDX'" in workflow
     assert "item.get('version') == os.environ['EXPECTED_VERSION']" in workflow
     assert 'shasum -a 256 "${files[@]}" > SHA256SUMS' in workflow
+    assert "actions/attest@a1948c3f048ba23858d222213b7c278aabede763" in workflow
+    assert "id-token: write" in workflow
+    assert "attestations: write" in workflow
+    assert "id: provenance_attestation" in workflow
+    assert "id: sbom_attestation" in workflow
+    assert "sbom-path: dist/ms8-${{ steps.project_version.outputs.value }}.cdx.json" in workflow
     assert "Upload release candidate evidence" in workflow
     assert "if: always()" in workflow
-    assert "Enforce installed-wheel security gate" in workflow
-    assert 'steps.wheel_audit.outcome' in workflow
-    assert 'steps.sbom_validation.outcome' in workflow
-    assert 'steps.checksums.outcome' in workflow
+    assert "Enforce installed-wheel security and provenance gate" in workflow
+    assert "steps.wheel_audit.outcome" in workflow
+    assert "steps.sbom_validation.outcome" in workflow
+    assert "steps.checksums.outcome" in workflow
+    assert "steps.provenance_attestation.outcome" in workflow
+    assert "steps.sbom_attestation.outcome" in workflow
     assert "dist/ms8-${{ steps.project_version.outputs.value }}.cdx.json" in workflow
+
+
+def test_release_candidate_only_runs_for_explicit_candidates() -> None:
+    workflow = _workflow("release-candidate.yml")
+    trigger_block = workflow.split("permissions:", 1)[0]
+
+    assert '"candidate/**"' in trigger_block
+    assert "workflow_dispatch:" in trigger_block
+    assert "pull_request:" not in trigger_block
+    assert "- main" not in trigger_block
+    assert "runs-on: ubuntu-latest" in workflow
+    assert workflow.count("runs-on: macos-latest") == 1
