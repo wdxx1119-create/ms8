@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Added backward-compatible provenance metadata for canonical memory records, including source identity, content digest, timestamps, transformation lineage, verification state, and confidence.
+- Added a non-executing MCP `pre_action_check` surface with structured decisions and reason codes.
+- Added deterministic recovery fault-injection coverage for interrupted restores, corrupted data, tampered archives, and retry behavior.
+
+### Changed
+- Made recall and injection filtering expose per-reason policy counts and low-confidence degradation evidence.
+- Made provenance repair additive, idempotent, dry-run capable, and auditable while preserving older canonical records.
+- Preserved explicit MCP browsing of governed product-decision records while keeping search-intent filtering on query-driven recall.
+
+### Security
+- Required explicit supporting memory IDs, verified user-explicit authority, exact action-scope matching, uniform evidence eligibility, and explicit human confirmation before an action decision can be allowed.
+- Kept action checks advisory only: MS8 reports a decision and never executes the external action.
+
 ## [0.2.16] - 2026-07-11
 
 ### Added
