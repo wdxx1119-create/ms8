@@ -122,20 +122,22 @@ def main() -> int:
     for directory in (home, data, config, logs):
         directory.mkdir(parents=True, exist_ok=True)
 
+    overrides = {
+        "HOME": str(home),
+        "USERPROFILE": str(home),
+        "MS8_HOME": str(ms8_home),
+        "MS8_DATA_DIR": str(data),
+        "MS8_CONFIG_DIR": str(config),
+        "MS8_LOG_DIR": str(logs),
+        "MS8_DOCTOR_ALLOW_DEGRADED": "1",
+        "OPENCLAW_MEMORY_SESSION_INGEST_ENABLED": "0",
+        "PYTHONUTF8": "1",
+    }
     env = os.environ.copy()
-    env.update(
-        {
-            "HOME": str(home),
-            "USERPROFILE": str(home),
-            "MS8_HOME": str(ms8_home),
-            "MS8_DATA_DIR": str(data),
-            "MS8_CONFIG_DIR": str(config),
-            "MS8_LOG_DIR": str(logs),
-            "MS8_DOCTOR_ALLOW_DEGRADED": "1",
-            "OPENCLAW_MEMORY_SESSION_INGEST_ENABLED": "0",
-            "PYTHONUTF8": "1",
-        }
-    )
+    env.update(overrides)
+    # In-process validators import the installed package directly, so they must
+    # use the same isolated paths as the CLI subprocesses.
+    os.environ.update(overrides)
 
     command = [sys.executable, "-m", "ms8"]
     try:
