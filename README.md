@@ -7,12 +7,37 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/wdxx1119-create/ms8/actions/workflows/ci.yml"><img src="https://github.com/wdxx1119-create/ms8/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://pypi.org/project/ms8/"><img src="https://img.shields.io/pypi/v/ms8" alt="PyPI version"></a>
+  <img src="https://img.shields.io/badge/status-alpha-orange" alt="alpha status">
   <img src="https://img.shields.io/badge/version-0.2.15-blue" alt="version">
   <img src="https://img.shields.io/badge/python-3.10--3.13-green" alt="python">
   <img src="https://img.shields.io/badge/license-GPL--3.0--or--later-orange" alt="license">
   <img src="https://img.shields.io/badge/tests-unit%20%2B%20integration-brightgreen" alt="tests">
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey" alt="platform">
 </p>
+
+---
+
+> **项目状态：Alpha。** 核心能力已可使用，但接口、配置和数据格式仍可能调整。重要数据请保持备份，并在升级前阅读 [CHANGELOG.md](CHANGELOG.md)。
+
+## 文档导航
+
+- [快速开始](docs/QUICK_START.md)
+- [典型使用场景](docs/USE_CASES.md)
+- [常见问题](docs/FAQ.md)
+- [完整文档索引](docs/README.md)
+- [支持渠道](SUPPORT.md)
+- [贡献指南](CONTRIBUTING.md)
+- [Alpha 路线图](ROADMAP.md)
+- [安全政策](SECURITY.md)
+- [版本记录](CHANGELOG.md)
+
+## 适合谁？
+
+适合重视本地存储、MCP 多工具共享、资料授权范围、风险治理、人工审查和可恢复性的个人用户与开发者。
+
+当前不适合需要托管式多人实时协作、固定 SLA、商业支持承诺，或无法为 Alpha 软件保留备份和升级验证流程的关键业务。
 
 ---
 
@@ -458,6 +483,8 @@ python -m build --no-isolation
 ```
 
 开发者发布与安全流程请见仓库文档（`docs/RELEASE_SECURITY.md`）。
+
+贡献要求见 [CONTRIBUTING.md](CONTRIBUTING.md)，社区行为见 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)。CI 在 Python 3.11 任务中生成覆盖率报告，目前用于建立基线，不设置硬性门槛。
 
 ## 系统要求
 
