@@ -103,8 +103,8 @@ jobs:
           EXPECTED_VERSION="${{ steps.project_version.outputs.value }}"
           ENV_DIR="$RUNNER_TEMP/ms8-wheel-venv"
           python -m venv "$ENV_DIR"
-          "$ENV_DIR/bin/python" -m pip install --upgrade pip setuptools wheel
-          "$ENV_DIR/bin/python" -m pip install "dist/ms8-${EXPECTED_VERSION}-py3-none-any.whl"
+          "$ENV_DIR/bin/python" -m pip install --quiet --upgrade pip setuptools wheel
+          "$ENV_DIR/bin/python" -m pip install --quiet "dist/ms8-${EXPECTED_VERSION}-py3-none-any.whl"
           EXPECTED_VERSION="$EXPECTED_VERSION" "$ENV_DIR/bin/python" - <<'PY'
           import os
           from importlib.metadata import PackageNotFoundError, version
@@ -126,31 +126,21 @@ jobs:
           "$ENV_DIR/bin/ms8" version
           "$ENV_DIR/bin/ms8-recovery" --help
 
-      - name: Generate installed-wheel CycloneDX SBOM
+      - name: Audit installed wheel runtime dependency closure
         id: wheel_audit
         continue-on-error: true
         shell: bash
         run: |
-          set -uo pipefail
           EXPECTED_VERSION="${{ steps.project_version.outputs.value }}"
           ENV_DIR="$RUNNER_TEMP/ms8-wheel-venv"
-          SITE_PACKAGES="$(
-            "$ENV_DIR/bin/python" - <<'PY'
-          import sysconfig
-          print(sysconfig.get_paths()["purelib"])
-          PY
-          )"
-          SBOM="dist/ms8-${EXPECTED_VERSION}.cdx.json"
-          test -d "$SITE_PACKAGES"
-          {
-            python -m pip_audit \
-              --strict \
-              --path "$SITE_PACKAGES" \
-              --progress-spinner off \
-              --format cyclonedx-json \
-              --output "$SBOM"
-          } 2>&1 | tee dist/wheel-audit.log
-          exit "${PIPESTATUS[0]}"
+          python scripts/audit_installed_environment.py \
+            --target-python "$ENV_DIR/bin/python" \
+            --project-name ms8 \
+            --project-version "$EXPECTED_VERSION" \
+            --requirements dist/wheel-audit-requirements.txt \
+            --json-report dist/wheel-audit.json \
+            --sbom "dist/ms8-${EXPECTED_VERSION}.cdx.json" \
+            --log dist/wheel-audit.log
 
       - name: Validate installed-wheel CycloneDX SBOM
         id: sbom_validation
@@ -162,6 +152,8 @@ jobs:
           EXPECTED_VERSION="${{ steps.project_version.outputs.value }}"
           SBOM="dist/ms8-${EXPECTED_VERSION}.cdx.json"
           test -s "$SBOM"
+          test -s dist/wheel-audit-requirements.txt
+          test -s dist/wheel-audit.json
           EXPECTED_VERSION="$EXPECTED_VERSION" SBOM="$SBOM" python - <<'PY'
           import json
           import os
@@ -170,13 +162,13 @@ jobs:
           payload = json.loads(Path(os.environ['SBOM']).read_text(encoding='utf-8'))
           assert payload.get('bomFormat') == 'CycloneDX'
           assert payload.get('specVersion')
+          root = payload.get('metadata', {}).get('component', {})
+          assert root.get('name', '').lower() == 'ms8'
+          assert root.get('version') == os.environ['EXPECTED_VERSION']
+          assert root.get('type') == 'application'
+          assert root.get('purl') == f"pkg:pypi/ms8@{os.environ['EXPECTED_VERSION']}"
           components = payload.get('components', [])
-          assert any(
-            item.get('name', '').lower() == 'ms8'
-            and item.get('version') == os.environ['EXPECTED_VERSION']
-            for item in components
-            if isinstance(item, dict)
-          )
+          assert components, 'runtime dependency component list is empty'
           PY
 
       - name: Verify source distribution in a clean core environment
@@ -186,8 +178,8 @@ jobs:
           EXPECTED_VERSION="${{ steps.project_version.outputs.value }}"
           ENV_DIR="$RUNNER_TEMP/ms8-sdist-venv"
           python -m venv "$ENV_DIR"
-          "$ENV_DIR/bin/python" -m pip install --upgrade pip setuptools wheel
-          "$ENV_DIR/bin/python" -m pip install "dist/ms8-${EXPECTED_VERSION}.tar.gz"
+          "$ENV_DIR/bin/python" -m pip install --quiet --upgrade pip setuptools wheel
+          "$ENV_DIR/bin/python" -m pip install --quiet "dist/ms8-${EXPECTED_VERSION}.tar.gz"
           EXPECTED_VERSION="$EXPECTED_VERSION" "$ENV_DIR/bin/python" - <<'PY'
           import os
           from importlib.metadata import PackageNotFoundError, version
@@ -228,7 +220,7 @@ jobs:
           {
             echo "### Release candidate artifacts"
             echo "- commit: $GITHUB_SHA"
-            echo "- SBOM: CycloneDX JSON generated and vulnerability-audited from the installed core wheel environment"
+            echo "- SBOM: CycloneDX JSON generated from the exact installed runtime dependency closure"
             echo '```text'
             cat SHA256SUMS
             echo '```'
@@ -263,6 +255,8 @@ jobs:
             dist/ms8-${{ steps.project_version.outputs.value }}.tar.gz
             dist/ms8-${{ steps.project_version.outputs.value }}.cdx.json
             dist/SHA256SUMS
+            dist/wheel-audit-requirements.txt
+            dist/wheel-audit.json
             dist/wheel-audit.log
           if-no-files-found: warn
           retention-days: 30
@@ -277,9 +271,12 @@ jobs:
           test -s "dist/ms8-${EXPECTED_VERSION}.tar.gz"
           test -s "dist/ms8-${EXPECTED_VERSION}.cdx.json"
           test -s "dist/SHA256SUMS"
-          test -e "dist/wheel-audit.log"
+          test -s dist/wheel-audit-requirements.txt
+          test -s dist/wheel-audit.json
+          test -e dist/wheel-audit.log
           if [[ "${{ steps.wheel_audit.outcome }}" != "success" ]]; then
-            echo "::error::Installed-wheel pip-audit found a vulnerability or could not complete the strict audit."
+            echo "::error::Strict installed runtime dependency audit failed."
+            cat dist/wheel-audit.log || true
             exit 1
           fi
           if [[ "${{ steps.sbom_validation.outcome }}" != "success" ]]; then
