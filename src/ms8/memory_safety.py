@@ -105,9 +105,13 @@ def build_memory_provenance(
             else "unverified"
         )
     ).strip().lower()
+    raw_confidence = nested.get(
+        "confidence",
+        meta.get("confidence", default_confidence(authority_value, status)),
+    )
     try:
         confidence = float(
-            nested.get("confidence", meta.get("confidence", default_confidence(authority_value, status)))
+            default_confidence(authority_value, status) if raw_confidence is None else raw_confidence
         )
     except (TypeError, ValueError):
         confidence = default_confidence(authority_value, status)
@@ -173,8 +177,11 @@ def validate_memory_provenance(record: dict[str, Any], provenance: object) -> tu
         return False, "invalid:provenance_schema_version"
     if str(provenance.get("verification_state", "")) not in VERIFICATION_STATES:
         return False, "invalid:provenance_verification_state"
+    raw_confidence = provenance.get("confidence")
+    if raw_confidence is None:
+        return False, "invalid:provenance_confidence"
     try:
-        confidence = float(provenance.get("confidence"))
+        confidence = float(raw_confidence)
     except (TypeError, ValueError):
         return False, "invalid:provenance_confidence"
     if not 0.0 <= confidence <= 1.0:
@@ -249,8 +256,9 @@ def evaluate_memory_policy(
     verification_state = str(provenance.get("verification_state", "unverified")).strip().lower()
     if authority in UNTRUSTED_AUTHORITIES and verification_state != "verified":
         reasons.append("unverified_low_authority")
+    raw_confidence = provenance.get("confidence", default_confidence(authority, status))
     try:
-        confidence = float(provenance.get("confidence", default_confidence(authority, status)))
+        confidence = float(default_confidence(authority, status) if raw_confidence is None else raw_confidence)
     except (TypeError, ValueError):
         confidence = default_confidence(authority, status)
     threshold = {"recall": 0.5, "inject": 0.7, "action": 0.85}[lane]
