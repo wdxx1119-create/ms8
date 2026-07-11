@@ -9,6 +9,7 @@ description = "MS8 — local memory system. Memory belongs to you, not to tools.
 readme = "README.md"
 license = "GPL-3.0-or-later"
 classifiers = [
+    "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Intended Audience :: End Users/Desktop",
