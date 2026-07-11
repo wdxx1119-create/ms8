@@ -22,8 +22,9 @@ For each candidate commit, `.github/workflows/release-candidate.yml` produces an
 
 - the wheel
 - the source distribution
-- `ms8-<version>.cdx.json`, a CycloneDX JSON SBOM generated from a clean environment containing the installed wheel
-- `SHA256SUMS`, covering the wheel, source distribution, and SBOM
+- `ms8-<version>.audit.json`, the machine-readable strict vulnerability audit of the installed wheel environment
+- `ms8-<version>.cdx.json`, a CycloneDX JSON SBOM generated from the same clean installed-wheel environment
+- `SHA256SUMS`, covering the wheel, source distribution, audit report, and SBOM when all security-evidence checks pass
 
 The workflow also:
 
@@ -31,9 +32,13 @@ The workflow also:
 - installs the wheel and source distribution in separate clean virtual environments
 - runs `pip check`
 - verifies packaged MCP resources
-- performs a strict vulnerability audit of the installed wheel environment while generating the SBOM
+- runs the strict JSON vulnerability audit separately from SBOM generation
+- validates that the audit contains no vulnerabilities and that the SBOM identifies the expected MS8 version
+- uploads available audit/SBOM diagnostics before enforcing the final release-security gate
 
-The SBOM and checksums improve auditability, but they are not a cryptographic signature or provenance attestation. A maintainer must still confirm that the downloaded bundle belongs to the reviewed commit shown in the workflow summary.
+Separating generation, upload, validation, and enforcement is intentional: a failed audit must still leave enough evidence to diagnose the package or advisory that blocked the release.
+
+The reports and checksums improve auditability, but they are not a cryptographic signature or provenance attestation. A maintainer must still confirm that the downloaded bundle belongs to the reviewed commit shown in the workflow summary.
 
 ## Dependency security gate
 
@@ -86,7 +91,7 @@ bash scripts/publish_pypi.sh
 - Prefer short-lived tokens and scope them minimally.
 - Rotate token immediately after any accidental exposure.
 - Do not publish artifacts built outside the reviewed candidate workflow without repeating equivalent verification.
-- Treat SBOMs and checksums as evidence, not as authorization to publish.
+- Treat audit reports, SBOMs, and checksums as evidence, not as authorization to publish.
 
 ## Emergency rotation checklist
 
