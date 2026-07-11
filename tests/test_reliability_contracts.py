@@ -34,7 +34,7 @@ def test_local_release_gate_matches_repository_baselines() -> None:
     assert "line_rate < 80.0" in ci
     assert '"--cov-fail-under=80"' in checklist
     assert '"twine", "check"' in checklist
-    assert "scripts/audit_installed_environment.py" in checklist
+    assert 'root / "scripts" / "audit_installed_environment.py"' in checklist
     assert '"pip", "check"' in checklist
     assert "wheel-audit-requirements.txt" in checklist
     assert "wheel-audit.json" in checklist
