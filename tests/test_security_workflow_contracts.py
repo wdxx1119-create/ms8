@@ -94,8 +94,6 @@ def test_release_candidate_audits_attests_preserves_evidence_and_blocks() -> Non
     assert "root.get('version') == os.environ['EXPECTED_VERSION']" in workflow
     assert 'shasum -a 256 "${files[@]}" > SHA256SUMS' in workflow
     assert "actions/attest@a1948c3f048ba23858d222213b7c278aabede763" in workflow
-    assert "id-token: write" in workflow
-    assert "attestations: write" in workflow
     assert "id: provenance_attestation" in workflow
     assert "id: sbom_attestation" in workflow
     assert "sbom-path: dist/ms8-${{ steps.project_version.outputs.value }}.cdx.json" in workflow
@@ -107,6 +105,29 @@ def test_release_candidate_audits_attests_preserves_evidence_and_blocks() -> Non
     assert "steps.checksums.outcome" in workflow
     assert "steps.provenance_attestation.outcome" in workflow
     assert "steps.sbom_attestation.outcome" in workflow
+
+
+def test_release_candidate_uses_job_scoped_permissions_and_reports_status() -> None:
+    workflow = _workflow("release-candidate.yml")
+    top_permissions = workflow.split("concurrency:", 1)[0].split("permissions:", 1)[1]
+
+    assert "contents: read" in top_permissions
+    assert "id-token: write" not in top_permissions
+    assert "attestations: write" not in top_permissions
+    assert "statuses: write" not in top_permissions
+
+    release_job = workflow.split("  release-artifacts:", 1)[1].split("  candidate-status:", 1)[0]
+    assert "id-token: write" in release_job
+    assert "attestations: write" in release_job
+    assert "statuses: write" not in release_job
+
+    status_job = workflow.split("  candidate-status:", 1)[1]
+    assert "if: always()" in status_job
+    assert "statuses: write" in status_job
+    assert "id-token: write" not in status_job
+    assert '"context": "release-candidate/aggregate"' in status_job
+    assert "GITHUB_SHA" in status_job
+    assert "needs.release-artifacts.result" in status_job
 
 
 def test_release_candidate_only_runs_for_explicit_candidates() -> None:
