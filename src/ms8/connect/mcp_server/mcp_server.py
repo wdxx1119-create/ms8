@@ -302,7 +302,8 @@ def call_tool(name: str, params: dict[str, Any] | None = None, config: dict[str,
             _audit("submit", False, out)
             return out
         payload = dict(p)
-        payload.setdefault("source", _source_tag(_get_client_name(p)))
+        client_name = str(p.get("client") or p.get("client_name") or "").strip()
+        payload.setdefault("source", _source_tag(client_name or "submit"))
         accepted, reason = _guard_admission(payload)
         if not accepted:
             out = {"ok": False, "accepted": False, "error": "guard_rejected", "reason": reason, "tool": "submit"}
@@ -325,7 +326,8 @@ def call_tool(name: str, params: dict[str, Any] | None = None, config: dict[str,
         accepted_count = 0
         for row in memories:
             payload = dict(row) if isinstance(row, dict) else {"content": str(row or "")}
-            payload.setdefault("source", _source_tag(_get_client_name(p)))
+            client_name = str(p.get("client") or p.get("client_name") or "").strip()
+            payload.setdefault("source", _source_tag(client_name or "batch_submit"))
             accepted_guard, reason = _guard_admission(payload)
             if not accepted_guard:
                 result = {"ok": False, "accepted": False, "error": "guard_rejected", "reason": reason}
