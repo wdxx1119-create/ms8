@@ -53,7 +53,8 @@ jobs:
           python -m pytest tests/ -q \
             --cov=ms8 \
             --cov-report=term-missing \
-            --cov-report=xml
+            --cov-report=xml \
+            --cov-fail-under=80
 
       - name: Upload coverage report
         if: matrix.python-version == '3.11'
@@ -141,6 +142,46 @@ jobs:
           OPENCLAW_MEMORY_SESSION_INGEST_ENABLED="0" \
           MS8_DOCTOR_ALLOW_DEGRADED="1" \
           "$TMP_BASE/venv/bin/ms8" ask "cleanroom install"
+
+  windows-wheel-smoke:
+    name: windows-wheel-smoke
+    runs-on: windows-latest
+    needs: lint-and-test
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build wheel
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip build wheel "setuptools>=77"
+          python -m build --wheel --no-isolation
+
+      - name: Install wheel and run cross-platform smoke
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $base = Join-Path $env:RUNNER_TEMP "ms8 windows 空格"
+          if (Test-Path $base) {
+            Remove-Item -Recurse -Force $base
+          }
+          $venv = Join-Path $base "venv"
+          python -m venv $venv
+          $python = Join-Path $venv "Scripts\python.exe"
+          & $python -m pip install --upgrade pip
+          $wheel = Get-ChildItem -Path "dist\*.whl" | Select-Object -First 1
+          if (-not $wheel) {
+            throw "wheel not found"
+          }
+          & $python -m pip install $wheel.FullName
+          $smokeRoot = Join-Path $base "runtime 数据"
+          & $python scripts\release_smoke.py --base-dir $smokeRoot
 
   release-isolated:
     name: release-isolated (${{ matrix.os }})
