@@ -4,12 +4,12 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - candidate/v0.2.14
       - main
+      - "candidate/**"
   pull_request:
     branches:
-      - candidate/v0.2.14
       - main
+      - "candidate/**"
 
 permissions:
   contents: read
@@ -101,6 +101,19 @@ jobs:
           rm -rf build dist
           python -m build
 
+      - name: Read project version
+        id: project_version
+        shell: bash
+        run: |
+          VERSION="$(python - <<'PY'
+          import tomllib
+          from pathlib import Path
+          data = tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8'))
+          print(data['project']['version'])
+          PY
+          )"
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Verify artifact metadata and filenames
         shell: bash
         run: |
@@ -190,10 +203,10 @@ jobs:
       - name: Upload independently verified artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ms8-v0.2.14-${{ github.sha }}
+          name: ms8-v${{ steps.project_version.outputs.value }}-${{ github.sha }}
           path: |
-            dist/ms8-0.2.14-py3-none-any.whl
-            dist/ms8-0.2.14.tar.gz
+            dist/ms8-${{ steps.project_version.outputs.value }}-py3-none-any.whl
+            dist/ms8-${{ steps.project_version.outputs.value }}.tar.gz
             dist/SHA256SUMS
           if-no-files-found: error
           retention-days: 30

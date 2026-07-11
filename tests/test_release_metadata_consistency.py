@@ -43,9 +43,9 @@ def test_release_version_metadata_is_consistent() -> None:
 
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     changelog_version = _first_match(
-        r"^## \[([^\]]+)\]",
+        r"^## \[([0-9]+\.[0-9]+\.[0-9]+)\]",
         changelog,
-        "latest changelog version",
+        "latest released changelog version",
     )
 
     release_notes = ROOT / "docs" / f"RELEASE_NOTES_{package_version}.md"

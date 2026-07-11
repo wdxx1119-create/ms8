@@ -9,7 +9,7 @@ MS8 当前处于 Alpha 阶段。项目欢迎可复现的问题报告和明确的
 | 可复现错误、回归、崩溃 | GitHub Issue：Bug report |
 | 文档错误或缺失 | GitHub Issue：Documentation issue |
 | 明确的功能建议 | GitHub Issue：Feature request |
-| 使用方法、方案讨论、经验分享 | GitHub Discussions（启用后） |
+| 使用方法、方案讨论、经验分享 | [GitHub Discussions](https://github.com/wdxx1119-create/ms8/discussions) |
 | 安全漏洞、密钥泄漏、权限绕过、隐私问题 | GitHub Security Advisory |
 | 发布版本变化 | `CHANGELOG.md` |
 
