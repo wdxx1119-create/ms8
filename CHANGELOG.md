@@ -14,6 +14,7 @@ All notable changes to this project are documented in this file.
 - Added installed-wheel smoke coverage for packaged MCP resources, the Absorb text parser, and persisted `ms8 ask` records.
 - Added Windows installed-wheel smoke validation under Unicode and space-containing paths.
 - Added a CycloneDX JSON SBOM generated from the clean installed-wheel environment for each release candidate.
+- Added regression tests that protect immutable Action references and supply-chain workflow contracts.
 
 ### Changed
 - Enforced Dependency Review for high- and critical-severity dependency changes.
@@ -22,6 +23,7 @@ All notable changes to this project are documented in this file.
 - Standardized the active development branch on `main`.
 - Enforced an 80% line-coverage baseline on the Python 3.11 CI job.
 - Made Python dependency audit findings block dependency and audit-workflow changes.
+- Isolated the dependency audit target from the `pip-audit` tool environment.
 
 ### Fixed
 - Restored Windows CLI startup with platform-specific non-blocking self-check locks (`msvcrt` on Windows and `fcntl` on POSIX).
@@ -31,6 +33,7 @@ All notable changes to this project are documented in this file.
 - Added least-privilege workflow permissions and scheduled code/dependency scanning.
 - Pinned third-party GitHub Actions to full commit SHAs while retaining version comments for automated updates.
 - Included the release SBOM in SHA-256 checksums and retained release-candidate artifacts.
+- Added a strict vulnerability gate for the clean environment containing the installed release wheel.
 
 ## [0.2.15] - 2026-07-04
 
