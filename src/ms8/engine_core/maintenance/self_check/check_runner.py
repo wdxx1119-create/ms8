@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import fcntl
+import importlib
 import json
 import os
 import signal
@@ -13,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeout
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, TextIO
 
 from ...policy_engine_loader import get_policy_engine
 from .check_specs import (
@@ -30,6 +30,35 @@ from .reporter import persist_report
 SCHEMA_VERSION = "1.0"
 RUNNER_VERSION = "1.0"
 CHECKS_VERSION = "1.5-59"
+
+
+def _lock_file_nonblocking(lock_fp: TextIO) -> None:
+    if os.name == "nt":
+        msvcrt = importlib.import_module("msvcrt")
+        lock_fp.seek(0, os.SEEK_END)
+        if lock_fp.tell() == 0:
+            lock_fp.write("\0")
+            lock_fp.flush()
+        lock_fp.seek(0)
+        try:
+            msvcrt.locking(lock_fp.fileno(), msvcrt.LK_NBLCK, 1)
+        except OSError as exc:
+            raise BlockingIOError("self-check lock is already held") from exc
+        return
+
+    fcntl = importlib.import_module("fcntl")
+    fcntl.flock(lock_fp.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+
+def _unlock_file(lock_fp: TextIO) -> None:
+    if os.name == "nt":
+        msvcrt = importlib.import_module("msvcrt")
+        lock_fp.seek(0)
+        msvcrt.locking(lock_fp.fileno(), msvcrt.LK_UNLCK, 1)
+        return
+
+    fcntl = importlib.import_module("fcntl")
+    fcntl.flock(lock_fp.fileno(), fcntl.LOCK_UN)
 
 
 def _utc_now() -> datetime:
@@ -248,7 +277,7 @@ def run_self_check(core: Any, level: str = "L1") -> dict[str, Any]:
     stale_lock_released = False
     try:
         try:
-            fcntl.flock(lock_fp.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            _lock_file_nonblocking(lock_fp)
         except BlockingIOError:
             # stale lock rescue: if a stale progress file is older than 2h, try to terminate stale holder
             stale_threshold_s = int(
@@ -273,7 +302,7 @@ def run_self_check(core: Any, level: str = "L1") -> dict[str, Any]:
                                 os.kill(pid, signal.SIGTERM)
                                 time.sleep(1.0)
                                 if _pid_alive(pid):
-                                    os.kill(pid, signal.SIGKILL)
+                                    os.kill(pid, getattr(signal, "SIGKILL", signal.SIGTERM))
                             except (OSError, ValueError, TypeError) as exc:
                                 print(f"[SelfCheckRunner] Failed terminating stale process {pid}: {exc}")
                         # reopen and retry lock regardless of kill outcome
@@ -282,7 +311,7 @@ def run_self_check(core: Any, level: str = "L1") -> dict[str, Any]:
                         except OSError as exc:
                             print(f"[SelfCheckRunner] Failed closing stale lock file handle: {exc}")
                         lock_fp = lock_path.open("a+", encoding="utf-8")
-                        fcntl.flock(lock_fp.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        _lock_file_nonblocking(lock_fp)
                         rescued = True
             except (OSError, TypeError, ValueError, json.JSONDecodeError):
                 rescued = False
@@ -399,7 +428,7 @@ def run_self_check(core: Any, level: str = "L1") -> dict[str, Any]:
         except OSError as exc:
             print(f"[SelfCheckRunner] Failed removing progress file {progress_path}: {exc}")
         try:
-            fcntl.flock(lock_fp.fileno(), fcntl.LOCK_UN)
+            _unlock_file(lock_fp)
         except OSError as exc:
             print(f"[SelfCheckRunner] Failed unlocking lock file {lock_path}: {exc}")
         lock_fp.close()
