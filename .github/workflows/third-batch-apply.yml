@@ -1,6 +1,6 @@
 name: Apply third-batch memory safety slice
 
-# Gate revision: nullable confidence typing is explicit.
+# Gate revision: targeted tests use --no-cov; full coverage remains in normal CI.
 
 on:
   push:
@@ -73,7 +73,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          python -m pytest -q --tb=short \
+          python -m pytest -q --tb=short --no-cov \
             tests/test_third_batch_memory_safety.py \
             tests/test_third_batch_mcp_action_gate.py \
             tests/test_third_batch_recovery_chaos.py \
