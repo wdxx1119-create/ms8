@@ -15,6 +15,9 @@ All notable changes to this project are documented in this file.
 - Added Windows installed-wheel smoke validation under Unicode and space-containing paths.
 - Added a CycloneDX JSON SBOM generated from the clean installed-wheel environment for each release candidate.
 - Added regression tests that protect immutable Action references and supply-chain workflow contracts.
+- Added the `ms8-recovery` entry point for verified full-runtime backup, archive verification, restore planning, restore application, format status, and migration execution.
+- Added an explicit runtime-format manifest and stepwise migration registry with pre-migration backup and audit records.
+- Added backup/restore roundtrip, SQLite snapshot, checksum-tamper, path-traversal, migration, and release-contract tests.
 
 ### Changed
 - Enforced Dependency Review for high- and critical-severity dependency changes.
@@ -24,16 +27,20 @@ All notable changes to this project are documented in this file.
 - Enforced an 80% line-coverage baseline on the Python 3.11 CI job.
 - Made Python dependency audit findings block dependency and audit-workflow changes.
 - Isolated the dependency audit target from the `pip-audit` tool environment.
+- Unified local, CI, and release-candidate pytest collection through `pyproject.toml` test paths.
+- Replaced the `.venv/bin/python`-specific release checklist with a cross-platform Python gate that validates tests, coverage, wheel, sdist, SBOM, vulnerabilities, and checksums.
 
 ### Fixed
 - Restored Windows CLI startup with platform-specific non-blocking self-check locks (`msvcrt` on Windows and `fcntl` on POSIX).
 - Kept cross-platform release smoke output and isolated paths UTF-8-safe on Windows.
+- Removed the local 75% coverage exception so local release validation matches the repository's 80% baseline.
 
 ### Security
 - Added least-privilege workflow permissions and scheduled code/dependency scanning.
 - Pinned third-party GitHub Actions to full commit SHAs while retaining version comments for automated updates.
 - Included the release SBOM in SHA-256 checksums and retained release-candidate artifacts.
 - Added a strict vulnerability gate for the clean environment containing the installed release wheel.
+- Added SHA-256 verification, undeclared-file rejection, path-traversal rejection, SQLite-consistent snapshots, pre-restore backup, atomic file replacement, and restore/migration audit logs.
 
 ## [0.2.15] - 2026-07-04
 

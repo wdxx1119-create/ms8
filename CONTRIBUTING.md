@@ -81,19 +81,33 @@ docs: clarify Absorb authorization boundary
 ```bash
 python -m ruff check src/ms8
 python -m mypy src/ms8
-python -m pytest tests/ -q
+python -m pytest -q
 python -m ms8 doctor
 python -m build --no-isolation
 ```
 
-涉及打包、CLI、MCP、Absorb 或安装流程时，还应运行：
+`pytest` 的规范收集范围由 `pyproject.toml` 的 `testpaths` 定义，当前包括：
+
+- `tests/`
+- `src/ms8/engine_core/tests/`
+
+不要在本地脚本或 CI 中重新硬编码一个更窄的测试目录。
+
+涉及打包、CLI、MCP、Absorb、恢复或安装流程时，应运行统一发布门禁：
 
 ```bash
-bash scripts/check_release_artifacts.sh
-bash scripts/release_isolated_test.sh --cleanup
+python scripts/release_checklist.py
 ```
 
-CI 会在 Python 3.10–3.13 上运行测试，并验证 wheel、source distribution、clean-room 安装以及 macOS/Linux 隔离安装。
+macOS/Linux 也可使用兼容包装：
+
+```bash
+bash scripts/release_checklist.sh
+```
+
+统一发布门禁执行 80% 行覆盖率、全量测试、Ruff、mypy、doctor、wheel/sdist 构建、`twine check`、clean install、`pip check`、installed-wheel 漏洞审计、CycloneDX SBOM 和 SHA-256 校验和。
+
+CI 会在 Python 3.10–3.13 上运行同一测试收集范围，并验证 wheel、source distribution、clean-room 安装、恢复入口以及 macOS/Linux/Windows 隔离安装。
 
 ## 测试要求
 
@@ -101,6 +115,7 @@ CI 会在 Python 3.10–3.13 上运行测试，并验证 wheel、source distribu
 - 新命令应覆盖成功路径、无效参数和退出码。
 - 治理、安全和隐私相关变更应覆盖拒绝、降级、隔离或审计路径。
 - 文件系统变更应考虑 macOS、Linux、Windows 路径差异。
+- 备份和恢复变更必须覆盖 dry-run、校验失败、原子替换、迁移前备份和 SQLite 一致快照。
 - 测试必须使用临时目录，不得访问真实 `~/.ms8/`。
 - 测试数据不得包含真实密钥、个人信息或用户记忆。
 
@@ -127,6 +142,7 @@ python -m mypy src/ms8
 
 - [README.md](README.md)：项目入口和主要能力
 - [Quick Start](docs/QUICK_START.md)：安装和首次使用
+- [Recovery and Migration](docs/RECOVERY_AND_MIGRATION.md)：备份、恢复和格式迁移
 - [FAQ](docs/FAQ.md)：常见问题和排查
 - [Use Cases](docs/USE_CASES.md)：端到端场景
 - [CHANGELOG.md](CHANGELOG.md)：发布相关变化
