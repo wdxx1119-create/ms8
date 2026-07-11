@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 私密报告安全漏洞
+    url: https://github.com/wdxx1119-create/ms8/security/advisories/new
+    about: 请勿公开提交安全漏洞、密钥泄漏、隐私或权限绕过问题。
+  - name: 安全政策
+    url: https://github.com/wdxx1119-create/ms8/blob/main/SECURITY.md
+    about: 查看支持版本、报告方式和协调披露流程。
