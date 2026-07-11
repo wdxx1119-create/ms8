@@ -1,5 +1,10 @@
 name: Required check compatibility
 
+# Temporary bridge for the current main-branch ruleset, which still requires
+# the six legacy Release Candidate check names below. Remove this workflow only
+# after the repository ruleset is migrated to the current CI and
+# release-candidate/aggregate contexts.
+
 on:
   pull_request:
     branches: ["main"]
