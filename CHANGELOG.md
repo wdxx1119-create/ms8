@@ -10,6 +10,8 @@ All notable changes to this project are documented in this file.
 - Added Python 3.11 coverage report artifacts.
 - Added installed-wheel smoke coverage for packaged MCP resources, the Absorb text parser, and persisted `ms8 ask` records.
 - Added Windows installed-wheel smoke validation under Unicode and space-containing paths.
+- Added architecture, data-model, and threat-model documentation grounded in the current implementation.
+- Added isolated executable examples for basic memory, Absorb text parsing, and doctor diagnostics.
 
 ### Changed
 - Enforced Dependency Review for high- and critical-severity dependency changes.
@@ -24,6 +26,7 @@ All notable changes to this project are documented in this file.
 
 ### Security
 - Added least-privilege workflow permissions and scheduled code/dependency scanning.
+- Documented assets, trust boundaries, attack scenarios, security invariants, residual risks, and incident-response expectations.
 
 ## [0.2.15] - 2026-07-04
 
