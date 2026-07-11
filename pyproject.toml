@@ -57,7 +57,9 @@ dev = [
   "pytest-cov",
   "ruff",
   "mypy",
-  "build"
+  "build",
+  "twine",
+  "pip-audit"
 ]
 policy = [
   "ms8-policy-core>=0.1.1,<0.2"
@@ -85,6 +87,7 @@ full = [
 
 [project.scripts]
 ms8 = "ms8.cli:main"
+ms8-recovery = "ms8.recovery_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -96,6 +99,10 @@ ms8 = [
   "connect/config/*.yaml",
   "connect/adapter_registry/*.json"
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "src/ms8/engine_core/tests"]
+addopts = "--strict-markers"
 
 [tool.ruff]
 line-length = 120
