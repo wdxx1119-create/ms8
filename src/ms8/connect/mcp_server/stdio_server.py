@@ -92,6 +92,30 @@ TOOL_DEFINITIONS: dict[str, dict[str, Any]] = {
             "additionalProperties": True,
         },
     },
+    "pre_action_check": {
+        "description": (
+            "Evaluate whether selected memory records may support a proposed external action. "
+            "This tool never executes the action and requires explicit human confirmation before allowing it."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": {"type": "string", "description": "Proposed external action or intent."},
+                "memory_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional memory record IDs used as supporting evidence.",
+                },
+                "explicit_user_confirmation": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "True only when the user explicitly confirmed this exact action.",
+                },
+            },
+            "required": ["action"],
+            "additionalProperties": True,
+        },
+    },
     "query": {
         "description": "Search memories by query text.",
         "inputSchema": {

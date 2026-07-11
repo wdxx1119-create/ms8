@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from ...memory_safety import evaluate_memory_policy
+
 BROWSABLE_STATUSES = {"short_term", "accepted", "verified"}
 BLOCKED_SENSITIVITIES = {"secret", "credential"}
 UNTRUSTED_AUTHORITIES = {"assistant_inferred", "tool_generated"}
@@ -37,25 +39,7 @@ def _is_expired(row: dict[str, Any]) -> bool:
 def memory_row_browsable(row: dict[str, Any]) -> bool:
     """Return whether a record is safe for default explicit MCP browsing."""
 
-    status = str(row.get("status", "")).strip().lower()
-    if status not in BROWSABLE_STATUSES:
-        return False
-    if row.get("can_recall", True) is False:
-        return False
-    if str(row.get("superseded_by", "")).strip():
-        return False
-    if _is_expired(row):
-        return False
-    sensitivity = str(row.get("sensitivity", "private")).strip().lower()
-    if sensitivity in BLOCKED_SENSITIVITIES:
-        return False
-    authority = str(row.get("authority", "user_implicit")).strip().lower()
-    if authority in UNTRUSTED_AUTHORITIES and status != "verified":
-        return False
-    scope = str(row.get("scope", "")).strip().lower()
-    if scope in BLOCKED_SCOPES:
-        return False
-    return True
+    return bool(evaluate_memory_policy(row, query="", purpose="recall").get("allowed", False))
 
 
 def redact_memory_row(row: dict[str, Any]) -> dict[str, Any]:

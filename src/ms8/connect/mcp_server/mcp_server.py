@@ -14,6 +14,7 @@ from .memory_service_interface import MemoryServiceInterface
 
 TOOL_NAMES = (
     "prepare_reply",
+    "pre_action_check",
     "submit",
     "batch_submit",
     "query",
@@ -301,7 +302,7 @@ def call_tool(name: str, params: dict[str, Any] | None = None, config: dict[str,
             _audit("submit", False, out)
             return out
         payload = dict(p)
-        payload.setdefault("source", _source_tag("submit"))
+        payload.setdefault("source", _source_tag(_get_client_name(p)))
         accepted, reason = _guard_admission(payload)
         if not accepted:
             out = {"ok": False, "accepted": False, "error": "guard_rejected", "reason": reason, "tool": "submit"}
@@ -324,7 +325,7 @@ def call_tool(name: str, params: dict[str, Any] | None = None, config: dict[str,
         accepted_count = 0
         for row in memories:
             payload = dict(row) if isinstance(row, dict) else {"content": str(row or "")}
-            payload.setdefault("source", _source_tag("batch_submit"))
+            payload.setdefault("source", _source_tag(_get_client_name(p)))
             accepted_guard, reason = _guard_admission(payload)
             if not accepted_guard:
                 result = {"ok": False, "accepted": False, "error": "guard_rejected", "reason": reason}
@@ -344,6 +345,34 @@ def call_tool(name: str, params: dict[str, Any] | None = None, config: dict[str,
             "batch_submit",
             bool(out.get("ok", False)),
             {"client": _get_client_name(p), "total": out["total"], "accepted": out["accepted"]},
+        )
+        return out
+    if tool == "pre_action_check":
+        raw_ids = p.get("memory_ids", [])
+        if raw_ids is None:
+            raw_ids = []
+        if not isinstance(raw_ids, list):
+            out = {
+                "ok": False,
+                "status": "invalid_request",
+                "error": "memory_ids_must_be_array",
+                "error_code": "E_MCP_INVALID_ACTION_CHECK",
+            }
+            _audit("pre_action_check", False, {"client": _get_client_name(p)})
+            return out
+        out = svc.pre_action_check(
+            str(p.get("action") or p.get("intent") or ""),
+            memory_ids=[str(item) for item in raw_ids],
+            explicit_user_confirmation=_as_bool(p.get("explicit_user_confirmation", False)),
+        )
+        _audit(
+            "pre_action_check",
+            bool(out.get("ok", False)),
+            {
+                "client": _get_client_name(p),
+                "decision": out.get("decision"),
+                "allowed": out.get("allowed"),
+            },
         )
         return out
     if tool == "query":
