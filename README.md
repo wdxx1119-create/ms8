@@ -9,81 +9,74 @@
 <p align="center">
   <a href="https://github.com/wdxx1119-create/ms8/actions/workflows/ci.yml"><img src="https://github.com/wdxx1119-create/ms8/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://pypi.org/project/ms8/"><img src="https://img.shields.io/pypi/v/ms8" alt="PyPI version"></a>
-  <img src="https://img.shields.io/pypi/pyversions/ms8" alt="Python versions">
-  <img src="https://img.shields.io/badge/status-alpha-orange" alt="Alpha status">
-  <img src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue" alt="GPL-3.0-or-later">
+  <img src="https://img.shields.io/badge/status-alpha-orange" alt="alpha status">
+  <img src="https://img.shields.io/badge/version-0.2.15-blue" alt="version">
+  <img src="https://img.shields.io/badge/python-3.10--3.13-green" alt="python">
+  <img src="https://img.shields.io/badge/license-GPL--3.0--or--later-orange" alt="license">
+  <img src="https://img.shields.io/badge/tests-unit%20%2B%20integration-brightgreen" alt="tests">
+  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey" alt="platform">
 </p>
 
-MS8 是一个 **local-first** 的本地记忆引擎，用于写入、检索、治理和维护长期记忆，并可通过 MCP 让多个 AI 工具共享同一份用户控制的记忆。
-
-核心记忆默认保存在你的电脑上。云端或本地模型只作为可选增强，不改变本地存储主线。
+---
 
 > **项目状态：Alpha。** 核心能力已可使用，但接口、配置和数据格式仍可能调整。重要数据请保持备份，并在升级前阅读 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 文档导航
 
-- [快速开始](docs/QUICK_START.md)：安装、首次写入、检索、MCP、备份和卸载
-- [典型使用场景](docs/USE_CASES.md)：多工具共享记忆、本地资料检索和受治理资料吸收
-- [常见问题](docs/FAQ.md)：数据位置、模型依赖、迁移和故障排查
+- [快速开始](docs/QUICK_START.md)
+- [典型使用场景](docs/USE_CASES.md)
+- [常见问题](docs/FAQ.md)
 - [完整文档索引](docs/README.md)
-- [MCP 连接指南](src/ms8/connect/CONNECT_GUIDE.md)
 - [支持渠道](SUPPORT.md)
 - [贡献指南](CONTRIBUTING.md)
 - [Alpha 路线图](ROADMAP.md)
 - [安全政策](SECURITY.md)
 - [版本记录](CHANGELOG.md)
 
-## 为什么是 MS8？
-
-许多 AI 记忆工具依赖托管服务，用户的长期上下文被绑定到某个工具或平台。MS8 的默认路径不同：
-
-```text
-托管式记忆：对话 → 第三方存储 → 单一平台
-MS8：      对话 → 本地治理 → 用户控制的存储
-```
-
-MS8 重点解决：
-
-- 多个 AI 工具之间重复说明偏好和项目约束
-- 本地资料缺少统一、可治理的检索入口
-- 自动记忆容易写入噪声、敏感信息或未经确认的内容
-- 本地记忆系统缺少诊断、备份、审计和回滚能力
-
 ## 适合谁？
 
-适合：
+适合重视本地存储、MCP 多工具共享、资料授权范围、风险治理、人工审查和可恢复性的个人用户与开发者。
 
-- 希望核心记忆默认留在本地的个人用户
-- 同时使用多个 MCP 客户端或 AI 编程工具的开发者
-- 需要把项目文档、笔记和代码资料接入本地检索的用户
-- 重视授权范围、风险治理、人工审查和可恢复性的场景
+当前不适合需要托管式多人实时协作、固定 SLA、商业支持承诺，或无法为 Alpha 软件保留备份和升级验证流程的关键业务。
 
-暂不适合：
+---
 
-- 需要托管式多人实时协作记忆云的团队
-- 需要固定 SLA 或商业支持承诺的生产系统
-- 希望完全无人确认地执行高风险批量写入、删除或回滚的流程
-- 无法为 Alpha 软件保留备份和升级验证流程的关键业务
+## 为什么是 MS8？
+
+市面上很多 AI 记忆工具都在推云服务——你的记忆数据存在第三方服务器上。
+
+**MS8 不同。** 你的核心记忆数据默认完全存在你自己的电脑上。没有托管记忆云，没有订阅；云模型能力仅作为可选增强，不改变本地存储主线。
+
+```
+其他工具：  你的对话 → 云端存储 → 他们的服务器
+MS8：       你的对话 → 本地存储 → 你的电脑
+```
+
+---
 
 ## 核心能力
 
 | 能力 | 说明 |
-|---|---|
-| 记忆引擎 | 写入、检索、上下文注入、压缩和知识图谱 |
-| 治理管道 | 准入路由、拦截规则、PII 检测、风险评分和审批队列 |
-| MCP 连接 | Tools、Resources、配置生成、验证、smoke 和 rollback |
-| Absorb | 授权目录扫描、文件解析、本地索引、待审、隔离和来源标记 |
-| 安全系统 | AES-256-GCM、Argon2id、影子审计和敏感内容防护 |
-| 自维护 | doctor、健康报告、备份、自检查和 dry-run 修复流程 |
-| LLM 路由 | 可选 Provider、语义增强、缓存和降级路径 |
+|------|------|
+| 🧠 **记忆引擎** | 写入/检索/注入/压缩，JSONL + SQLite + 知识图谱 |
+| 🛡️ **治理管道** | 5 路准入、9 种拦截规则、13 种 PII 检测、风险评分 |
+| 🔌 **MCP 连接** | 7 个 Tools + 3 个 Resources，支持 11+ 个 AI 工具与通用 MCP 导出 |
+| 📥 **Absorb 本地资料吸收** | 授权目录扫描、文件解析、低风险摘要入库、人工审查与回滚 |
+| 🔒 **安全系统** | AES-256-GCM 加密 + 影子系统（18 模块） |
+| 🔧 **自维护** | 61+ 项自检查 + 37 条自修复策略 + 25 条维护策略 |
+| 📊 **多 LLM 路由** | 3 Provider 自动切换 + 语义缓存 + 批量处理 |
+
+MS8 主线能力已可稳定使用；部分增强能力会随版本持续完善与扩展。
+
+---
 
 ## 30 秒上手
 
 ```bash
-python -m pip install ms8
+# 方式 A：命令安装（推荐给普通用户）
+pip install ms8
 
-# 验证安装
-ms8 version
+# 验证
 ms8 doctor
 
 # 写入一条记忆
@@ -96,96 +89,328 @@ ms8 ask "我喜欢什么语言？"
 ms8 dashboard
 ```
 
-完整安装、虚拟环境和平台说明见 [Quick Start](docs/QUICK_START.md)。
-
-## AI 助理自动安装编排
+方式 B：AI 助理自动安装编排（先安装 MS8，再无感配置 MCP）：
 
 ```bash
-python -m pip install ms8
+# 第一步：由 AI 助理代执行安装
+pip install ms8
+
+# 第二步：AI 助理执行安装编排（会输出 MS8_FIRST_INSTALL_REPORT）
 ms8 agent run install --profile DEFAULT_SAFE
 ```
 
-日常检查与报告：
+> 推荐：优先使用 AI 助理自动安装与接入（最快上手）。
+>  
+> 你也可以自定义接入任何支持 MCP 的工具（MS8 已预留扩展接口）。
+>
+> 仅做 MCP 自动接入时，可用：`ms8 connect bootstrap --target all`
+>  
+> 本地模型（可选增强）：推荐 3B+；未安装本地模型时，MS8 仍可运行基础记忆与规则检索能力，语义增强能力会自动降级。
+>
+> 提示：如果你在源码目录做开发安装，且路径包含空格（例如 `New project`），`pip install -e` 在部分环境下可能导致 `ms8` 入口脚本找不到包。  
+> 遇到这种情况请改用 wheel 安装：
+>
+> ```bash
+> python -m build --wheel --outdir dist
+> pip install --force-reinstall dist/ms8-0.2.15-py3-none-any.whl
+> ```
+
+### Agent 权限模式（差异对比）
+
+| 模式 | 适用场景 | 允许能力 | 受限能力 |
+|------|---------|---------|---------|
+| `DEFAULT_SAFE` | 默认推荐，安全优先 | 安装引导、状态检查、报告输出 | 不做真实修复；不访问影子系统；不改核心数据 |
+| `TRUSTED_AGENT` | 进阶运维，需显式确认 | 在默认能力上增加修复预览与高级运维流程 | 仍不做高风险自动修复；不绕过授权边界 |
+
+### Agent Task 命令（Agent-native）
 
 ```bash
+# 安装编排（输出 MS8_FIRST_INSTALL_REPORT）
+ms8 agent run install --profile DEFAULT_SAFE
+
+# 日常检查（doctor/status + 问题判定）
 ms8 agent run check
+
+# 报告阶段（按需生成脱敏问题包）
 ms8 agent run report
+
+# 一次跑完 check + report
 ms8 agent run daily
 ```
 
-`DEFAULT_SAFE` 是默认推荐模式，不会执行高风险自动修复，也不会绕过授权边界。
+---
 
-## 连接 AI 工具
+## Absorb：本地资料吸收
 
-MS8 通过 MCP 让多个工具使用同一份本地记忆。
+Absorb 是 MS8 的本地文件吸收模块：你先授权目录，MS8 只在授权范围内扫描和解析文件，把可用内容建立本地索引；低风险摘要可以按策略提交到主记忆，高风险内容进入待审或隔离，不会默认把整份文件直接写入长期记忆。
 
-```bash
-# 查看支持的目标
-ms8 connect list-targets
-
-# 查看连接说明
-ms8 connect guide --mode both
-
-# 自动检测、配置和验证
-ms8 connect bootstrap --target all
-```
-
-按目标手动配置：
+适合用来把项目文档、笔记、Markdown、代码片段等资料接入记忆系统，让 AI 工具能检索“你电脑上允许 MS8 看的资料”。
 
 ```bash
-ms8 connect generate --target claude_desktop
-ms8 connect apply --target claude_desktop
-ms8 connect verify --target claude_desktop
-ms8 connect smoke --target claude_desktop
-```
-
-已覆盖或支持的目标包括 Claude Desktop、Claude Code、OpenAI Codex、Cursor、Windsurf、Cline、Roo、Continue、Cherry Studio、Hermes 和 OpenClaw。不同版本的第三方客户端可能存在配置差异，以 `ms8 connect list-targets` 和连接指南为准。
-
-## Absorb：受治理的本地资料吸收
-
-Absorb 只扫描你明确授权的目录，把可用内容建立本地索引。高风险内容进入待审或隔离，不会默认把整份文件直接写入长期记忆。
-
-```bash
-# 授权目录
+# 授权一个目录
 ms8 absorb add ./docs
 
-# 扫描和解析
+# 扫描并建立本地索引
 ms8 absorb rescan
 ms8 absorb ingest --limit 100
 
-# 搜索本地资料
+# 搜索本地资料索引
 ms8 absorb search "项目决策" --pretty
 
 # 查看待审内容
 ms8 absorb review list
 
-# 预览低风险摘要提交
+# 开启低风险摘要自动提交前，先预览
 ms8 absorb autosubmit run --limit 20
 ```
 
 安全边界：
 
-- 默认只扫描显式授权目录
-- 默认排除 `.git`、`.venv`、`node_modules` 和缓存目录
-- 高风险根目录需要显式确认
-- 自动写入主记忆默认关闭
-- 批量写入和回滚应先 dry-run，再显式使用 `--apply`
-- 来源记录用于审计和按来源处理
+- 默认只扫描你显式授权的目录。
+- 默认排除 `.git`、`.venv`、`node_modules`、缓存目录等高噪声路径。
+- 高风险根目录需要显式确认。
+- 自动写入主记忆默认关闭；批量写入和回滚默认 dry-run，需要 `--apply` 才会执行。
+- 提交到主记忆的记录会标记 `source_system=absorb`，便于审计和按来源回滚。
+
+---
+
+## 连接 AI 工具
+
+MS8 通过 MCP (Model Context Protocol) 连接你的 AI 工具，让它们共享同一份记忆。
+
+### 支持的工具
+
+| 工具 | 状态 | 配置方式 |
+|------|------|---------|
+| Claude Desktop | ✅ 已验证 | `ms8 connect apply --target claude_desktop` |
+| Claude Code | ✅ 已验证 | `ms8 connect bootstrap --target claude_code` |
+| OpenAI Codex | ✅ 已验证 | `~/.codex/config.toml` MCP 配置 |
+| Cursor | ✅ 支持 | `ms8 connect apply --target cursor` |
+| Windsurf | ✅ 支持 | `ms8 connect apply --target windsurf` |
+| Cline | ✅ 支持 | `ms8 connect apply --target cline` |
+| Roo | ✅ 支持 | `ms8 connect apply --target roo` |
+| Continue | ✅ 支持 | `ms8 connect apply --target continue` |
+| Cherry Studio | ✅ 支持 | `ms8 connect apply --target cherry_studio` |
+| Hermes | ✅ 支持 | `ms8 connect apply --target hermes` |
+| OpenClaw | ✅ 支持 | `ms8 connect apply --target openclaw` |
+
+### MCP 接入流程
+
+```bash
+# 查看支持的工具
+ms8 connect list-targets
+
+# 查看连接指南（手动 / 自动）
+ms8 connect guide --mode both
+
+# 查看 AGENTS 模板路径（可自定义）
+ms8 connect template --target claude_desktop
+
+# 生成配置
+ms8 connect generate --target claude_desktop
+
+# 应用配置
+ms8 connect apply --target claude_desktop
+
+# 验证连接
+ms8 connect verify --target claude_desktop
+```
+
+### 两种连接方式
+
+- 手动连接：`generate -> apply -> verify -> smoke`
+- Agent 自动配置：`bootstrap --target all` 一次完成检测、写入、验证
+
+快速排查：
+- 连接问题先跑：`ms8 connect verify --target <tool>`
+- 系统问题先跑：`ms8 doctor`
+
+文档入口：
+
+- [CONNECT_GUIDE.md](src/ms8/connect/CONNECT_GUIDE.md)
+- [AGENTS.md](src/ms8/connect/AGENTS.md)
+
+### MCP Tools & Resources
+
+**Tools (7 个):**
+
+| Tool | 功能 |
+|------|------|
+| `prepare_reply` | 聚合查询：获取记忆上下文用于回复 |
+| `submit` | 写入单条记忆 |
+| `batch_submit` | 批量写入多条记忆 |
+| `query` | 语义搜索记忆 |
+| `context` | 获取对话相关记忆上下文 |
+| `status` | 返回系统状态 |
+| `profile` | 返回用户画像 |
+
+**Resources (3 个):**
+
+| Resource | 功能 |
+|----------|------|
+| `ms8://long-term` | 长期记忆 |
+| `ms8://profile` | 用户画像 |
+| `ms8://recent` | 近期记忆 |
+
+---
+
+## CLI 命令
+
+### 常用命令
+
+```bash
+ms8 version          # 版本
+ms8 doctor           # 健康检查
+ms8 ask "..."        # 快速写入/检索
+ms8 dashboard        # 运行概览
+ms8 demo             # 演示
+ms8 engine status    # 引擎运行状态
+```
+
+### 维护命令
+
+```bash
+ms8 watch            # 定时巡检
+ms8 backup           # 备份记忆
+ms8 cleanup          # 清理旧备份
+ms8 clean            # 清理缓存（安全）
+ms8 reset            # 重置派生状态
+ms8 uninstall        # 卸载
+```
+
+### MCP 连接
+
+```bash
+ms8 connect list-targets     # 列出支持的工具
+ms8 connect guide            # 连接说明（manual/agent）
+ms8 connect template         # AGENTS 模板路径与快速步骤
+ms8 connect bootstrap        # 自动检测+配置+验证
+ms8 connect apply            # 应用配置
+ms8 connect verify           # 验证连接
+ms8 connect smoke            # 冒烟验证（save/search/context/status）
+ms8 connect rollback         # 回滚配置
+```
+
+### Absorb 本地资料吸收
+
+```bash
+ms8 absorb add ./docs                 # 授权目录
+ms8 absorb rescan                     # 扫描授权文件
+ms8 absorb ingest --limit 100         # 解析并建立本地索引
+ms8 absorb search "..." --pretty      # 搜索资料索引
+ms8 absorb review list                # 查看待审/隔离内容
+ms8 absorb autosubmit status          # 查看自动提交策略
+```
+
+### 安全与维护
+
+```bash
+ms8 security enable          # 启用加密
+ms8 shadow status            # 影子系统状态
+ms8 ops self-check-report    # 自检查报告
+ms8 ops self-repair-run --mode dry-run  # 自修复预演
+ms8 graph stats              # 知识图谱统计
+ms8 review list              # 审批队列
+ms8 feedback record --score 4 --note "helpful"  # 记忆质量反馈
+```
+
+### LLM 配置
+
+```bash
+ms8 llm status               # LLM 状态
+ms8 llm setup                # 交互式配置
+```
+
+### Labs（实验能力，默认关闭）
+
+MS8 主线默认只开放稳定能力。实验命令会被 gate，需显式开启：
+
+```bash
+ms8 labs status              # 查看实验开关状态
+ms8 labs enable              # 开启实验命令
+ms8 labs disable             # 关闭实验命令
+```
+
+常见实验命令（示例）：
+
+```bash
+ms8 labs synthetic list
+ms8 labs meta status
+ms8 labs insight status
+```
+
+说明：
+
+- 推荐统一使用 `ms8 labs ...` 作为实验命令入口。
+- 旧的 `ms8 synthetic ...` 和部分 `ms8 ops ...` 实验路径仍保留兼容，但会逐步迁移到 `ms8 labs ...`。
+- 如果你看到 “labs command disabled by default”，先执行 `ms8 labs enable`。
+
+查看实验入口：
+
+```bash
+ms8 labs --help
+```
+
+完整命令列表：`ms8 --help`
+
+---
+
+## 架构
+
+```
+src/ms8/                           215 文件, 50,566 行
+│
+├── cli.py                         CLI 入口（26 个命令）
+├── runtime.py                     运行时调度
+├── paths.py                       统一路径解析
+│
+├── app/                           治理管道层
+│   ├── pipeline/                  准入引擎（5 路由 + 风险评分）
+│   ├── rules/                     规则系统（10 个模块）
+│   └── review/                    审批服务
+│
+├── connect/                       MCP 连通层
+│   ├── mcp_server/                MCP Server（stdio）
+│   │   ├── stdio_server.py        协议处理
+│   │   ├── mcp_server.py          Tools/Resources 路由
+│   │   └── memory_service_interface.py  统一服务接口
+│   └── scripts/                   连接/验证/配置
+│
+├── absorb/                         本地资料吸收层
+│   ├── parser.py                   文档/代码解析
+│   ├── repository.py               SQLite + 事件审计
+│   ├── governance.py               风险治理与来源标记
+│   └── search.py                   本地资料索引检索
+│
+└── engine_core/                   核心引擎层
+    ├── core.py                    记忆系统核心（153 方法）
+    ├── knowledge_graph.py         知识图谱
+    ├── auto_memory.py             自动记忆提取
+    ├── security/                  安全层（加密 + 影子系统）
+    └── maintenance/               自维护（61 检查 + 24 修复）
+```
+
+---
 
 ## 数据存储
 
-默认数据目录：
+所有数据存储在本地目录（默认 `~/.ms8/`）：
 
-```text
+```
 ~/.ms8/
-├── memory/       # 主记忆、索引、知识图谱、备份和审计数据
-├── health/       # 健康报告
-├── connect/      # MCP 连接状态
-├── absorb/       # 本地资料索引、事件和隔离内容
-└── config.json   # 本地配置
+├── memory/
+│   ├── auto_memory_records.jsonl   # 主记忆记录
+│   ├── auto_memory_index.json      # 索引
+│   ├── knowledge_graph.db          # 知识图谱
+│   ├── memory.db                   # SQLite 存储
+│   ├── MEMORY.md                   # 长期记忆文本
+│   └── backups/                    # 自动备份
+├── health/                         # 健康报告
+├── connect/                        # MCP 连接状态
+└── absorb/                         # 本地资料索引、审计事件、隔离区
 ```
 
-可通过环境变量覆盖：
+环境变量覆盖路径：
 
 ```bash
 export MS8_HOME=~/custom_path
@@ -194,87 +419,87 @@ export MS8_CONFIG_DIR=~/custom_config
 export MS8_LOG_DIR=~/custom_logs
 ```
 
-迁移设备时应停止正在访问 MS8 的进程，完整备份并迁移 `MS8_HOME`，然后运行 `ms8 doctor` 验证。
+说明：如需迁移到新设备，可整体备份并迁移 `MS8_HOME` 目录。
 
-## 安全与隐私
+---
+
+## 安全
+
+| 特性 | 说明 |
+|------|------|
+| AES-256-GCM | 内存记录加密 |
+| Argon2id | 密钥派生 |
+| 影子系统 | 18 模块，链式哈希事件账本 |
+| PII 检测 | 13 种模式（邮箱/手机/身份证/银行卡等） |
+| 9 种拦截规则 | 阻止敏感内容写入 |
+| 隔离区 | 损坏数据自动隔离 |
+
+---
+
+## 自维护
+
+MS8 能自己诊断和修复问题：
+
+- **61 项自检查**：分 L1（快速）→ L4（趋势）四级
+- **24 条自修复策略**：分 L1（安全自动）/ L2（半自动）/ L3（需人工确认）
+- **25 条维护策略**：调度检查频率和修复时机
+- **自动备份**：每 24 小时
 
 ```bash
-ms8 security enable
-ms8 shadow status
-ms8 review list
+# 查看健康状态
+ms8 doctor
+
+# 运行自检查
 ms8 ops self-check-report
+
+# 运行自修复
 ms8 ops self-repair-run --mode dry-run
 ```
 
-本地存储不等于绝对安全。仍应使用操作系统账户、磁盘权限、加密和安全备份保护数据。
+说明：
+- `l4_capture_trend` 出现 `warn` 时，如果提示“无质量样本（仅噪声/策略丢弃样本）”，属于可解释告警，不代表系统故障。
 
-不要把以下内容提交到 Issue、PR、Discussion 或 CI 日志：
-
-- API Key、Token、密码或恢复码
-- 真实个人记忆和对话
-- 身份证件、银行卡、电话、邮箱等 PII
-- 完整 `MS8_HOME`、备份或生产日志
-- 未授权的客户或公司资料
-
-安全漏洞请通过 GitHub Security Advisory 私密报告，具体流程见 [SECURITY.md](SECURITY.md)。
-
-## 常用维护命令
-
-```bash
-ms8 doctor
-ms8 dashboard
-ms8 backup
-ms8 cleanup
-ms8 clean --dry-run
-ms8 reset --dry-run
-ms8 uninstall --dry-run
-```
-
-实验能力默认关闭：
-
-```bash
-ms8 labs status
-ms8 labs enable
-ms8 labs disable
-```
+---
 
 ## 开发
 
-```bash
-git clone https://github.com/wdxx1119-create/ms8.git
-cd ms8
-python -m venv .venv
-source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
-python -m pip install -e ".[dev]"
+### 运行测试
 
-python -m ruff check src/ms8
-python -m mypy src/ms8
-python -m pytest tests/ -q
-python -m build --no-isolation
-bash scripts/release_isolated_test.sh --cleanup
+```bash
+pytest -q                    # 全量测试
+pytest src/ms8/engine_core/tests/ -q   # 引擎测试
 ```
 
-CI 在 Python 3.10–3.13 上运行测试，并验证 wheel、source distribution、clean-room 安装以及 macOS/Linux 隔离安装。Python 3.11 任务同时生成覆盖率报告，目前覆盖率用于建立基线，尚未设置硬性门槛。
+### 代码检查
 
-贡献前请阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)。
+```bash
+ruff check src/ms8/
+```
+
+### 构建
+
+```bash
+python -m build --no-isolation
+```
+
+开发者发布与安全流程请见仓库文档（`docs/RELEASE_SECURITY.md`）。
+
+贡献要求见 [CONTRIBUTING.md](CONTRIBUTING.md)，社区行为见 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)。CI 在 Python 3.11 任务中生成覆盖率报告，目前用于建立基线，不设置硬性门槛。
 
 ## 系统要求
 
 - Python 3.10–3.13
-- macOS、Linux 或 Windows
-- 基础引擎约需几十 MB 磁盘空间，实际占用取决于记忆、索引和备份规模
-- OCR、文档解析和本地模型可能需要额外系统依赖
+- macOS / Linux / Windows
+- 磁盘空间：约 50MB（引擎）+ 记忆数据
 
-## 路线图
-
-当前重点是数据完整性、迁移恢复、MCP 兼容性、Absorb 安全边界、跨平台测试和覆盖率基线。Beta 准入条件见 [ROADMAP.md](ROADMAP.md)。
+---
 
 ## 许可证
 
-GNU General Public License v3.0 or later。详情见 [LICENSE](LICENSE)。
+GNU General Public License v3.0 or later
 
 ---
 
 <p align="center">
-  <em>“记忆是习惯的载体。它改变人，也改变模型。记忆是个人资产。”</em>
+  <em>"记忆是习惯的载体。它改变人，也改变模型。记忆是个人资产。"</em>
 </p>
