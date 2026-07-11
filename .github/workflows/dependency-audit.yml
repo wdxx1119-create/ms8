@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -33,24 +33,50 @@ jobs:
           .audit-venv/bin/python -m pip install --upgrade pip
           .audit-venv/bin/python -m pip install -e . pip-audit
 
-      - name: Generate dependency audit report
+      - name: Generate audit report and CycloneDX SBOM
         id: audit
-        continue-on-error: true
+        shell: bash
         run: |
+          set +e
           .audit-venv/bin/python -m pip_audit \
+            --strict \
             --local \
             --format json \
             --output pip-audit.json
+          JSON_STATUS=$?
 
-      - name: Upload dependency audit report
-        uses: actions/upload-artifact@v4
+          .audit-venv/bin/python -m pip_audit \
+            --strict \
+            --local \
+            --format cyclonedx-json \
+            --output ms8-sbom.cdx.json
+          SBOM_STATUS=$?
+
+          if [[ "$JSON_STATUS" -ne 0 || "$SBOM_STATUS" -ne 0 ]]; then
+            echo "exit_code=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "exit_code=0" >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+
+      - name: Upload dependency security artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
         with:
-          name: pip-audit-report
-          path: pip-audit.json
+          name: dependency-security-reports
+          path: |
+            pip-audit.json
+            ms8-sbom.cdx.json
           if-no-files-found: error
           retention-days: 14
 
-      - name: Report audit result
-        if: steps.audit.outcome != 'success'
+      - name: Enforce dependency audit result
+        if: always()
+        env:
+          AUDIT_EXIT_CODE: ${{ steps.audit.outputs.exit_code }}
         run: |
-          echo "::warning::pip-audit found one or more known vulnerabilities. Review the uploaded pip-audit-report artifact."
+          if [[ "$AUDIT_EXIT_CODE" != "0" ]]; then
+            echo "::error::pip-audit found a known vulnerability or could not fully collect dependencies. Review dependency-security-reports."
+            exit 1
+          fi
+          echo "pip-audit completed with no known vulnerabilities."
