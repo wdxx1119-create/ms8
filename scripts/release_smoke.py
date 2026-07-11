@@ -12,6 +12,13 @@ from pathlib import Path
 from typing import Sequence
 
 
+def _configure_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(encoding="utf-8", errors="backslashreplace")
+
+
 def _run(name: str, args: Sequence[str], env: dict[str, str]) -> None:
     print(f"[STEP] {name}")
     completed = subprocess.run(
@@ -97,6 +104,7 @@ def _validate_records() -> None:
 
 
 def main() -> int:
+    _configure_stdio()
     parser = argparse.ArgumentParser(description="Run an isolated installed-wheel smoke test.")
     parser.add_argument(
         "--base-dir",
@@ -132,6 +140,7 @@ def main() -> int:
         "MS8_DOCTOR_ALLOW_DEGRADED": "1",
         "OPENCLAW_MEMORY_SESSION_INGEST_ENABLED": "0",
         "PYTHONUTF8": "1",
+        "PYTHONIOENCODING": "utf-8",
     }
     env = os.environ.copy()
     env.update(overrides)
