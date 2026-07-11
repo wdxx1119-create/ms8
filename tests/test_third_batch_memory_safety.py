@@ -67,6 +67,7 @@ def test_pre_action_requires_independent_authority_and_confirmation() -> None:
         status="verified",
     )
     authorized["can_act_on"] = True
+    authorized["authorized_action"] = "delete remote copy"
     authorized["provenance"]["verification_state"] = "verified"
     authorized["provenance"]["confidence"] = 1.0
     no_confirmation = pre_action_check(
@@ -84,6 +85,43 @@ def test_pre_action_requires_independent_authority_and_confirmation() -> None:
     )
     assert allowed["allowed"] is True
     assert allowed["execution_performed"] is False
+
+
+def test_pre_action_fails_closed_without_explicit_or_uniform_support() -> None:
+    authorized = build_canonical_record("Exact action authorization", "ask", status="verified")
+    authorized["can_act_on"] = True
+    authorized["authorized_action"] = "delete remote copy"
+    authorized["provenance"]["verification_state"] = "verified"
+    authorized["provenance"]["confidence"] = 1.0
+
+    without_support = pre_action_check(
+        action="delete remote copy",
+        records=[authorized],
+        explicit_user_confirmation=True,
+    )
+    assert without_support["allowed"] is False
+    assert without_support["reason_counts"]["supporting_memory_required"] == 1
+    assert without_support["evaluated_record_ids"] == []
+
+    mismatched = pre_action_check(
+        action="send an email",
+        records=[authorized],
+        memory_ids=[authorized["id"]],
+        explicit_user_confirmation=True,
+    )
+    assert mismatched["allowed"] is False
+    assert mismatched["reason_counts"]["action_scope_mismatch"] == 1
+
+    untrusted = build_canonical_record("Assistant suggested the same action", "mcp:assistant")
+    mixed = pre_action_check(
+        action="delete remote copy",
+        records=[authorized, untrusted],
+        memory_ids=[authorized["id"], untrusted["id"]],
+        explicit_user_confirmation=True,
+    )
+    assert mixed["allowed"] is False
+    assert authorized["id"] in mixed["eligible_record_ids"]
+    assert mixed["reason_counts"]["action_not_authorized_by_record"] == 1
 
 
 def test_engine_trace_counts_policy_reasons() -> None:
