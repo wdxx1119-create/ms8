@@ -1,0 +1,85 @@
+name: Bug report
+description: 报告可复现的错误、回归或异常行为
+title: "[BUG] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。提交前请先搜索现有 Issue，并确认问题不包含密钥、个人记忆、PII 或其他敏感数据。
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: 问题概述
+      description: 清晰说明发生了什么，以及你原本期望什么。
+      placeholder: 实际行为与预期行为分别是什么？
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      description: 提供最小、稳定且不含敏感数据的复现步骤。
+      placeholder: |
+        1. 执行 ...
+        2. 配置 ...
+        3. 观察到 ...
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: MS8 版本
+      description: 请提供 `ms8 version` 的输出或对应 commit SHA。
+      placeholder: 例如 0.2.15
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: 操作系统
+      options:
+        - macOS
+        - Linux
+        - Windows
+        - 其他
+    validations:
+      required: true
+
+  - type: input
+    id: python
+    attributes:
+      label: Python 版本
+      placeholder: 例如 3.12.4
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: 诊断信息
+      description: 可粘贴已脱敏的 `ms8 doctor`、错误栈或相关日志。请删除路径、用户名、密钥、记忆内容和 PII。
+      render: shell
+
+  - type: textarea
+    id: context
+    attributes:
+      label: 其他背景
+      description: 可补充安装方式、MCP 客户端、配置差异或最近的相关变更。
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 提交检查
+      options:
+        - label: 我已搜索现有 Issue，未发现相同问题。
+          required: true
+        - label: 我已移除密钥、个人记忆、PII 和其他敏感信息。
+          required: true
+        - label: 这不是安全漏洞；安全漏洞应通过 SECURITY.md 中的私密渠道报告。
+          required: true
