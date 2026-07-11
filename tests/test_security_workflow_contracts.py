@@ -49,18 +49,29 @@ def test_dependency_audit_is_isolated_blocking_and_evidence_preserving() -> None
 
     assert ".audit-target-venv" in workflow
     assert ".audit-tool-venv" in workflow
-    assert ".audit-target-venv/bin/python -m pip install --upgrade pip setuptools wheel" in workflow
-    assert '--path "${{ steps.target.outputs.site_packages }}"' in workflow
-    assert "--strict" in workflow
-    assert "--format json" in workflow
-    assert "--format cyclonedx-json" in workflow
-    assert "pip-audit.json" in workflow
-    assert "ms8-dependencies.cdx.json" in workflow
+    assert ".audit-target-venv/bin/python -m pip install --quiet --upgrade pip setuptools wheel" in workflow
+    assert "scripts/audit_installed_environment.py" in workflow
+    assert "--target-python .audit-target-venv/bin/python" in workflow
+    assert "--requirements audit-requirements.txt" in workflow
+    assert "--json-report pip-audit.json" in workflow
+    assert "--sbom ms8-dependencies.cdx.json" in workflow
+    assert "dependency-audit.log" in workflow
     assert "Upload dependency security artifacts" in workflow
     assert "Enforce dependency security gate" in workflow
     assert 'if [[ "${{ steps.audit.outcome }}" != "success" ]]' in workflow
-    assert 'if [[ "${{ steps.sbom.outcome }}" != "success" ]]' in workflow
     assert "exit 1" in workflow
+
+
+def test_runtime_audit_tool_is_strict_pinned_and_excludes_the_project_root() -> None:
+    audit_tool = (ROOT / "scripts" / "audit_installed_environment.py").read_text(encoding="utf-8")
+
+    assert '"--strict"' in audit_tool
+    assert '"--requirement"' in audit_tool
+    assert '"--no-deps"' in audit_tool
+    assert "_runtime_closure" in audit_tool
+    assert "if key == root_key" in audit_tool
+    assert 'metadata["component"]' in audit_tool
+    assert '"type": "application"' in audit_tool
 
 
 def test_release_candidate_audits_attests_preserves_evidence_and_blocks() -> None:
@@ -68,19 +79,19 @@ def test_release_candidate_audits_attests_preserves_evidence_and_blocks() -> Non
 
     assert "python -m pip install build twine pip-audit" in workflow
     assert workflow.count(
-        '"$ENV_DIR/bin/python" -m pip install --upgrade pip setuptools wheel'
+        '"$ENV_DIR/bin/python" -m pip install --quiet --upgrade pip setuptools wheel'
     ) >= 2
-    assert "Generate installed-wheel CycloneDX SBOM" in workflow
+    assert "Audit installed wheel runtime dependency closure" in workflow
+    assert "scripts/audit_installed_environment.py" in workflow
     assert "id: wheel_audit" in workflow
     assert "continue-on-error: true" in workflow
-    assert "--strict" in workflow
-    assert "--format cyclonedx-json" in workflow
-    assert 'SBOM="dist/ms8-${EXPECTED_VERSION}.cdx.json"' in workflow
+    assert "dist/wheel-audit-requirements.txt" in workflow
+    assert "dist/wheel-audit.json" in workflow
     assert "dist/wheel-audit.log" in workflow
     assert "Validate installed-wheel CycloneDX SBOM" in workflow
     assert "id: sbom_validation" in workflow
     assert "assert payload.get('bomFormat') == 'CycloneDX'" in workflow
-    assert "item.get('version') == os.environ['EXPECTED_VERSION']" in workflow
+    assert "root.get('version') == os.environ['EXPECTED_VERSION']" in workflow
     assert 'shasum -a 256 "${files[@]}" > SHA256SUMS' in workflow
     assert "actions/attest@a1948c3f048ba23858d222213b7c278aabede763" in workflow
     assert "id-token: write" in workflow
@@ -96,7 +107,6 @@ def test_release_candidate_audits_attests_preserves_evidence_and_blocks() -> Non
     assert "steps.checksums.outcome" in workflow
     assert "steps.provenance_attestation.outcome" in workflow
     assert "steps.sbom_attestation.outcome" in workflow
-    assert "dist/ms8-${{ steps.project_version.outputs.value }}.cdx.json" in workflow
 
 
 def test_release_candidate_only_runs_for_explicit_candidates() -> None:
