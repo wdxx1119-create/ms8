@@ -1,0 +1,31 @@
+name: Dependency Review
+
+on:
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # Keep this report-only until the repository Dependency Graph is enabled
+      # and the initial dependency baseline has been reviewed.
+      - name: Review dependency changes
+        id: review
+        continue-on-error: true
+        uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: high
+
+      - name: Report dependency review result
+        if: steps.review.outcome != 'success'
+        run: |
+          echo "::warning::Dependency Review could not complete or found a high-severity dependency change. Enable Dependency Graph and inspect this job before making the check blocking."
