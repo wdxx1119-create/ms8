@@ -103,6 +103,7 @@ def test_release_candidate_only_runs_for_explicit_candidates() -> None:
     trigger_block = workflow.split("permissions:", 1)[0]
 
     assert '"candidate/**"' in trigger_block
+    assert '"rc-*"' in trigger_block
     assert "workflow_dispatch:" in trigger_block
     assert "pull_request:" not in trigger_block
     assert "- main" not in trigger_block
