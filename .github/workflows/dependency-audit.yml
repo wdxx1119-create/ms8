@@ -32,7 +32,7 @@ jobs:
         run: |
           python -m venv .audit-target-venv
           python -m venv .audit-tool-venv
-          .audit-target-venv/bin/python -m pip install --upgrade pip
+          .audit-target-venv/bin/python -m pip install --upgrade pip setuptools wheel
           .audit-target-venv/bin/python -m pip install .
           .audit-tool-venv/bin/python -m pip install --upgrade pip
           .audit-tool-venv/bin/python -m pip install pip-audit
