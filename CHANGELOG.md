@@ -25,6 +25,7 @@ All notable changes to this project are documented in this file.
 - Added a weekly macOS/Windows boundary matrix for Python 3.10 and 3.13.
 - Added GitHub build provenance attestations for wheel and source distribution, plus an SBOM attestation bound to the wheel.
 - Added 0.2.16 candidate notes and Trusted Publishing preparation documentation without enabling automatic PyPI publication.
+- Added a temporary compatibility workflow for legacy branch-protection check names until the repository ruleset is migrated to the current CI contexts.
 
 ### Changed
 - Enforced Dependency Review for high- and critical-severity dependency changes.
@@ -38,9 +39,10 @@ All notable changes to this project are documented in this file.
 - Replaced the `.venv/bin/python`-specific release checklist with a cross-platform Python gate that validates tests, coverage, wheel, sdist, SBOM, vulnerabilities, and checksums.
 - Removed Ollama from the mandatory core dependency set; local-model support is now installed with `ms8[llm]` or `ms8[full]`.
 - Made the `ocr` profile include the complete Absorb parser dependency set.
-- Limited Release Candidate validation to `candidate/**` pushes or explicit manual dispatch.
+- Limited Release Candidate validation to `candidate/**` or `rc-*` pushes, or explicit manual dispatch.
 - Reduced repeated macOS candidate testing to one boundary job and moved pure-Python artifact construction and auditing to Ubuntu.
 - Added CI concurrency cancellation and explicit job timeouts.
+- Required final candidate evidence and attestations to be regenerated from the exact post-merge commit that will receive the release tag.
 - Kept PyPI publication as a separate maintainer action for this release.
 
 ### Fixed
