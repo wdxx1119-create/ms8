@@ -14,6 +14,7 @@ All notable changes to this project are documented in this file.
 - Added installed-wheel smoke coverage for packaged MCP resources, the Absorb text parser, and persisted `ms8 ask` records.
 - Added Windows installed-wheel smoke validation under Unicode and space-containing paths.
 - Added a CycloneDX JSON SBOM generated from the clean installed-wheel environment for each release candidate.
+- Added strict JSON vulnerability reports for installed release candidates and CycloneDX evidence for scheduled dependency audits.
 
 ### Changed
 - Enforced Dependency Review for high- and critical-severity dependency changes.
@@ -31,6 +32,7 @@ All notable changes to this project are documented in this file.
 - Added least-privilege workflow permissions and scheduled code/dependency scanning.
 - Pinned third-party GitHub Actions to full commit SHAs while retaining version comments for automated updates.
 - Included the release SBOM in SHA-256 checksums and retained release-candidate artifacts.
+- Isolated audit tooling from target dependencies and preserved machine-readable security evidence before final blocking gates.
 
 ## [0.2.15] - 2026-07-04
 
