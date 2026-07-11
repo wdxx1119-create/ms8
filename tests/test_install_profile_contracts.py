@@ -50,7 +50,7 @@ def test_candidate_version_is_consistent_across_release_surfaces() -> None:
     source = (ROOT / "src" / "ms8" / "__init__.py").read_text(encoding="utf-8")
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-    candidate_notes = (ROOT / "docs" / "RELEASE_0.2.16.md").read_text(encoding="utf-8")
+    candidate_notes = (ROOT / "docs" / f"RELEASE_NOTES_{version}.md").read_text(encoding="utf-8")
 
     assert version == "0.2.16"
     assert f'__version__ = "{version}"' in source
