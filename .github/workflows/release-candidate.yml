@@ -34,14 +34,14 @@ jobs:
 
       - name: Install project and development dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          python -m pip install --quiet --upgrade pip
+          python -m pip install --quiet -e ".[dev]"
 
       - name: Compile package
         run: python -m compileall -q src/ms8
 
       - name: Run canonical test suite
-        run: python -m pytest
+        run: python -m pytest -q --tb=short
 
       - name: Run static quality checks
         run: |
