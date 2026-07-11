@@ -9,6 +9,12 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from .memory_safety import (
+    build_memory_provenance,
+    normalize_memory_provenance,
+    validate_memory_provenance,
+)
+
 ALLOWED_STATUS = {
     "candidate",
     "short_term",
@@ -153,6 +159,9 @@ def build_canonical_record(text: str, source: str, status: str = "accepted") -> 
     payload = infer_scope_flags(text=text, source=source)
     normalized = normalize_text(text)
     low = normalize_text(text).lower()
+    record_id = str(uuid4())
+    created_at = _utc_now()
+    normalized_status = status if status in ALLOWED_STATUS else "candidate"
     if payload["scope"] == "labs":
         category = "experimental_note"
     elif payload["scope"] == "system_debug":
@@ -164,14 +173,22 @@ def build_canonical_record(text: str, source: str, status: str = "accepted") -> 
     else:
         category = "general"
     return {
-        "id": str(uuid4()),
+        "id": record_id,
         "text": normalized,
         "normalized_text": normalized,
         "category": category,
-        "status": status if status in ALLOWED_STATUS else "candidate",
+        "status": normalized_status,
         "source": source,
-        "created_at": _utc_now(),
+        "created_at": created_at,
         "meta": {"admission": "ms8_write_guard_v1"},
+        "provenance": build_memory_provenance(
+            text=normalized,
+            source=source,
+            record_id=record_id,
+            authority=payload["authority"],
+            status=normalized_status,
+            created_at=created_at,
+        ),
         **payload,
     }
 
@@ -204,6 +221,10 @@ def validate_record(record: dict[str, Any]) -> tuple[bool, str]:
     scope = str(record.get("scope", "")).strip().lower()
     if scope == "system_debug" and record.get("can_inject") is True:
         return False, "invalid:debug_can_inject"
+    if "provenance" in record:
+        provenance_ok, provenance_reason = validate_memory_provenance(record, record.get("provenance"))
+        if not provenance_ok:
+            return False, provenance_reason
     return True, "ok"
 
 
@@ -317,6 +338,7 @@ def repair_scope_flags(records_file: Path, *, dry_run: bool = False) -> dict[str
     parsed: list[dict[str, Any]] = []
     total = 0
     updated = 0
+    provenance_backfilled = 0
     system_debug = 0
     can_inject_false = 0
     suspicious_samples: list[dict[str, str]] = []
@@ -359,6 +381,12 @@ def repair_scope_flags(records_file: Path, *, dry_run: bool = False) -> dict[str
             changed = True
         if "migration_version" not in row:
             row["migration_version"] = "p0_2_v1"
+            changed = True
+
+        normalized_provenance = normalize_memory_provenance(row)
+        if row.get("provenance") != normalized_provenance:
+            row["provenance"] = normalized_provenance
+            provenance_backfilled += 1
             changed = True
 
         # Fix illegal combination: system_debug should not inject/act.
@@ -426,11 +454,13 @@ def repair_scope_flags(records_file: Path, *, dry_run: bool = False) -> dict[str
         "can_act_on",
         "schema_version",
         "migration_version",
+        "provenance",
     ]
     completeness = {f: (_field_complete_count(parsed, f) / len(parsed) if parsed else 1.0) for f in required_fields}
     return {
         "total": total,
         "updated": updated,
+        "provenance_backfilled": provenance_backfilled,
         "system_debug": system_debug,
         "can_inject_false": can_inject_false,
         "field_completeness": completeness,

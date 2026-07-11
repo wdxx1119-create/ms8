@@ -13,6 +13,8 @@ from typing import Any
 
 import yaml
 
+from .memory_safety import evaluate_memory_policy
+from .memory_safety import pre_action_check as evaluate_pre_action_check
 from .record_policy import append_canonical_record
 
 logger = logging.getLogger(__name__)
@@ -253,25 +255,50 @@ class MemoryCoreEngine:
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         allowed: list[dict[str, Any]] = []
         blocked = 0
-        use_inject = str(purpose or "").strip().lower() == "inject"
+        reason_counts: dict[str, int] = {}
+        decisions: list[dict[str, Any]] = []
+        lane = "inject" if str(purpose or "").strip().lower() == "inject" else "recall"
         for row in rows:
-            ok = (
-                self._policy_allows_inject(row, query=query)
-                if use_inject
-                else self._policy_allows_recall(row, query=query)
-            )
-            if ok:
+            decision = evaluate_memory_policy(row, query=query, purpose=lane)
+            decisions.append(decision)
+            if bool(decision.get("allowed", False)):
                 allowed.append(row)
             else:
                 blocked += 1
+                reason_codes = decision.get("reason_codes", [])
+                if not isinstance(reason_codes, list) or not reason_codes:
+                    reason_codes = ["policy_blocked"]
+                for reason in reason_codes:
+                    key = str(reason)
+                    reason_counts[key] = reason_counts.get(key, 0) + 1
         return allowed[:limit], {
-            "purpose": "inject" if use_inject else "recall",
+            "purpose": lane,
             "candidate_total": len(rows),
             "allowed_total": len(allowed),
             "blocked_total": blocked,
+            "reason_counts": dict(sorted(reason_counts.items())),
+            "low_confidence_refusal": reason_counts.get("low_confidence", 0),
+            "record_decisions": decisions[: min(len(decisions), 50)],
         }
 
+
+    def pre_action_check(
+        self,
+        action: str,
+        *,
+        memory_ids: list[str] | None = None,
+        explicit_user_confirmation: bool = False,
+    ) -> dict[str, Any]:
+        return evaluate_pre_action_check(
+            action=action,
+            records=self.read_memories(),
+            memory_ids=memory_ids,
+            explicit_user_confirmation=explicit_user_confirmation,
+        )
+
+
     def _exact_fallback_matches(
+
         self,
         *,
         query: str,
@@ -328,6 +355,8 @@ class MemoryCoreEngine:
             "authority": str(row.get("authority") or "user_implicit"),
             "can_recall": row.get("can_recall", True),
             "can_inject": row.get("can_inject", True),
+            "can_act_on": row.get("can_act_on", False),
+            "provenance": dict(row.get("provenance", {})) if isinstance(row.get("provenance", {}), dict) else {},
             "superseded_by": str(row.get("superseded_by") or ""),
             "valid_until": str(row.get("valid_until") or row.get("ttl") or ""),
             "score": row.get("score", row.get("scores", {}).get("fusion", 0.0) if isinstance(row.get("scores", {}), dict) else 0.0),

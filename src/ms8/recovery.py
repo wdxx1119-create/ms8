@@ -316,8 +316,20 @@ def plan_runtime_restore(archive: Path, *, target_root: Path | None = None) -> d
 def _atomic_copy(source: Path, destination: Path) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = destination.with_name(f".{destination.name}.{os.getpid()}.restore-tmp")
-    shutil.copy2(source, temporary)
-    os.replace(temporary, destination)
+    try:
+        shutil.copy2(source, temporary)
+        os.replace(temporary, destination)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _append_restore_audit(target: Path, event: dict[str, Any]) -> None:
+    audit_path = target / "memory" / "logs" / "restore_audit.jsonl"
+    audit_path.parent.mkdir(parents=True, exist_ok=True)
+    with audit_path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
+        handle.flush()
+        os.fsync(handle.fileno())
 
 
 def restore_runtime_backup(
@@ -346,24 +358,48 @@ def restore_runtime_backup(
     verification = verify_runtime_backup(archive)
     manifest = verification.get("manifest", {})
     rows = manifest.get("files", []) if isinstance(manifest, dict) else []
-    with tempfile.TemporaryDirectory(prefix="ms8-restore-") as temp_dir:
-        stage = Path(temp_dir)
-        with zipfile.ZipFile(Path(archive).expanduser().resolve(), "r") as bundle:
+    try:
+        with tempfile.TemporaryDirectory(prefix="ms8-restore-") as temp_dir:
+            stage = Path(temp_dir)
+            with zipfile.ZipFile(Path(archive).expanduser().resolve(), "r") as bundle:
+                for row in rows:
+                    relative = _relative_path(str(row["path"]))
+                    member = f"runtime/{relative.as_posix()}"
+                    staged_file = stage / relative
+                    staged_file.parent.mkdir(parents=True, exist_ok=True)
+                    staged_file.write_bytes(bundle.read(member))
+                    if _sha256(staged_file) != str(row["sha256"]):
+                        return {
+                            **plan,
+                            "ok": False,
+                            "applied": False,
+                            "error": f"staged_checksum_mismatch:{relative}",
+                            "pre_restore_backup": pre_restore_backup,
+                        }
             for row in rows:
                 relative = _relative_path(str(row["path"]))
-                member = f"runtime/{relative.as_posix()}"
-                staged_file = stage / relative
-                staged_file.parent.mkdir(parents=True, exist_ok=True)
-                staged_file.write_bytes(bundle.read(member))
-                if _sha256(staged_file) != str(row["sha256"]):
-                    return {**plan, "ok": False, "applied": False, "error": f"staged_checksum_mismatch:{relative}"}
-        for row in rows:
-            relative = _relative_path(str(row["path"]))
-            destination = _safe_destination(target, relative)
-            _atomic_copy(stage / relative, destination)
+                destination = _safe_destination(target, relative)
+                _atomic_copy(stage / relative, destination)
+    except (OSError, ValueError, zipfile.BadZipFile) as exc:
+        failure_event = {
+            "event": "runtime_restore_failed",
+            "at": _utc_now(),
+            "archive": str(Path(archive).expanduser().resolve()),
+            "archive_sha256": verification.get("archive_sha256", ""),
+            "pre_restore_backup": pre_restore_backup,
+            "error_type": type(exc).__name__,
+            "error": str(exc),
+        }
+        _append_restore_audit(target, failure_event)
+        return {
+            **plan,
+            "ok": False,
+            "applied": False,
+            "dry_run": False,
+            "error": f"restore_apply_failed:{type(exc).__name__}",
+            "pre_restore_backup": pre_restore_backup,
+        }
 
-    audit_path = target / "memory" / "logs" / "restore_audit.jsonl"
-    audit_path.parent.mkdir(parents=True, exist_ok=True)
     event = {
         "event": "runtime_restore",
         "at": _utc_now(),
@@ -374,8 +410,5 @@ def restore_runtime_backup(
         "overwritten": len(plan["overwrite"]),
         "unchanged": len(plan["unchanged"]),
     }
-    with audit_path.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
-        handle.flush()
-        os.fsync(handle.fileno())
+    _append_restore_audit(target, event)
     return {**plan, "ok": True, "applied": True, "dry_run": False, "pre_restore_backup": pre_restore_backup}
