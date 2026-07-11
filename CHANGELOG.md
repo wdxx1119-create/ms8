@@ -4,20 +4,6 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
-### Added
-- Added backward-compatible provenance metadata for canonical memory records, including source identity, content digest, timestamps, transformation lineage, verification state, and confidence.
-- Added a non-executing MCP `pre_action_check` surface with structured decisions and reason codes.
-- Added deterministic recovery fault-injection coverage for interrupted restores, corrupted data, tampered archives, and retry behavior.
-
-### Changed
-- Made recall and injection filtering expose per-reason policy counts and low-confidence degradation evidence.
-- Made provenance repair additive, idempotent, dry-run capable, and auditable while preserving older canonical records.
-- Preserved explicit MCP browsing of governed product-decision records while keeping search-intent filtering on query-driven recall.
-
-### Security
-- Required explicit supporting memory IDs, verified user-explicit authority, exact action-scope matching, uniform evidence eligibility, and explicit human confirmation before an action decision can be allowed.
-- Kept action checks advisory only: MS8 reports a decision and never executes the external action.
-
 ## [0.2.16] - 2026-07-11
 
 ### Added
@@ -38,8 +24,11 @@ All notable changes to this project are documented in this file.
 - Added clean-room CI validation for every supported installation profile.
 - Added a weekly macOS/Windows boundary matrix for Python 3.10 and 3.13.
 - Added GitHub build provenance attestations for wheel and source distribution, plus an SBOM attestation bound to the wheel.
-- Added 0.2.16 candidate notes and Trusted Publishing preparation documentation without enabling automatic PyPI publication.
+- Added Trusted Publishing preparation documentation without enabling automatic PyPI publication.
 - Added a temporary compatibility workflow for legacy branch-protection check names until the repository ruleset is migrated to the current CI contexts.
+- Added backward-compatible provenance metadata for canonical memory records, including source identity, content digest, timestamps, transformation lineage, verification state, and confidence.
+- Added a non-executing MCP `pre_action_check` surface with structured decisions and reason codes.
+- Added deterministic recovery fault-injection coverage for interrupted restores, corrupted data, tampered archives, and retry behavior.
 
 ### Changed
 - Enforced Dependency Review for high- and critical-severity dependency changes.
@@ -58,12 +47,16 @@ All notable changes to this project are documented in this file.
 - Added CI concurrency cancellation and explicit job timeouts.
 - Required final candidate evidence and attestations to be regenerated from the exact post-merge commit that will receive the release tag.
 - Kept PyPI publication as a separate maintainer action for this release.
+- Made recall and injection filtering expose per-reason policy counts and low-confidence degradation evidence.
+- Made provenance repair additive, idempotent, dry-run capable, and auditable while preserving older canonical records.
+- Preserved explicit MCP browsing of governed product-decision records while keeping search-intent filtering on query-driven recall.
 
 ### Fixed
 - Restored Windows CLI startup with platform-specific non-blocking self-check locks (`msvcrt` on Windows and `fcntl` on POSIX).
 - Kept cross-platform release smoke output and isolated paths UTF-8-safe on Windows.
 - Removed the local 75% coverage exception so local release validation matches the repository's 80% baseline.
 - Prevented optional Ollama and document/OCR parser dependencies from leaking into the core wheel installation.
+- Preserved the legacy MCP source identifiers `mcp:submit` and `mcp:batch_submit` for unnamed clients while recording explicit client identities when provided.
 
 ### Security
 - Added least-privilege workflow permissions and scheduled code/dependency scanning.
@@ -72,8 +65,12 @@ All notable changes to this project are documented in this file.
 - Added a strict vulnerability gate for the clean environment containing the installed release wheel.
 - Added SHA-256 verification, undeclared-file rejection, path-traversal rejection, SQLite-consistent snapshots, pre-restore backup, atomic file replacement, and restore/migration audit logs.
 - Added OIDC-backed GitHub artifact attestations with explicit `id-token: write` and `attestations: write` permissions only in the candidate workflow.
+- Required explicit supporting memory IDs, verified user-explicit authority, exact action-scope matching, uniform evidence eligibility, and explicit human confirmation before an action decision can be allowed.
+- Kept action checks advisory only: MS8 reports a decision and never executes the external action.
 
 ## [0.2.15] - 2026-07-04
+
+> This release was yanked from PyPI because a Windows-only line was published under the shared `ms8` package name.
 
 ### Fixed
 - Restored the `ms8 absorb project-memory ...` CLI route for the packaged project-memory workflow.
