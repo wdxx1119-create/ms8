@@ -195,52 +195,19 @@ jobs:
           python -m pip install --quiet -e ".[dev]"
 
       - name: Ruff
-        id: ruff
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -o pipefail
-          python -m ruff check src/ms8/memory_safety.py tests/test_third_batch_memory_safety.py 2>&1 | tee action-hardening-ruff.log
+        run: python -m ruff check src/ms8/memory_safety.py tests/test_third_batch_memory_safety.py
 
       - name: Mypy
-        id: mypy
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -o pipefail
-          python -m mypy src/ms8 2>&1 | tee action-hardening-mypy.log
+        run: python -m mypy src/ms8
 
       - name: Targeted pytest
-        id: pytest
-        continue-on-error: true
-        shell: bash
         run: |
-          set -o pipefail
           python -m pytest -q --tb=short --no-cov \
             tests/test_third_batch_memory_safety.py \
             tests/test_third_batch_mcp_action_gate.py \
             tests/test_third_batch_recovery_chaos.py \
             tests/test_engine_retrieval_gateway.py \
-            tests/test_connect_stdio_server.py 2>&1 | tee action-hardening-pytest.log
-
-      - name: Upload action-gate diagnostics
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: action-hardening-diagnostics-${{ github.sha }}
-          path: |
-            action-hardening-ruff.log
-            action-hardening-mypy.log
-            action-hardening-pytest.log
-          if-no-files-found: error
-          retention-days: 3
-
-      - name: Enforce hardening gates
-        if: always()
-        run: |
-          test "${{ steps.ruff.outcome }}" = "success"
-          test "${{ steps.mypy.outcome }}" = "success"
-          test "${{ steps.pytest.outcome }}" = "success"
+            tests/test_connect_stdio_server.py
 
       - name: Commit validated hardening
         run: |
