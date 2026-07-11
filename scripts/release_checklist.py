@@ -70,7 +70,13 @@ def _inspect_artifacts(wheel: Path, sdist: Path) -> None:
             raise RuntimeError(f"sdist contains blocked pattern: {pattern}")
 
 
-def _clean_install(root: Path, artifact: Path, *, audit_output: Path | None = None) -> None:
+def _clean_install(
+    root: Path,
+    artifact: Path,
+    *,
+    audit_output: Path | None = None,
+    audit_version: str | None = None,
+) -> None:
     with tempfile.TemporaryDirectory(prefix="ms8-release-install-") as temporary:
         environment = Path(temporary) / "venv"
         venv.EnvBuilder(with_pip=True, clear=True).create(environment)
@@ -81,25 +87,26 @@ def _clean_install(root: Path, artifact: Path, *, audit_output: Path | None = No
         _run([str(python), "-m", "ms8", "version"], root=root)
         _run([str(python), "-m", "ms8.recovery_cli", "--help"], root=root)
         if audit_output is not None:
-            code = (
-                "import sysconfig; "
-                "print(sysconfig.get_paths()['purelib'])"
-            )
-            site_packages = subprocess.check_output([str(python), "-c", code], cwd=root, text=True).strip()
+            if not audit_version:
+                raise RuntimeError("audit_version is required when audit_output is set")
             _run(
                 [
                     sys.executable,
-                    "-m",
-                    "pip_audit",
-                    "--strict",
-                    "--path",
-                    site_packages,
-                    "--progress-spinner",
-                    "off",
-                    "--format",
-                    "cyclonedx-json",
-                    "--output",
+                    str(root / "scripts" / "audit_installed_environment.py"),
+                    "--target-python",
+                    str(python),
+                    "--project-name",
+                    "ms8",
+                    "--project-version",
+                    audit_version,
+                    "--requirements",
+                    str(root / "dist" / "wheel-audit-requirements.txt"),
+                    "--json-report",
+                    str(root / "dist" / "wheel-audit.json"),
+                    "--sbom",
                     str(audit_output),
+                    "--log",
+                    str(root / "dist" / "wheel-audit.log"),
                 ],
                 root=root,
             )
@@ -164,7 +171,7 @@ def run(*, root: Path) -> None:
         _inspect_artifacts(wheel, sdist)
 
         sbom = root / "dist" / f"ms8-{version}.cdx.json"
-        _clean_install(root, wheel, audit_output=sbom)
+        _clean_install(root, wheel, audit_output=sbom, audit_version=version)
         _clean_install(root, sdist)
         if not sbom.is_file() or sbom.stat().st_size == 0:
             raise RuntimeError("installed-wheel CycloneDX SBOM was not generated")

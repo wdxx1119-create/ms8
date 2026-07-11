@@ -2,16 +2,21 @@ name: CI
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "candidate/**"]
   pull_request:
     branches: ["main"]
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -29,12 +34,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          python -m pip install --quiet --upgrade pip
+          python -m pip install --quiet -e ".[dev]"
 
       - name: Mypy
         if: matrix.python-version == '3.11'
-        run: python -m mypy src/ms8
+        run: python -m mypy src/ms8 2>&1 | tee mypy.log
 
       - name: Ruff
         run: python -m ruff check src/ms8
@@ -91,6 +96,7 @@ jobs:
 
   package-smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: lint-and-test
     steps:
       - name: Checkout
@@ -112,8 +118,75 @@ jobs:
           python -m ms8 version
           ms8-recovery --help
 
+  install-profile-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    needs: lint-and-test
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [core, llm, absorb, ocr, policy, full]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Setup Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.11"
+
+      - name: Build wheel
+        run: |
+          python -m pip install --upgrade pip build wheel "setuptools>=77"
+          python -m build --wheel --no-isolation
+
+      - name: Install and verify profile
+        shell: bash
+        env:
+          PROFILE: ${{ matrix.profile }}
+        run: |
+          set -euo pipefail
+          WHEEL="$(python - <<'PY'
+          from pathlib import Path
+          wheels = sorted(Path('dist').glob('ms8-*.whl'))
+          if len(wheels) != 1:
+              raise SystemExit(f'expected one wheel, found {len(wheels)}')
+          print(wheels[0].resolve())
+          PY
+          )"
+          ENV_DIR="$RUNNER_TEMP/ms8-profile-$PROFILE"
+          python -m venv "$ENV_DIR"
+          PYTHON="$ENV_DIR/bin/python"
+          "$PYTHON" -m pip install --upgrade pip setuptools wheel
+          SPEC="$WHEEL"
+          if [[ "$PROFILE" != "core" ]]; then
+            SPEC="${WHEEL}[${PROFILE}]"
+          fi
+          "$PYTHON" -m pip install "$SPEC"
+          "$PYTHON" -m pip check
+          PROFILE="$PROFILE" "$PYTHON" - <<'PY'
+          import importlib
+          import importlib.metadata
+          import os
+
+          profile = os.environ['PROFILE']
+          importlib.import_module('ms8')
+          if profile in {'llm', 'full'}:
+              importlib.import_module('ollama')
+          if profile in {'absorb', 'ocr', 'full'}:
+              for name in ('watchdog', 'pypdf', 'docx'):
+                  importlib.import_module(name)
+          if profile in {'ocr', 'full'}:
+              for name in ('pytesseract', 'pdf2image', 'PIL'):
+                  importlib.import_module(name)
+          if profile in {'policy', 'full'}:
+              importlib.metadata.version('ms8-policy-core')
+          print(f'profile {profile}: ok')
+          PY
+
   cleanroom-online-install:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     needs: lint-and-test
     steps:
       - name: Checkout
@@ -219,6 +292,7 @@ jobs:
   release-isolated:
     name: release-isolated (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     needs: lint-and-test
     strategy:
       fail-fast: false
@@ -245,4 +319,4 @@ jobs:
         run: bash scripts/check_release_artifacts.sh
 
       - name: Run isolated release install test
-        run: bash scripts/release_isolated_test.sh
+        run: bash scripts/release_isolated_test.sh --cleanup

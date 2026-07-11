@@ -4,12 +4,8 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
       - "candidate/**"
-  pull_request:
-    branches:
-      - main
-      - "candidate/**"
+      - "rc-*"
 
 permissions:
   contents: read
@@ -19,40 +15,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  tests:
-    name: Python ${{ matrix.python-version }} tests
-    runs-on: macos-latest
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
-
-    steps:
-      - name: Check out candidate
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: pip
-
-      - name: Install project and development dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
-
-      - name: Compile package
-        run: python -m compileall -q src/ms8
-
-      - name: Run test suite
-        run: python -m pytest
-
-  quality:
+  static-quality:
     name: Static quality checks
-    runs-on: macos-latest
-    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Check out candidate
@@ -66,8 +32,8 @@ jobs:
 
       - name: Install project and development dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          python -m pip install --quiet --upgrade pip
+          python -m pip install --quiet -e ".[dev]"
 
       - name: Ruff
         run: python -m ruff check src/ms8
@@ -75,11 +41,53 @@ jobs:
       - name: Mypy
         run: python -m mypy src/ms8
 
-  release-artifacts:
-    name: Build and verify release artifacts
-    needs: [tests, quality]
+  macos-boundary:
+    name: macOS package boundary
     runs-on: macos-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out candidate
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install project and development dependencies
+        run: |
+          python -m pip install --quiet --upgrade pip
+          python -m pip install --quiet -e ".[dev]"
+
+      - name: Compile package
+        run: python -m compileall -q src/ms8
+
+      - name: Run canonical test suite
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest -q --tb=short 2>&1 | tee macos-pytest.log
+
+      - name: Upload macOS boundary test log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: macos-boundary-pytest-${{ github.sha }}
+          path: macos-pytest.log
+          if-no-files-found: warn
+          retention-days: 7
+
+  release-artifacts:
+    name: Build, audit, and attest release artifacts
+    needs: [static-quality, macos-boundary]
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
 
     steps:
       - name: Check out candidate
@@ -118,35 +126,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          EXPECTED_VERSION="$(python - <<'PY'
-          import tomllib
-          from pathlib import Path
-          data = tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8'))
-          print(data['project']['version'])
-          PY
-          )"
+          EXPECTED_VERSION="${{ steps.project_version.outputs.value }}"
           test -f "dist/ms8-${EXPECTED_VERSION}-py3-none-any.whl"
           test -f "dist/ms8-${EXPECTED_VERSION}.tar.gz"
           python -m twine check dist/*
 
-      - name: Verify wheel in a clean environment
+      - name: Verify wheel in a clean core environment
         shell: bash
         run: |
           set -euo pipefail
-          EXPECTED_VERSION="$(python - <<'PY'
-          import tomllib
-          from pathlib import Path
-          data = tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8'))
-          print(data['project']['version'])
-          PY
-          )"
+          EXPECTED_VERSION="${{ steps.project_version.outputs.value }}"
           ENV_DIR="$RUNNER_TEMP/ms8-wheel-venv"
           python -m venv "$ENV_DIR"
-          "$ENV_DIR/bin/python" -m pip install --upgrade pip setuptools wheel
-          "$ENV_DIR/bin/python" -m pip install "dist/ms8-${EXPECTED_VERSION}-py3-none-any.whl"
+          "$ENV_DIR/bin/python" -m pip install --quiet --upgrade pip setuptools wheel
+          "$ENV_DIR/bin/python" -m pip install --quiet "dist/ms8-${EXPECTED_VERSION}-py3-none-any.whl"
           EXPECTED_VERSION="$EXPECTED_VERSION" "$ENV_DIR/bin/python" - <<'PY'
           import os
-          from importlib.metadata import version
+          from importlib.metadata import PackageNotFoundError, version
           from importlib.resources import files
 
           expected = os.environ['EXPECTED_VERSION']
@@ -154,36 +150,32 @@ jobs:
           root = files('ms8')
           assert root.joinpath('connect/config/mcp_config.yaml').is_file()
           assert root.joinpath('connect/adapter_registry/adapters.json').is_file()
+          try:
+              version('ollama')
+          except PackageNotFoundError:
+              pass
+          else:
+              raise AssertionError('core wheel unexpectedly installed the optional ollama dependency')
           PY
           "$ENV_DIR/bin/python" -m pip check
           "$ENV_DIR/bin/ms8" version
+          "$ENV_DIR/bin/ms8-recovery" --help
 
-      - name: Generate installed-wheel CycloneDX SBOM
+      - name: Audit installed wheel runtime dependency closure
         id: wheel_audit
         continue-on-error: true
         shell: bash
         run: |
-          set -uo pipefail
           EXPECTED_VERSION="${{ steps.project_version.outputs.value }}"
           ENV_DIR="$RUNNER_TEMP/ms8-wheel-venv"
-          SITE_PACKAGES="$(
-            "$ENV_DIR/bin/python" - <<'PY'
-          import sysconfig
-
-          print(sysconfig.get_paths()["purelib"])
-          PY
-          )"
-          SBOM="dist/ms8-${EXPECTED_VERSION}.cdx.json"
-          test -d "$SITE_PACKAGES"
-          {
-            python -m pip_audit \
-              --strict \
-              --path "$SITE_PACKAGES" \
-              --progress-spinner off \
-              --format cyclonedx-json \
-              --output "$SBOM"
-          } 2>&1 | tee dist/wheel-audit.log
-          exit "${PIPESTATUS[0]}"
+          python scripts/audit_installed_environment.py \
+            --target-python "$ENV_DIR/bin/python" \
+            --project-name ms8 \
+            --project-version "$EXPECTED_VERSION" \
+            --requirements dist/wheel-audit-requirements.txt \
+            --json-report dist/wheel-audit.json \
+            --sbom "dist/ms8-${EXPECTED_VERSION}.cdx.json" \
+            --log dist/wheel-audit.log
 
       - name: Validate installed-wheel CycloneDX SBOM
         id: sbom_validation
@@ -195,6 +187,8 @@ jobs:
           EXPECTED_VERSION="${{ steps.project_version.outputs.value }}"
           SBOM="dist/ms8-${EXPECTED_VERSION}.cdx.json"
           test -s "$SBOM"
+          test -s dist/wheel-audit-requirements.txt
+          test -s dist/wheel-audit.json
           EXPECTED_VERSION="$EXPECTED_VERSION" SBOM="$SBOM" python - <<'PY'
           import json
           import os
@@ -203,33 +197,27 @@ jobs:
           payload = json.loads(Path(os.environ['SBOM']).read_text(encoding='utf-8'))
           assert payload.get('bomFormat') == 'CycloneDX'
           assert payload.get('specVersion')
+          root = payload.get('metadata', {}).get('component', {})
+          assert root.get('name', '').lower() == 'ms8'
+          assert root.get('version') == os.environ['EXPECTED_VERSION']
+          assert root.get('type') == 'application'
+          assert root.get('purl') == f"pkg:pypi/ms8@{os.environ['EXPECTED_VERSION']}"
           components = payload.get('components', [])
-          assert any(
-              item.get('name', '').lower() == 'ms8'
-              and item.get('version') == os.environ['EXPECTED_VERSION']
-              for item in components
-              if isinstance(item, dict)
-          )
+          assert components, 'runtime dependency component list is empty'
           PY
 
-      - name: Verify source distribution in a clean environment
+      - name: Verify source distribution in a clean core environment
         shell: bash
         run: |
           set -euo pipefail
-          EXPECTED_VERSION="$(python - <<'PY'
-          import tomllib
-          from pathlib import Path
-          data = tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8'))
-          print(data['project']['version'])
-          PY
-          )"
+          EXPECTED_VERSION="${{ steps.project_version.outputs.value }}"
           ENV_DIR="$RUNNER_TEMP/ms8-sdist-venv"
           python -m venv "$ENV_DIR"
-          "$ENV_DIR/bin/python" -m pip install --upgrade pip setuptools wheel
-          "$ENV_DIR/bin/python" -m pip install "dist/ms8-${EXPECTED_VERSION}.tar.gz"
+          "$ENV_DIR/bin/python" -m pip install --quiet --upgrade pip setuptools wheel
+          "$ENV_DIR/bin/python" -m pip install --quiet "dist/ms8-${EXPECTED_VERSION}.tar.gz"
           EXPECTED_VERSION="$EXPECTED_VERSION" "$ENV_DIR/bin/python" - <<'PY'
           import os
-          from importlib.metadata import version
+          from importlib.metadata import PackageNotFoundError, version
           from importlib.resources import files
 
           expected = os.environ['EXPECTED_VERSION']
@@ -237,6 +225,12 @@ jobs:
           root = files('ms8')
           assert root.joinpath('connect/config/mcp_config.yaml').is_file()
           assert root.joinpath('connect/adapter_registry/adapters.json').is_file()
+          try:
+              version('ollama')
+          except PackageNotFoundError:
+              pass
+          else:
+              raise AssertionError('core sdist unexpectedly installed the optional ollama dependency')
           PY
           "$ENV_DIR/bin/python" -m pip check
 
@@ -261,11 +255,30 @@ jobs:
           {
             echo "### Release candidate artifacts"
             echo "- commit: $GITHUB_SHA"
-            echo "- SBOM: CycloneDX JSON generated and vulnerability-audited from the installed wheel environment"
+            echo "- SBOM: CycloneDX JSON generated from the exact installed runtime dependency closure"
             echo '```text'
             cat SHA256SUMS
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Generate build provenance attestations
+        id: provenance_attestation
+        if: always()
+        continue-on-error: true
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-path: |
+            dist/ms8-${{ steps.project_version.outputs.value }}-py3-none-any.whl
+            dist/ms8-${{ steps.project_version.outputs.value }}.tar.gz
+
+      - name: Generate wheel SBOM attestation
+        id: sbom_attestation
+        if: always()
+        continue-on-error: true
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-path: dist/ms8-${{ steps.project_version.outputs.value }}-py3-none-any.whl
+          sbom-path: dist/ms8-${{ steps.project_version.outputs.value }}.cdx.json
 
       - name: Upload release candidate evidence
         if: always()
@@ -277,11 +290,13 @@ jobs:
             dist/ms8-${{ steps.project_version.outputs.value }}.tar.gz
             dist/ms8-${{ steps.project_version.outputs.value }}.cdx.json
             dist/SHA256SUMS
+            dist/wheel-audit-requirements.txt
+            dist/wheel-audit.json
             dist/wheel-audit.log
           if-no-files-found: warn
           retention-days: 30
 
-      - name: Enforce installed-wheel security gate
+      - name: Enforce installed-wheel security and provenance gate
         if: always()
         shell: bash
         run: |
@@ -291,9 +306,12 @@ jobs:
           test -s "dist/ms8-${EXPECTED_VERSION}.tar.gz"
           test -s "dist/ms8-${EXPECTED_VERSION}.cdx.json"
           test -s "dist/SHA256SUMS"
-          test -e "dist/wheel-audit.log"
+          test -s dist/wheel-audit-requirements.txt
+          test -s dist/wheel-audit.json
+          test -e dist/wheel-audit.log
           if [[ "${{ steps.wheel_audit.outcome }}" != "success" ]]; then
-            echo "::error::Installed-wheel pip-audit found a vulnerability or could not complete the strict audit."
+            echo "::error::Strict installed runtime dependency audit failed."
+            cat dist/wheel-audit.log || true
             exit 1
           fi
           if [[ "${{ steps.sbom_validation.outcome }}" != "success" ]]; then
@@ -304,3 +322,72 @@ jobs:
             echo "::error::Release candidate checksum generation failed."
             exit 1
           fi
+          if [[ "${{ steps.provenance_attestation.outcome }}" != "success" ]]; then
+            echo "::error::Build provenance attestation failed."
+            exit 1
+          fi
+          if [[ "${{ steps.sbom_attestation.outcome }}" != "success" ]]; then
+            echo "::error::Wheel SBOM attestation failed."
+            exit 1
+          fi
+
+  candidate-status:
+    name: Release candidate aggregate status
+    if: always()
+    needs: [static-quality, macos-boundary, release-artifacts]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      statuses: write
+
+    steps:
+      - name: Publish aggregate commit status
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          STATIC_RESULT: ${{ needs.static-quality.result }}
+          MACOS_RESULT: ${{ needs.macos-boundary.result }}
+          ARTIFACT_RESULT: ${{ needs.release-artifacts.result }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          results = {
+              "static-quality": os.environ["STATIC_RESULT"],
+              "macos-boundary": os.environ["MACOS_RESULT"],
+              "release-artifacts": os.environ["ARTIFACT_RESULT"],
+          }
+          success = all(value == "success" for value in results.values())
+          state = "success" if success else "failure"
+          description = "candidate gates passed" if success else "candidate gate failed or was skipped"
+          repository = os.environ["GITHUB_REPOSITORY"]
+          sha = os.environ["GITHUB_SHA"]
+          run_url = f"https://github.com/{repository}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+          payload = json.dumps(
+              {
+                  "state": state,
+                  "context": "release-candidate/aggregate",
+                  "description": description,
+                  "target_url": run_url,
+              }
+          ).encode("utf-8")
+          request = urllib.request.Request(
+              f"https://api.github.com/repos/{repository}/statuses/{sha}",
+              data=payload,
+              headers={
+                  "Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}",
+                  "Accept": "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+                  "Content-Type": "application/json",
+              },
+              method="POST",
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              if response.status not in {200, 201}:
+                  raise RuntimeError(f"unexpected status response: {response.status}")
+          print(json.dumps({"state": state, "results": results}, sort_keys=True))
+          if not success:
+              raise SystemExit(1)
+          PY
