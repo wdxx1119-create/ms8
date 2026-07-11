@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - "candidate/**"
+      - "rc-*"
 
 permissions:
   contents: read
