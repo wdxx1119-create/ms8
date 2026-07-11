@@ -9,6 +9,8 @@ on:
     paths:
       - "pyproject.toml"
       - ".github/workflows/dependency-audit.yml"
+      - "tests/test_security_workflow_contracts.py"
+      - "docs/RELEASE_SECURITY.md"
 
 permissions:
   contents: read
@@ -27,24 +29,89 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install project and auditor
+      - name: Install the audit target
         run: |
-          python -m venv .audit-venv
-          .audit-venv/bin/python -m pip install --upgrade pip
-          .audit-venv/bin/python -m pip install -e . pip-audit
+          python -m venv .audit-target-venv
+          .audit-target-venv/bin/python -m pip install --upgrade pip
+          .audit-target-venv/bin/python -m pip install .
+          .audit-target-venv/bin/python -m pip check
 
-      - name: Generate dependency audit report
+      - name: Install isolated audit tooling
         run: |
-          .audit-venv/bin/python -m pip_audit \
-            --local \
+          python -m venv .audit-tool-venv
+          .audit-tool-venv/bin/python -m pip install --upgrade pip
+          .audit-tool-venv/bin/python -m pip install pip-audit cyclonedx-bom
+
+      - name: Resolve target site-packages
+        id: target_site
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET_SITE_PACKAGES="$(.audit-target-venv/bin/python - <<'PY'
+          import sysconfig
+          print(sysconfig.get_paths()["purelib"])
+          PY
+          )"
+          test -d "$TARGET_SITE_PACKAGES"
+          echo "path=$TARGET_SITE_PACKAGES" >> "$GITHUB_OUTPUT"
+
+      - name: Audit installed runtime dependencies
+        id: audit
+        continue-on-error: true
+        run: |
+          .audit-tool-venv/bin/python -m pip_audit \
+            --strict \
+            --path "${{ steps.target_site.outputs.path }}" \
             --format json \
             --output pip-audit.json
 
-      - name: Upload dependency audit report
+      - name: Generate dependency CycloneDX SBOM
+        id: dependency_sbom
+        continue-on-error: true
+        run: |
+          .audit-tool-venv/bin/cyclonedx-py environment \
+            .audit-target-venv/bin/python \
+            --output-format JSON \
+            --output-file ms8-dependencies.cdx.json
+
+      - name: Upload dependency security evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: pip-audit-report
-          path: pip-audit.json
-          if-no-files-found: error
+          name: dependency-security-evidence
+          path: |
+            pip-audit.json
+            ms8-dependencies.cdx.json
+          if-no-files-found: warn
           retention-days: 14
+
+      - name: Enforce dependency security gate
+        if: always()
+        shell: bash
+        env:
+          AUDIT_OUTCOME: ${{ steps.audit.outcome }}
+          SBOM_OUTCOME: ${{ steps.dependency_sbom.outcome }}
+        run: |
+          set -euo pipefail
+          test "$AUDIT_OUTCOME" = "success"
+          test "$SBOM_OUTCOME" = "success"
+          test -s pip-audit.json
+          test -s ms8-dependencies.cdx.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          audit = json.loads(Path("pip-audit.json").read_text(encoding="utf-8"))
+          if not isinstance(audit, dict):
+              raise SystemExit("pip-audit report is not a JSON object")
+
+          sbom = json.loads(Path("ms8-dependencies.cdx.json").read_text(encoding="utf-8"))
+          if sbom.get("bomFormat") != "CycloneDX":
+              raise SystemExit("dependency SBOM is not CycloneDX")
+          components = sbom.get("components", [])
+          if not any(
+              isinstance(item, dict) and str(item.get("name", "")).lower() == "ms8"
+              for item in components
+          ):
+              raise SystemExit("dependency SBOM does not contain ms8")
+          PY
