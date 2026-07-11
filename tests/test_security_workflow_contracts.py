@@ -49,6 +49,7 @@ def test_dependency_audit_is_isolated_blocking_and_evidence_preserving() -> None
 
     assert ".audit-target-venv" in workflow
     assert ".audit-tool-venv" in workflow
+    assert ".audit-target-venv/bin/python -m pip install --upgrade pip setuptools wheel" in workflow
     assert '--path "${{ steps.target.outputs.site_packages }}"' in workflow
     assert "--strict" in workflow
     assert "--format json" in workflow
