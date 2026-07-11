@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: 使用问题与方案讨论
+    url: https://github.com/wdxx1119-create/ms8/discussions
+    about: 安装使用、方案讨论、经验分享和开放式问题请使用 Discussions。
   - name: 私密报告安全漏洞
     url: https://github.com/wdxx1119-create/ms8/security/advisories/new
     about: 请勿公开提交安全漏洞、密钥泄漏、隐私或权限绕过问题。
