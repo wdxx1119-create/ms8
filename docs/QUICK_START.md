@@ -10,7 +10,7 @@ MS8 是一个 local-first 的本地记忆引擎。核心记忆默认保存在你
 
 ## 1. 安装
 
-### 从 PyPI 安装
+### 从 PyPI 安装基础能力
 
 ```bash
 python -m venv .venv
@@ -24,6 +24,20 @@ source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install ms8
 ```
+
+基础安装包含本地记忆、治理、MCP、安全和恢复主线，不强制安装 Ollama、文档解析器或 OCR 依赖。
+
+按需安装增强能力：
+
+```bash
+python -m pip install "ms8[llm]"      # Ollama Python 客户端
+python -m pip install "ms8[absorb]"   # PDF/DOCX 与目录监听
+python -m pip install "ms8[ocr]"      # Absorb + OCR Python 依赖
+python -m pip install "ms8[policy]"   # 可选策略后端
+python -m pip install "ms8[full]"     # 全部 Python 可选能力
+```
+
+OCR 系统工具需要单独安装。完整说明见 [Installation Profiles](INSTALL_PROFILES.md)。
 
 ### 从源码安装
 
@@ -42,6 +56,12 @@ python -m pip install --upgrade pip
 python -m pip install -e ".[dev]"
 ```
 
+需要同时开发增强能力时，显式叠加 profile，例如：
+
+```bash
+python -m pip install -e ".[dev,ocr]"
+```
+
 如果源码路径包含空格且 editable install 无法找到 `ms8`，改用 wheel：
 
 ```bash
@@ -54,6 +74,7 @@ python -m pip install --force-reinstall dist/ms8-*.whl
 ```bash
 ms8 version
 ms8 doctor
+ms8-recovery --help
 ```
 
 `doctor` 中可解释的 `warn` 不一定代表系统故障。若命令失败，请先记录已脱敏的输出，并查看 [FAQ](FAQ.md)。
@@ -124,6 +145,12 @@ ms8 agent run daily
 
 ## 6. 吸收本地资料（可选）
 
+先安装 Absorb profile：
+
+```bash
+python -m pip install "ms8[absorb]"
+```
+
 Absorb 只扫描明确授权的目录，并将高风险内容送入待审或隔离流程。
 
 ```bash
@@ -136,11 +163,22 @@ ms8 absorb review list
 
 在批量写入或回滚前检查命令是否处于 dry-run；需要实际执行时再显式使用 `--apply`。
 
-## 7. 备份、迁移和卸载
+## 7. 备份、恢复、迁移和卸载
+
+旧的 `ms8 backup` 保留兼容性记忆快照。完整运行时备份和恢复使用 `ms8-recovery`：
 
 ```bash
-# 创建备份
-ms8 backup
+# 创建完整运行时备份
+ms8-recovery backup create --root ~/.ms8 --tag manual
+
+# 验证备份
+ms8-recovery backup verify ~/.ms8/backups/ms8-runtime-manual-<timestamp>.zip
+
+# 预览恢复
+ms8-recovery restore plan <archive.zip> --target ~/.ms8
+
+# 查看格式迁移计划
+ms8-recovery migrate plan --root ~/.ms8
 
 # 健康检查
 ms8 doctor
@@ -149,10 +187,12 @@ ms8 doctor
 ms8 uninstall
 ```
 
-迁移到新设备时，先停止正在使用 MS8 的工具，再完整备份并迁移 `MS8_HOME` 目录。迁移后运行 `ms8 doctor` 验证状态。
+执行恢复或迁移前，请停止正在使用 MS8 的客户端和后台服务，并先阅读 [Recovery and Migration](RECOVERY_AND_MIGRATION.md)。
 
 ## 下一步
 
+- [安装层级](INSTALL_PROFILES.md)
+- [备份、恢复与迁移](RECOVERY_AND_MIGRATION.md)
 - [典型使用场景](USE_CASES.md)
 - [常见问题](FAQ.md)
 - [安全政策](../SECURITY.md)
