@@ -1,0 +1,39 @@
+name: Examples smoke
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  examples-smoke:
+    name: Examples smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Run basic memory example
+        run: python examples/basic_memory.py
+
+      - name: Run Absorb parser example
+        run: python examples/parse_text_document.py
+
+      - name: Run isolated doctor example
+        run: python examples/isolated_doctor.py
