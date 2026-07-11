@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 
 try:  # pragma: no cover - available only on Windows
-    import msvcrt
+    import msvcrt  # type: ignore[import-not-found]
 except ModuleNotFoundError:  # pragma: no cover - imported only by Windows bootstrap
     msvcrt = None  # type: ignore[assignment]
 
