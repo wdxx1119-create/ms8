@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file.
 
 ### Added
 - Added contributor, support, roadmap, documentation-index, and community governance files.
+- Added architecture, data-model, and threat-model documentation grounded in the current implementation.
+- Added safe, isolated CLI and local text parsing examples with automated tests.
 - Added CodeQL analysis, Python dependency auditing, and dependency-change review workflows.
 - Added Python 3.11 coverage report artifacts.
 - Added installed-wheel smoke coverage for packaged MCP resources, the Absorb text parser, and persisted `ms8 ask` records.
