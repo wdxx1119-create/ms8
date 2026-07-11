@@ -68,13 +68,15 @@ pip install "ms8[policy]"
 
 安装可选的 `ms8-policy-core` 后端。基础 MS8 不依赖该 profile，后端不可用时继续使用公开兼容路径，除非用户显式启用了严格 fail-closed 配置。
 
+MS8 0.2.16 接受兼容的 `ms8-policy-core 0.1.x`：安装器会选择当前 Python 和操作系统可用的最新 wheel。`0.1.1` 当前只覆盖部分平台；其他受支持平台会回退到具有完整 Python 3.10–3.13 跨平台 wheel 矩阵的 `0.1.0`。这项回退只影响闭源增强后端，不改变公开基础记忆与治理路径。
+
 ## 完整 Python 能力
 
 ```bash
 pip install "ms8[full]"
 ```
 
-包含 `llm`、`absorb`、`ocr` 和 `policy` 的 Python 依赖。系统级 OCR 工具仍不包含在内。
+包含 `llm`、`absorb`、`ocr` 和 `policy` 的 Python 依赖。系统级 OCR 工具仍不包含在内。策略后端同样按当前环境选择兼容的最新 `0.1.x` wheel。
 
 ## 开发环境
 
