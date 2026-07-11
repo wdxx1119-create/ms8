@@ -24,6 +24,21 @@ jobs:
       - name: Apply existing-file changes
         run: python scripts/patch_third_batch_existing.py
 
+      - name: Normalize generated source
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/ms8/recovery.py")
+          text = path.read_text(encoding="utf-8")
+          broken = 'handle.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")'
+          fixed = 'handle.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\\n")'
+          if broken not in text:
+              raise SystemExit("generated restore audit newline anchor not found")
+          path.write_text(text.replace(broken, fixed, 1), encoding="utf-8")
+          PY
+          python -m ruff check --fix src/ms8/engine.py
+
       - name: Install development dependencies
         run: |
           python -m pip install --quiet --upgrade pip
