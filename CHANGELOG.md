@@ -21,7 +21,7 @@ All notable changes to this project are documented in this file.
 - Made release candidate branch matching and artifact naming version-agnostic.
 - Standardized the active development branch on `main`.
 - Enforced an 80% line-coverage baseline on the Python 3.11 CI job.
-- Updated core GitHub Actions to current Node 24-compatible major versions before commit-SHA pinning.
+- Updated core GitHub Actions to current Node 24-compatible major versions and pinned every external Action reference to an immutable commit SHA.
 
 ### Fixed
 - Restored Windows CLI startup by providing the self-check runner with the narrow file-lock compatibility layer it requires.
