@@ -1,0 +1,60 @@
+name: Documentation issue
+description: 报告文档错误、缺失、歧义或改进建议
+title: "[DOCS] "
+labels:
+  - documentation
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: 文档范围
+      options:
+        - README
+        - Quick Start
+        - FAQ
+        - MCP 连接文档
+        - CLI 帮助
+        - 安全与隐私文档
+        - API 或开发者文档
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 当前问题
+      description: 请说明具体页面、章节、命令或表述存在什么问题。
+      placeholder: 提供文件路径、标题或链接，并说明哪里不清楚或不准确。
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 建议内容
+      description: 描述你希望补充、修改或重新组织的内容。
+    validations:
+      required: true
+
+  - type: dropdown
+    id: audience
+    attributes:
+      label: 主要受影响用户
+      options:
+        - 首次安装用户
+        - 普通使用者
+        - MCP 用户
+        - 开发者或贡献者
+        - 安全审计者
+        - 其他
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 提交检查
+      options:
+        - label: 我已搜索现有 Issue，未发现相同文档问题。
+          required: true
+        - label: 我没有在示例或日志中包含密钥、个人记忆或 PII。
+          required: true
