@@ -125,7 +125,7 @@ These flags are not the only eligibility checks. Status, quarantine, review stat
 
 ## 5. JSONL streams
 
-The active memory file is normally resolved by the engine and otherwise falls back to `data/memories.jsonl`.
+The active memory file is normally resolved by the engine as `memory/auto_memory_records.jsonl` under the selected workspace and otherwise falls back to `data/memories.jsonl`.
 
 JSONL is used for append-oriented streams because each line is independently parseable and can be audited or quarantined without rewriting the complete history.
 
@@ -176,32 +176,39 @@ Health and activity files are derived operational signals. They may be regenerat
 
 MS8 uses SQLite for structured lookup and subsystem state. The exact database depends on the component.
 
-### Engine stores
+### Structured engine store
 
-Engine SQLite stores support indexed lookup, operational metadata, and related structures. Whether a table is authoritative or rebuildable depends on the component; code should use the owning repository/store class.
+The default long-term structured store is `memory/memory.db`. Its current schema includes `entities` and `relations` tables with indexes for entity names and relation endpoints. It may mirror supported entities and relations into the dedicated graph store when that bridge is available.
+
+This structured store does not replace the canonical JSONL record stream. Code should use `SQLiteMemoryStore` rather than direct SQL so mirroring and connection lifecycle remain consistent.
 
 ### Absorb repository
 
-The Absorb repository uses SQLite with WAL mode and foreign-key enforcement. It stores concepts including:
+The Absorb repository is `absorb/absorb.sqlite` under `MS8_HOME`. The repository enables SQLite WAL mode and stores:
 
-- registered sources and authorization metadata;
-- discovered files and fingerprints;
-- parse state and extracted document metadata;
-- review/submission state;
-- quarantine entries;
-- source and operation events.
+- `file_records` — canonical paths, hashes, file metadata, parse/risk/status state and the resulting MS8 record reference;
+- `chunks` — chunk identity, preview, token count, risk/status and submission time;
+- `ingest_jobs` — job type, status, reason and timestamps;
+- `audit_events` — event type, path, decision, reason and timestamp.
 
-Absorb data is staging and provenance data. A parsed Absorb document becomes canonical memory only after the governed submission path accepts it.
+Absorb also maintains rotated JSONL event logs and a quarantine directory. This data is staging and provenance data. A parsed Absorb document becomes canonical memory only after the governed submission path accepts it.
 
 ### Knowledge graph
 
-The knowledge graph uses SQLite-backed graph structures and supports isolation/rebuild checks. Direct SQL writes outside graph APIs can break graph consistency and are not supported.
+The graph database defaults to `memory/knowledge_graph.db`. Its current schema includes:
+
+- `entities` and `entity_aliases`;
+- typed `relations` with strength, confidence and source references;
+- `memory_anchors` linking graph objects to source memory;
+- `memory_extractions` recording extraction mode and source hash.
+
+Direct SQL writes outside graph APIs can break graph consistency and are not supported.
 
 ## 8. Retrieval indexes
 
-Whoosh and semantic indexes accelerate retrieval. They are derived artifacts and should be rebuildable from supported canonical inputs.
+The keyword index defaults to `memory/whoosh_index`. Semantic and working-memory structures provide additional candidate and context signals when configured.
 
-Index code must account for:
+These are derived artifacts and should be rebuildable from supported canonical inputs. Index code must account for:
 
 - removed or revoked records;
 - superseded records;
@@ -224,9 +231,19 @@ Graph maintenance must preserve:
 
 The graph must not be used to reconstruct or expose content that the source record is no longer allowed to reveal.
 
-## 10. Backups
+## 10. Security data
 
-Backups are recovery snapshots, not live databases. A complete backup should include the authoritative records and the configuration/provenance needed to restore them. Derived indexes can be omitted only when the restore procedure reliably rebuilds them.
+At-rest encryption is disabled by default. When enabled, the default protected-target list includes canonical records, working memory, memory blocks, `MEMORY.md`, and index metadata. The encryption manager also stores security state, wrapped key material, and recovery material under `memory/security` by default.
+
+The default target list does **not** imply that every SQLite database, Absorb repository, log, backup, or export is encrypted. Operators must review the effective configuration and protect the entire runtime and backup destination using operating-system controls.
+
+The shadow subsystem keeps its own ledger, checkpoints, snapshots, spool, manifest, audit and backup material under the configured shadow directories. These are security/recovery records, not ordinary recallable memory.
+
+## 11. Backups
+
+Backups are recovery snapshots, not live databases. Default maintenance settings enable a daily backup interval, seven retained backups, and periodic restore drills, but users must still verify actual backup health with `ms8 doctor` and restore tests.
+
+A complete backup should include authoritative records and the configuration/provenance needed to restore them. Derived indexes can be omitted only when the restore procedure reliably rebuilds them.
 
 Restore procedures should:
 
@@ -237,7 +254,7 @@ Restore procedures should:
 5. Produce an audit/result report.
 6. Keep the previous state until the restore is confirmed.
 
-## 11. Compatibility policy during Alpha
+## 12. Compatibility policy during Alpha
 
 Until a formal versioned schema is introduced:
 
@@ -248,7 +265,7 @@ Until a formal versioned schema is introduced:
 - Release notes and `CHANGELOG.md` must describe user-visible data changes.
 - A migration must be restartable or have a documented rollback/recovery path.
 
-## 12. Do not do this
+## 13. Do not do this
 
 Contributors must not:
 
