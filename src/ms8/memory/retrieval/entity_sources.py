@@ -40,9 +40,8 @@ def _entity_mentions(plan: RetrievalPlan) -> tuple[str, ...]:
     analysis = analyze_query(plan.query.text)
     raw_mentions: list[object] = [
         *plan.entity_mentions,
-        *analysis.code_symbols,
-        *analysis.paths,
-        *analysis.versions,
+        *analysis.exact_tokens,
+        *analysis.code_tokens,
     ]
     if len(analysis.tokens) <= 8:
         raw_mentions.extend(analysis.tokens)
