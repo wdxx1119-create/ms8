@@ -3,6 +3,7 @@
 The package is experimental and not wired into the default runtime path.
 """
 
+from .analyzer import QueryAnalysis, analyze_query
 from .candidate_sources import (
     CandidateSource,
     CandidateSourceError,
@@ -31,6 +32,13 @@ from .models import (
     RetrievalTrace,
     TimeCoordinates,
 )
+from .query_planner import (
+    ClassifierHook,
+    QueryPlanner,
+    QueryPlanningResult,
+    TemporalResolution,
+    resolve_temporal_expression,
+)
 
 __all__ = [
     "CandidateChannel",
@@ -38,6 +46,7 @@ __all__ = [
     "CandidateLimits",
     "CandidateSource",
     "CandidateSourceError",
+    "ClassifierHook",
     "EligibilityEvaluation",
     "EligibilityEvaluator",
     "EligibleClaims",
@@ -46,13 +55,19 @@ __all__ = [
     "PolicyHook",
     "Principal",
     "PrincipalKind",
+    "QueryAnalysis",
     "QueryIntent",
+    "QueryPlanner",
+    "QueryPlanningResult",
     "RankedClaim",
     "RetrievalPlan",
     "RetrievalPurpose",
     "RetrievalTrace",
+    "TemporalResolution",
     "TimeCoordinates",
+    "analyze_query",
     "normalize_authority",
+    "resolve_temporal_expression",
     "run_candidate_source",
     "validate_candidate_hits",
 ]
