@@ -11,7 +11,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from types import MappingProxyType
-from typing import Any
+from typing import Any, cast
 
 from ..application.replay import ReplayState
 from ..domain.models import Claim, Evidence
@@ -76,7 +76,7 @@ _EXPLICIT_AUTHORITIES = frozenset({"user_explicit", "reviewer_verified"})
 
 def _finite_non_negative(value: object, field_name: str) -> float:
     try:
-        number = float(value)  # type: ignore[arg-type]
+        number = float(cast(Any, value))
     except (TypeError, ValueError) as exc:
         raise ValueError(f"{field_name} must be numeric") from exc
     if not math.isfinite(number) or number < 0.0:
