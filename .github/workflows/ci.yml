@@ -48,17 +48,30 @@ jobs:
         if: matrix.python-version != '3.11'
         env:
           PYTHONPATH: src
-        run: python -m pytest -q
+        run: |
+          set -o pipefail
+          python -m pytest -q 2>&1 | tee "pytest-${{ matrix.python-version }}.log"
 
       - name: Pytest with coverage
         if: matrix.python-version == '3.11'
         env:
           PYTHONPATH: src
         run: |
+          set -o pipefail
           python -m pytest -q \
             --cov=ms8 \
             --cov-report=term-missing \
-            --cov-report=xml
+            --cov-report=xml \
+            2>&1 | tee "pytest-${{ matrix.python-version }}.log"
+
+      - name: Upload pytest diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pytest-python-${{ matrix.python-version }}-diagnostics
+          path: pytest-${{ matrix.python-version }}.log
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Upload coverage report
         if: matrix.python-version == '3.11'
