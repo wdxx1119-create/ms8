@@ -3,6 +3,14 @@
 The package is experimental and not wired into the default runtime path.
 """
 
+from .eligibility import (
+    EligibilityEvaluation,
+    EligibilityEvaluator,
+    EligibleClaims,
+    PolicyDecision,
+    PolicyHook,
+    normalize_authority,
+)
 from .models import (
     CandidateChannel,
     CandidateHit,
@@ -22,7 +30,12 @@ __all__ = [
     "CandidateChannel",
     "CandidateHit",
     "CandidateLimits",
+    "EligibilityEvaluation",
+    "EligibilityEvaluator",
+    "EligibleClaims",
     "MemoryQuery",
+    "PolicyDecision",
+    "PolicyHook",
     "Principal",
     "PrincipalKind",
     "QueryIntent",
@@ -31,4 +44,5 @@ __all__ = [
     "RetrievalPurpose",
     "RetrievalTrace",
     "TimeCoordinates",
+    "normalize_authority",
 ]
