@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from ..infrastructure.embedding_projection import (
@@ -37,7 +37,7 @@ class EmbeddingProjectionCandidateProvider:
         self,
         artifact_path: Path,
         embedding_provider: EmbeddingProvider,
-        evidence_resolver: callable,
+        evidence_resolver: Callable[[str], Sequence[str]],
         *,
         approximate_backend: ApproximateEmbeddingBackend | None = None,
     ) -> None:
