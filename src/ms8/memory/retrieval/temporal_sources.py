@@ -14,6 +14,30 @@ from .models import RetrievalPlan
 _HISTORICAL_STATUSES = frozenset({"superseded", "expired"})
 _CURRENT_STATUSES = frozenset({"accepted", "verified", "disputed"})
 _UNKNOWN_TIME_BASES = frozenset({"", "unknown", "unspecified", "inferred_unknown"})
+_HISTORICAL_ENGLISH_CUES = frozenset(
+    {
+        "historical",
+        "history",
+        "previous",
+        "formerly",
+        "before",
+        "old",
+        "past",
+    }
+)
+_HISTORICAL_PHRASE_CUES = ("why was", "why did")
+_HISTORICAL_CJK_CUES = (
+    "曾经",
+    "历史",
+    "之前",
+    "以前",
+    "当时",
+    "过去",
+    "旧版",
+    "旧规则",
+    "为什么改",
+    "为何改",
+)
 
 
 def _claim_terms(text: str) -> frozenset[str]:
@@ -37,6 +61,23 @@ def _historical_requested(plan: RetrievalPlan) -> bool:
     return plan.query.purpose == "historical" or plan.intent == "historical_reason"
 
 
+def _text_requests_historical(plan: RetrievalPlan) -> bool:
+    """Detect an explicit historical request independently of planner output.
+
+    Candidate sources fail closed when a manually constructed or stale plan labels
+    historical wording as a current-state query. This prevents shared generic terms
+    such as a project name or ``rule`` from returning a current claim for an old-state
+    question.
+    """
+
+    analysis = analyze_query(plan.query.text)
+    english_terms = {term.casefold() for term in analysis.english_tokens}
+    if english_terms.intersection(_HISTORICAL_ENGLISH_CUES):
+        return True
+    normalized = analysis.normalized_text
+    return any(cue in normalized for cue in (*_HISTORICAL_PHRASE_CUES, *_HISTORICAL_CJK_CUES))
+
+
 class TemporalReplayCandidateProvider:
     """Retrieve current or historical claims without widening eligibility."""
 
@@ -57,6 +98,9 @@ class TemporalReplayCandidateProvider:
             raise ValueError("limit must be a positive integer")
 
         historical = _historical_requested(plan)
+        if not historical and _text_requests_historical(plan):
+            return ()
+
         query_terms = _claim_terms(plan.query.text)
         records: list[CandidateRecord] = []
         for claim_id in eligible_claim_ids:
