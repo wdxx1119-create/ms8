@@ -4,6 +4,29 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.2.17] - 2026-07-13
+
+### Added
+- Added the opt-in Memory Ledger v1 foundation with append-only lifecycle decisions.
+- Added independent recorded, observed, and valid-time query support.
+- Added rebuildable SQLite, Search, FTS, Vector, and Graph projections.
+- Added macOS and Windows validation coverage for Ledger v1.
+
+### Changed
+- Preserved existing CLI and MCP behavior while adding explicit Ledger query, context, explain, rebuild, migration, and lifecycle-operation surfaces.
+- Unified durable atomic writes and cross-process file locking across macOS and Windows.
+- Kept Memory Ledger v1 disabled by default.
+
+### Fixed
+- Fixed Windows SQLite projection rebuilds by explicitly releasing read handles before atomic replacement.
+- Fixed Windows atomic file replacement, Unicode paths, and PowerShell CLI/MCP subprocess behavior.
+- Fixed cross-platform typing and MCP resource compatibility issues.
+
+### Security
+- Required verified PolicyEngine grants for automated lifecycle changes.
+- Kept incomplete, invalid, or hash-broken Ledger transactions fail-closed.
+- Preserved explicit migration backup, rollback, audit, and physical-purge residual reporting.
+
 ## [0.2.16] - 2026-07-11
 
 ### Added
