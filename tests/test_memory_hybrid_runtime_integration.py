@@ -180,7 +180,7 @@ def test_hybrid_query_exposes_full_governed_trace_and_degrades_vector_only(tmp_p
     assert trace["reranking"]["ranked"][0]["claim_id"] == result["results"][0]["id"]
     vector = next(item for item in trace["sources"] if item["channel"] == "vector")
     assert vector["status"] == "degraded"
-    assert vector["degradation_reason"] == "RuntimeError:embedding provider is not configured"
+    assert vector["degradation_reason"] == "embedding-unavailable:RuntimeError"
 
 
 def test_hybrid_context_is_budgeted_traceable_and_policy_bounded(tmp_path: Path) -> None:
@@ -215,7 +215,6 @@ def test_cli_parser_exposes_profile_purpose_and_explain() -> None:
             "--retrieval-profile",
             "hybrid-v1",
             "query",
-            "--text",
             "old release rule",
             "--purpose",
             "historical",
