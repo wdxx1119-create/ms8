@@ -1,12 +1,13 @@
 """Versioned local embedding projection artifact for Hybrid Retrieval v1.
 
-The artifact is disposable and non-authoritative.  Every entry is bound to both a
+The artifact is disposable and non-authoritative. Every entry is bound to both a
 source ``content_hash`` and the manifest ``model_id`` so stale vectors can be
 identified without mutating Ledger data.
 """
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,7 +15,6 @@ from types import MappingProxyType
 from typing import Any
 
 from ..domain.ledger import canonical_json
-from ..retrieval.embedding import normalize_embedding_vector
 from .projection_io import atomic_write_json, read_json_object, sha256_bytes
 
 EMBEDDING_PROJECTION_NAME = "embedding"
@@ -27,6 +27,17 @@ def _required_text(value: object, field_name: str) -> str:
     if not text:
         raise ValueError(f"{field_name} must not be empty")
     return text
+
+
+def _normalize_vector(values: Sequence[float], field_name: str) -> tuple[float, ...]:
+    if isinstance(values, (str, bytes, bytearray)):
+        raise TypeError(f"{field_name} must be a numeric sequence")
+    vector = tuple(float(value) for value in values)
+    if not vector:
+        raise ValueError(f"{field_name} must not be empty")
+    if any(not math.isfinite(value) for value in vector):
+        raise ValueError(f"{field_name} must contain only finite values")
+    return vector
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,7 +56,7 @@ class EmbeddingProjectionEntry:
         object.__setattr__(
             self,
             "vector",
-            normalize_embedding_vector(self.vector, field_name=f"entry.vector[{self.claim_id}]"),
+            _normalize_vector(self.vector, f"entry.vector[{self.claim_id}]"),
         )
 
     def to_dict(self) -> dict[str, object]:
