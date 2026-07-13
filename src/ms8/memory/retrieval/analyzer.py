@@ -22,8 +22,10 @@ _CPP_PATTERN = re.compile(r"(?<![A-Za-z0-9_])C\+\+(?![A-Za-z0-9_])", re.IGNORECA
 _QUOTED_PATH_PATTERN = re.compile(
     r"(?P<quote>['\"])(?P<path>(?:[A-Za-z]:\\|\.\.?/|/)[^'\"\r\n]+?)(?P=quote)"
 )
+_PATH_STOP_CHARS = r",;:()\[\]{}<>\"'，。；：（）【】《》“”‘’"
 _PATH_PATTERN = re.compile(
-    r"(?:[A-Za-z]:\\(?:[^\\\s]+\\)*[^\\\s,;:()\[\]{}<>\"']+|(?:\.\.?/|/)[^\s,;:()\[\]{}<>\"']+)"
+    rf"(?:[A-Za-z]:\\(?:[^\\\s{_PATH_STOP_CHARS}]+\\)*"
+    rf"[^\\\s{_PATH_STOP_CHARS}]+|(?:\.\.?/|/)[^\s{_PATH_STOP_CHARS}]+)"
 )
 _CAMEL_BOUNDARY_PATTERN = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 
