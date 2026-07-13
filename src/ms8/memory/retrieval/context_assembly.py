@@ -12,7 +12,7 @@ from types import MappingProxyType
 from typing import Any, Literal, cast
 
 from ..application.replay import ClaimReplayView, ReplayState
-from ..domain.models import Claim, Decision, Evidence
+from ..domain.models import Claim
 from .eligibility import EligibleClaims, normalize_authority
 from .models import RankedClaim, RetrievalPlan
 
@@ -425,19 +425,17 @@ def select_mmr(
     candidates, warnings = _deduplicate_ranked(ranked_claims, eligible)
     valid: list[RankedClaim] = []
     pre_omitted: list[str] = []
-    trace_ids: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {}
     for item in candidates:
         view = state.claims.get(item.claim_id)
         if view is None:
             warnings = (*warnings, f"missing_claim:{item.claim_id}")
             pre_omitted.append(item.claim_id)
             continue
-        evidence_ids, decision_ids, invalid_reason = _valid_trace_ids(item, view, state, plan)
+        _evidence_ids, _decision_ids, invalid_reason = _valid_trace_ids(item, view, state, plan)
         if invalid_reason is not None:
             warnings = (*warnings, invalid_reason)
             pre_omitted.append(item.claim_id)
             continue
-        trace_ids[item.claim_id] = (evidence_ids, decision_ids)
         valid.append(item)
 
     visible_ids = frozenset(item.claim_id for item in valid)
@@ -549,13 +547,14 @@ def select_mmr(
 
     for item in pool:
         omitted.append(item.claim_id)
+        relevance = max(0.0, min(1.0, item.score))
         traces.append(
             MMRSelectionTrace(
                 claim_id=item.claim_id,
                 selected=False,
-                relevance_score=max(0.0, min(1.0, item.score)),
+                relevance_score=relevance,
                 redundancy_score=0.0,
-                mmr_score=round(active.relevance_lambda * max(0.0, min(1.0, item.score)), 12),
+                mmr_score=round(active.relevance_lambda * relevance, 12),
                 similarity_mode="none",
                 reason="max_claims_limit",
             )
@@ -656,6 +655,8 @@ def _fit_claim_block(
     max_fact_chars: int,
 ) -> str | None:
     limited = fact[:max_fact_chars]
+    if len(fact) > max_fact_chars:
+        limited = limited.rstrip() + "…"
     full = prefix + limited + suffix
     if estimate_context_tokens(full) <= remaining_tokens:
         return full
