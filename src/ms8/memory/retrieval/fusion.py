@@ -64,14 +64,20 @@ _TYPE_HALF_LIFE_DAYS = {
     "fact": 1460.0,
 }
 _INFERRED_AUTHORITIES = frozenset(
-    {
-        "agent_inferred",
-        "assistant_inferred",
-        "model_inferred",
-        "llm_inferred",
-    }
+    {"agent_inferred", "assistant_inferred", "model_inferred", "llm_inferred"}
 )
 _EXPLICIT_AUTHORITIES = frozenset({"user_explicit", "reviewer_verified"})
+_LOCATOR_KEY_TOKENS = (
+    "offset",
+    "line",
+    "page",
+    "chunk",
+    "span",
+    "locator",
+    "record_index",
+    "section",
+    "paragraph",
+)
 
 
 def _finite_non_negative(value: object, field_name: str) -> float:
@@ -139,8 +145,9 @@ class FusionConfig:
             "fusion.signal_weights",
             required_keys=frozenset(_DEFAULT_SIGNAL_WEIGHTS),
         )
-        total = sum(signal_weights.values())
-        if not math.isclose(total, 1.0, rel_tol=0.0, abs_tol=1e-12):
+        if not math.isclose(
+            sum(signal_weights.values()), 1.0, rel_tol=0.0, abs_tol=1e-12
+        ):
             raise ValueError("fusion.signal_weights must sum to 1.0")
         object.__setattr__(self, "signal_weights", signal_weights)
 
@@ -198,7 +205,6 @@ class _Scored:
 def _deduplicate(batch: CandidateBatch, eligible: EligibleClaims) -> tuple[_Aggregate, ...]:
     by_claim: dict[str, dict[str, CandidateHit]] = defaultdict(dict)
     evidence_by_claim: dict[str, set[str]] = defaultdict(set)
-
     for source_name in sorted(batch.hits_by_source):
         hits = sorted(
             batch.hits_by_source[source_name],
@@ -214,7 +220,6 @@ def _deduplicate(batch: CandidateBatch, eligible: EligibleClaims) -> tuple[_Aggr
             ):
                 by_claim[hit.claim_id][source_name] = hit
             evidence_by_claim[hit.claim_id].update(hit.evidence_ids)
-
     return tuple(
         _Aggregate(
             claim_id=claim_id,
@@ -226,21 +231,26 @@ def _deduplicate(batch: CandidateBatch, eligible: EligibleClaims) -> tuple[_Aggr
 
 
 def _rrf_score(aggregate: _Aggregate, config: FusionConfig) -> float:
-    score = 0.0
-    for hit in aggregate.hits_by_source.values():
-        weight = config.channel_weights[hit.channel]
-        score += weight / float(config.rrf_k + hit.rank)
-    return score
+    return sum(
+        config.channel_weights[hit.channel] / float(config.rrf_k + hit.rank)
+        for hit in aggregate.hits_by_source.values()
+    )
 
 
-def _jsonable(value: object) -> object:
+def _is_locator_key(key: object) -> bool:
+    normalized = str(key).casefold()
+    return any(token in normalized for token in _LOCATOR_KEY_TOKENS)
+
+
+def _strip_locator_fields(value: object) -> object:
     if isinstance(value, Mapping):
         return {
-            str(key): _jsonable(item)
-            for key, item in sorted(value.items(), key=lambda item: str(item[0]))
+            str(key): _strip_locator_fields(item)
+            for key, item in sorted(value.items(), key=lambda pair: str(pair[0]))
+            if not _is_locator_key(key)
         }
     if isinstance(value, (tuple, list)):
-        return [_jsonable(item) for item in value]
+        return [_strip_locator_fields(item) for item in value]
     if value is None or isinstance(value, (str, bool, int, float)):
         return value
     return str(value)
@@ -248,9 +258,10 @@ def _jsonable(value: object) -> object:
 
 def _source_key(state: ReplayState, evidence: Evidence) -> str:
     event = state.memory_events.get(evidence.event_id)
+    payload: object = {}
     if event is not None and event.source:
-        payload: object = event.source
-    else:
+        payload = _strip_locator_fields(event.source)
+    if not payload:
         preferred = {
             key: value
             for key, value in evidence.fragment.items()
@@ -266,9 +277,11 @@ def _source_key(state: ReplayState, evidence: Evidence) -> str:
                 "repository",
             }
         }
-        payload = preferred or {"event_id": evidence.event_id}
+        payload = _strip_locator_fields(preferred)
+    if not payload:
+        payload = {"event_id": evidence.event_id}
     encoded = json.dumps(
-        _jsonable(payload),
+        payload,
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
@@ -286,11 +299,13 @@ def _evidence_strength(
         evidence = state.evidence.get(evidence_id)
         if evidence is None:
             raise ValueError(
-                f"fusion candidate references missing evidence: {aggregate.claim_id}:{evidence_id}"
+                f"fusion candidate references missing evidence: "
+                f"{aggregate.claim_id}:{evidence_id}"
             )
         if evidence.claim_id != aggregate.claim_id:
             raise ValueError(
-                f"fusion candidate evidence belongs to another claim: {aggregate.claim_id}:{evidence_id}"
+                f"fusion candidate evidence belongs to another claim: "
+                f"{aggregate.claim_id}:{evidence_id}"
             )
         source_key = _source_key(state, evidence)
         if evidence.relation == "contradicts":
@@ -302,8 +317,7 @@ def _evidence_strength(
             positive_by_source.get(source_key, 0.0),
             min(1.0, evidence.weight),
         )
-    positive = sum(positive_by_source.values())
-    strength = min(1.0, positive / 3.0)
+    strength = min(1.0, sum(positive_by_source.values()) / 3.0)
     return strength, len(positive_by_source), len(contradiction_sources)
 
 
@@ -339,7 +353,14 @@ def _intent_kind_score(intent: str, claim_kind: str) -> float:
         "project_rule": {"constraint", "decision", "fact"},
         "personal_preference": {"preference"},
         "code_symbol": {"fact", "task", "constraint"},
-        "open_recall": {"preference", "constraint", "decision", "fact", "task", "summary"},
+        "open_recall": {
+            "preference",
+            "constraint",
+            "decision",
+            "fact",
+            "task",
+            "summary",
+        },
     }
     return 1.0 if claim_kind in preferred[intent] else 0.45
 
@@ -413,10 +434,9 @@ def _reference_time(state: ReplayState, plan: RetrievalPlan) -> datetime | None:
         if parsed is not None:
             values.append(parsed)
     for view in state.claims.values():
-        for value in (view.claim.valid_time.start, view.claim.valid_time.end):
-            parsed = _parse_time(value)
-            if parsed is not None:
-                values.append(parsed)
+        parsed = _parse_time(view.claim.valid_time.start)
+        if parsed is not None:
+            values.append(parsed)
     return max(values) if values else None
 
 
@@ -459,7 +479,9 @@ def _score_candidate(
     claim = view.claim
     rrf_raw = _rrf_score(aggregate, config)
     fused = rrf_raw / rrf_max if rrf_max > 0.0 else 0.0
-    evidence, independent_sources, contradiction_sources = _evidence_strength(state, aggregate)
+    evidence, independent_sources, contradiction_sources = _evidence_strength(
+        state, aggregate
+    )
     unresolved_conflicts = _conflict_ids(state, aggregate.claim_id)
     signals = {
         "fused_retrieval": fused,
@@ -472,8 +494,7 @@ def _score_candidate(
         "type_freshness": _freshness_score(state, plan, claim),
     }
     weighted = {
-        key: signals[key] * config.signal_weights[key]
-        for key in sorted(signals)
+        key: signals[key] * config.signal_weights[key] for key in sorted(signals)
     }
     score = round(sum(weighted.values()), 12)
     authority_class = _authority_class(claim, view.current_status)
@@ -485,7 +506,10 @@ def _score_candidate(
             for source, hit in aggregate.hits_by_source.items()
         ),
         f"authority={normalize_authority(claim.authority)};class={authority_class}",
-        f"evidence_independent_sources={independent_sources};contradiction_sources={contradiction_sources}",
+        (
+            f"evidence_independent_sources={independent_sources};"
+            f"contradiction_sources={contradiction_sources}"
+        ),
         f"temporal_status={view.current_status};intent={plan.intent}",
         f"scope={claim.scope};kind={claim.kind}",
         "conflicts=" + (",".join(unresolved_conflicts) if unresolved_conflicts else "none"),
@@ -496,13 +520,12 @@ def _score_candidate(
         **{key: round(value, 12) for key, value in signals.items()},
         **{f"weighted_{key}": round(value, 12) for key, value in weighted.items()},
     }
-    hard_rule_tier = 1 if authority_class == "inferred" else 0
     return _Scored(
         ranked=RankedClaim(
             claim_id=aggregate.claim_id,
             evidence_ids=aggregate.evidence_ids,
             score=score,
-            hard_rule_tier=hard_rule_tier,
+            hard_rule_tier=0,
             score_components=components,
             explanation=explanation,
         ),
@@ -511,8 +534,28 @@ def _score_candidate(
     )
 
 
+def _with_authority_blockers(
+    ranked: RankedClaim,
+    blockers: Sequence[str],
+) -> RankedClaim:
+    if not blockers:
+        return ranked
+    blocker_text = ",".join(sorted(blockers))
+    return RankedClaim(
+        claim_id=ranked.claim_id,
+        evidence_ids=ranked.evidence_ids,
+        score=ranked.score,
+        hard_rule_tier=1,
+        score_components=ranked.score_components,
+        explanation=(
+            *ranked.explanation,
+            f"authority_precedence=blocked_by:{blocker_text}",
+        ),
+    )
+
+
 def _apply_authority_precedence(scored: Sequence[_Scored]) -> tuple[RankedClaim, ...]:
-    """Topologically enforce same-predicate authority without global score distortion."""
+    """Enforce same-predicate authority without globally flattening score order."""
 
     by_group: dict[tuple[str, str, str, str], list[_Scored]] = defaultdict(list)
     by_claim = {item.ranked.claim_id: item for item in scored}
@@ -521,6 +564,7 @@ def _apply_authority_precedence(scored: Sequence[_Scored]) -> tuple[RankedClaim,
 
     outgoing: dict[str, set[str]] = {claim_id: set() for claim_id in by_claim}
     indegree: dict[str, int] = {claim_id: 0 for claim_id in by_claim}
+    blockers: dict[str, set[str]] = defaultdict(set)
     for items in by_group.values():
         authoritative = sorted(
             item.ranked.claim_id
@@ -534,6 +578,7 @@ def _apply_authority_precedence(scored: Sequence[_Scored]) -> tuple[RankedClaim,
         )
         for stronger in authoritative:
             for weaker in inferred:
+                blockers[weaker].add(stronger)
                 if weaker not in outgoing[stronger]:
                     outgoing[stronger].add(weaker)
                     indegree[weaker] += 1
@@ -546,11 +591,19 @@ def _apply_authority_precedence(scored: Sequence[_Scored]) -> tuple[RankedClaim,
     ordered: list[RankedClaim] = []
     while heap:
         _negative_score, claim_id = heapq.heappop(heap)
-        ordered.append(by_claim[claim_id].ranked)
+        ordered.append(
+            _with_authority_blockers(
+                by_claim[claim_id].ranked,
+                tuple(sorted(blockers.get(claim_id, set()))),
+            )
+        )
         for neighbor in sorted(outgoing[claim_id]):
             indegree[neighbor] -= 1
             if indegree[neighbor] == 0:
-                heapq.heappush(heap, (-by_claim[neighbor].ranked.score, neighbor))
+                heapq.heappush(
+                    heap,
+                    (-by_claim[neighbor].ranked.score, neighbor),
+                )
 
     if len(ordered) != len(scored):
         raise RuntimeError("authority precedence graph unexpectedly contains a cycle")
@@ -580,8 +633,6 @@ def fuse_and_rerank(
         raise TypeError("config must be FusionConfig")
 
     aggregates = _deduplicate(batch, eligible)
-    for aggregate in aggregates:
-        eligible.require(aggregate.claim_id)
     raw_scores = tuple(_rrf_score(item, active_config) for item in aggregates)
     rrf_max = max(raw_scores, default=0.0)
     scored = tuple(
