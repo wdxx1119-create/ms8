@@ -279,6 +279,8 @@ jobs:
           }
           $recovery = Join-Path $venv "Scripts\ms8-recovery.exe"
           & $recovery --help
+          $ledger = Join-Path $venv "Scripts\ms8-memory-ledger.exe"
+          & $ledger --help
 
       - name: Upload Windows smoke log
         if: always()
