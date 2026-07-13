@@ -54,6 +54,12 @@ from .entity_sources import (
     EntityProjectionFormatError,
     normalize_entity_label,
 )
+from .fusion import (
+    FUSION_CONFIG_SCHEMA,
+    FusionConfig,
+    FusionResult,
+    fuse_and_rerank,
+)
 from .graph_sources import (
     GraphProjectionCandidateProvider,
     GraphProjectionCandidateSource,
@@ -115,6 +121,9 @@ __all__ = [
     "EntityProjectionCandidateSource",
     "EntityProjectionFormatError",
     "EvidenceResolver",
+    "FUSION_CONFIG_SCHEMA",
+    "FusionConfig",
+    "FusionResult",
     "GraphProjectionCandidateProvider",
     "GraphProjectionCandidateSource",
     "GraphProjectionFormatError",
@@ -151,6 +160,7 @@ __all__ = [
     "TimeCoordinates",
     "analyze_query",
     "exact_cosine_search",
+    "fuse_and_rerank",
     "normalize_authority",
     "normalize_embedding_vector",
     "normalize_entity_label",
