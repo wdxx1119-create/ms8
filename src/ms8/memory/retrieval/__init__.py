@@ -54,6 +54,11 @@ from .entity_sources import (
     EntityProjectionFormatError,
     normalize_entity_label,
 )
+from .graph_sources import (
+    GraphProjectionCandidateProvider,
+    GraphProjectionCandidateSource,
+    GraphProjectionFormatError,
+)
 from .models import (
     CandidateChannel,
     CandidateHit,
@@ -110,6 +115,9 @@ __all__ = [
     "EntityProjectionCandidateSource",
     "EntityProjectionFormatError",
     "EvidenceResolver",
+    "GraphProjectionCandidateProvider",
+    "GraphProjectionCandidateSource",
+    "GraphProjectionFormatError",
     "LedgerLexicalCandidateSource",
     "LegacyCandidateMapper",
     "LegacyCandidateProvider",
