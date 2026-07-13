@@ -12,7 +12,6 @@ permissions:
 
 jobs:
   apply:
-    if: github.event.head_commit.message == 'ci(memory): install Phase 8 patch runner'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Phase 8 branch
