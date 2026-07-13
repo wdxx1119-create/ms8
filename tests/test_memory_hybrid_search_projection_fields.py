@@ -127,7 +127,7 @@ def test_exact_projection_terms_are_retrievable_inside_eligibility(tmp_path: Pat
     )
 
     flag_hits = provider(_plan("--explain"), ("claim:lexical",), 5)
-    path_hits = provider(_plan("/tmp/MS8 Data/config.json"), ("claim:lexical",), 5)
+    path_hits = provider(_plan("'/tmp/MS8 Data/config.json'"), ("claim:lexical",), 5)
 
     assert [item.claim_id for item in flag_hits] == ["claim:lexical"]
     assert [item.claim_id for item in path_hits] == ["claim:lexical"]
