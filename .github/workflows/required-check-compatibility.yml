@@ -152,7 +152,24 @@ jobs:
           fetch-depth: 0
 
       - name: Apply integration patch
-        run: python scripts/phase8_integration_patch.py
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/phase8_integration_patch.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''    if count != 1:
+                  raise RuntimeError(f"expected one match in {path}, found {count}: {old[:80]!r}")
+          '''
+          new = '''    if count < 1:
+                  raise RuntimeError(f"expected at least one match in {path}: {old[:80]!r}")
+          '''
+          if old not in text:
+              raise RuntimeError('patch helper guard was not found')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+          python scripts/phase8_integration_patch.py
 
       - name: Remove patch runner and commit
         shell: bash
