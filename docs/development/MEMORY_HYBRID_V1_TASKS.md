@@ -161,14 +161,14 @@ Validation evidence: exact Phase 4 head `f525f3a0c28fef4ab0ec6978b952c6394e26137
 
 ## Phase 5 — entity, temporal, and graph retrieval
 
-- [ ] Build deterministic entity aliases from structured claims and evidence.
-- [ ] Implement entity exact/alias matching without requiring an LLM.
-- [ ] Implement current-state temporal retrieval.
-- [ ] Implement historical retrieval over superseded/expired claims only when explicitly requested and still recall-authorized.
-- [ ] Keep unknown-basis time records supplementary to explicit-time facts.
-- [ ] Implement one-to-two-hop local graph expansion.
-- [ ] Restrict graph traversal by eligibility, realm, lifecycle, and evidence-backed edges.
-- [ ] Return explainable graph paths.
+- [x] Build deterministic entity aliases from structured claims and evidence.
+- [x] Implement entity exact/alias matching without requiring an LLM.
+- [x] Implement current-state temporal retrieval.
+- [x] Implement historical retrieval over superseded/expired claims only when explicitly requested and still recall-authorized.
+- [x] Keep unknown-basis time records supplementary to explicit-time facts.
+- [x] Implement one-to-two-hop local graph expansion.
+- [x] Restrict graph traversal by eligibility, realm, lifecycle, and evidence-backed edges.
+- [x] Return explainable graph paths.
 
 Acceptance:
 
@@ -176,11 +176,13 @@ Acceptance:
 - historical questions can retrieve old decisions with evidence;
 - graph traversal cannot cross a policy boundary.
 
+Validation evidence: exact Phase 5 head `9b5eb9688676db0888cdb57a8bf6bfe974d3797c` passed Python 3.10–3.13, Ruff, mypy, full pytest and coverage, package/profile/clean-room checks, macOS and Windows wheel smoke, CodeQL, Dependency Review, Examples smoke, and Required check compatibility.
+
 ## Phase 6 — fusion and deterministic reranking
 
-- [ ] Implement weighted Reciprocal Rank Fusion with versioned configuration.
-- [ ] Deduplicate by claim identifier before ranking.
-- [ ] Add deterministic signals:
+- [x] Implement weighted Reciprocal Rank Fusion with versioned configuration.
+- [x] Deduplicate by claim identifier before ranking.
+- [x] Add deterministic signals:
   - fused retrieval score;
   - authority;
   - evidence strength using independent source keys;
@@ -189,9 +191,9 @@ Acceptance:
   - status/verification;
   - conflict handling;
   - type-aware freshness.
-- [ ] Keep hard rules outside score competition.
-- [ ] Prevent agent inference from outranking explicit user or verified project facts for the same predicate.
-- [ ] Add stable tie-breaking and full ranking explanation.
+- [x] Keep hard rules outside score competition.
+- [x] Prevent agent inference from outranking explicit user or verified project facts for the same predicate.
+- [x] Add stable tie-breaking and full ranking explanation.
 
 Acceptance:
 
@@ -199,22 +201,26 @@ Acceptance:
 - no weighted score can overcome an eligibility or authority hard rule;
 - duplicated chunks from one source do not inflate evidence strength.
 
+Validation evidence: exact Phase 6 head `d46dc72e22c103c063cba835725b32821ff2242d` passed Python 3.10–3.13, Ruff, mypy, full pytest and coverage, package/profile/clean-room checks, macOS and Windows wheel smoke, CodeQL, Dependency Review, Examples smoke, and Required check compatibility.
+
 ## Phase 7 — MMR and context assembly
 
-- [ ] Implement MMR with dense similarity and token/Jaccard fallback.
-- [ ] Apply claim-level deduplication.
-- [ ] Enforce subject/predicate diversity limits.
-- [ ] Preserve unresolved conflict candidates and warnings.
-- [ ] Reserve context budget for citations and boundary metadata.
-- [ ] Emit compact claim facts rather than raw document dumps.
-- [ ] Require at least one accessible Evidence and Decision trace for injection.
-- [ ] Add explicit policy-boundary text to Agent context.
+- [x] Implement MMR with dense similarity and token/Jaccard fallback.
+- [x] Apply claim-level deduplication.
+- [x] Enforce subject/predicate diversity limits.
+- [x] Preserve unresolved conflict candidates and warnings.
+- [x] Reserve context budget for citations and boundary metadata.
+- [x] Emit compact claim facts rather than raw document dumps.
+- [x] Require at least one accessible Evidence and Decision trace for injection.
+- [x] Add explicit policy-boundary text to Agent context.
 
 Acceptance:
 
 - selected context is within token budget;
 - every injected fact is traceable;
 - unresolved conflicts are not silently removed by diversity logic.
+
+Validation evidence: exact Phase 7 head `2046cfaa8381b9287f144d7870cb379be457c4cf` passed Python 3.10–3.13, Ruff, mypy, full pytest and coverage, package/profile/clean-room checks, macOS and Windows wheel smoke, CodeQL, Dependency Review, Examples smoke, and Required check compatibility.
 
 ## Phase 8 — integration and explain surfaces
 
