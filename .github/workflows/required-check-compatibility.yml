@@ -173,22 +173,16 @@ jobs:
           PY
           python scripts/phase8_integration_patch.py
 
-      - name: Remove patch runner and commit
+      - name: Commit source integration
         shell: bash
         run: |
           set -euo pipefail
-          rm -f scripts/phase8_integration_patch.py
-          rm -f .github/workflows/phase8-integration-patch.yml
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('.github/workflows/required-check-compatibility.yml')
-          text = path.read_text(encoding='utf-8')
-          start = text.index('\n  # PHASE8_PATCH_JOB_START\n')
-          path.write_text(text[:start] + '\n', encoding='utf-8')
-          PY
+          git checkout -- scripts/phase8_integration_patch.py
+          git checkout -- .github/workflows/phase8-integration-patch.yml
+          git checkout -- .github/workflows/required-check-compatibility.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
+          git add src/ms8
           git commit -m "feat(memory): integrate gated hybrid retrieval surfaces"
           git push origin HEAD:feature/memory-hybrid-v1-macos-first
   # PHASE8_PATCH_JOB_END
