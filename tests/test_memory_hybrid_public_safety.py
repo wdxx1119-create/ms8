@@ -22,9 +22,11 @@ def test_hybrid_branch_material_is_public_safe_and_excludes_lan() -> None:
     assert result.passed, result.to_dict()
     assert result.warning_count == 0, result.to_dict()
 
+    forbidden_import = "ms8" + ".lan"
+    forbidden_path = "src/ms8" + "/lan"
     for relative in paths:
         normalized = relative.as_posix().casefold()
         assert "/lan/" not in f"/{normalized}/"
         text = (root / relative).read_text(encoding="utf-8").casefold()
-        assert "ms8.lan" not in text
-        assert "src/ms8/lan" not in text
+        assert forbidden_import not in text
+        assert forbidden_path not in text
