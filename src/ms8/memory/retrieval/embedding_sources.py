@@ -10,6 +10,7 @@ from ..infrastructure.embedding_projection import (
     read_embedding_projection,
 )
 from .adapters import CandidateRecord, ProjectionCandidateSource
+from .eligibility import EligibleClaims
 from .embedding import (
     ApproximateEmbeddingBackend,
     EmbeddingMatch,
@@ -17,7 +18,6 @@ from .embedding import (
     exact_cosine_search,
     validate_embedding_batch,
 )
-from .eligibility import EligibleClaims
 from .models import RetrievalPlan
 
 
