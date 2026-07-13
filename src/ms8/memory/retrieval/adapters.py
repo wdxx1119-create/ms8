@@ -270,8 +270,9 @@ def run_candidate_sources(
 ) -> CandidateBatch:
     """Run independent sources with safe degradation and contract enforcement.
 
-    Provider/runtime failures degrade only that source. Contract violations remain
-    fatal because silently accepting them could widen the authorization boundary.
+    Provider/runtime failures degrade only that source. Contract and authorization
+    violations remain fatal because silently accepting them could widen the
+    retrieval boundary.
     """
 
     if not isinstance(plan, RetrievalPlan):
@@ -289,7 +290,7 @@ def run_candidate_sources(
         seen_names.add(name)
         try:
             hits = run_candidate_source(source, plan, eligible)
-        except CandidateSourceError:
+        except (CandidateSourceError, PermissionError):
             raise
         except Exception as exc:  # component failure is isolated and explained
             reason = f"{name}:{type(exc).__name__}"
