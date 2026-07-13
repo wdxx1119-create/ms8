@@ -48,6 +48,11 @@ from .models import (
     RetrievalTrace,
     TimeCoordinates,
 )
+from .projection_sources import (
+    EvidenceResolver,
+    SearchProjectionCandidateProvider,
+    SearchProjectionFormatError,
+)
 from .query_planner import (
     ClassifierHook,
     QueryPlanner,
@@ -69,6 +74,7 @@ __all__ = [
     "EligibilityEvaluation",
     "EligibilityEvaluator",
     "EligibleClaims",
+    "EvidenceResolver",
     "LedgerLexicalCandidateSource",
     "LegacyCandidateMapper",
     "LegacyCandidateProvider",
@@ -91,6 +97,8 @@ __all__ = [
     "RetrievalPlan",
     "RetrievalPurpose",
     "RetrievalTrace",
+    "SearchProjectionCandidateProvider",
+    "SearchProjectionFormatError",
     "SourceStatus",
     "TemporalResolution",
     "TimeCoordinates",
