@@ -36,8 +36,8 @@ def _claim(claim_id: str, *, subject: str, predicate: str) -> Claim:
 
 def _state() -> ReplayState:
     claim_a = _claim("claim:a", subject="MS8", predicate="memory_policy")
-    claim_b = _claim("claim:b", subject="Retrieval", predicate="conflicts_with_ms8")
-    claim_blocked = _claim("claim:blocked", subject="Secret", predicate="conflicts_with_ms8")
+    claim_b = _claim("claim:b", subject="Retrieval", predicate="related_rule")
+    claim_blocked = _claim("claim:blocked", subject="Secret", predicate="related_rule")
     claims = {
         claim.claim_id: ClaimReplayView(
             claim=claim,
