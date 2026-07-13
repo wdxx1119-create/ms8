@@ -29,6 +29,9 @@ All notable changes to this project are documented in this file.
 
 ## [0.2.16] - 2026-07-11
 
+0.2.16 was prepared and validated in the repository but was not published to PyPI.
+Its changes are included in 0.2.17.
+
 ### Added
 - Added contributor, support, roadmap, documentation-index, and community governance files.
 - Added architecture, data-model, and threat-model documentation grounded in the current implementation.
