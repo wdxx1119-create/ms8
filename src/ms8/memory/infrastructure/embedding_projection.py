@@ -152,6 +152,12 @@ def read_embedding_projection(path: Path) -> EmbeddingProjectionSnapshot | None:
     raw_entries = payload.get("embeddings")
     if not isinstance(manifest, Mapping) or not isinstance(raw_entries, list):
         return None
+    raw_dimensions = manifest.get("dimensions")
+    raw_last_sequence = manifest.get("last_sequence")
+    if isinstance(raw_dimensions, bool) or not isinstance(raw_dimensions, int):
+        return None
+    if isinstance(raw_last_sequence, bool) or not isinstance(raw_last_sequence, int):
+        return None
     try:
         if manifest.get("name") != EMBEDDING_PROJECTION_NAME:
             return None
@@ -175,9 +181,9 @@ def read_embedding_projection(path: Path) -> EmbeddingProjectionSnapshot | None:
             )
         snapshot = EmbeddingProjectionSnapshot(
             model_id=str(manifest.get("model_id") or ""),
-            dimensions=int(manifest.get("dimensions")),
+            dimensions=raw_dimensions,
             built_from_ledger_head=str(manifest.get("built_from_ledger_head") or ""),
-            last_sequence=int(manifest.get("last_sequence")),
+            last_sequence=raw_last_sequence,
             logical_state_hash=str(manifest.get("logical_state_hash") or ""),
             entries=tuple(entries),
         )
