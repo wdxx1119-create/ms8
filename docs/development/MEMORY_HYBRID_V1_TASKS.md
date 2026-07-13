@@ -57,9 +57,9 @@ The following invariants are release gates rather than ranking preferences:
 
 - [x] Create public development branch from the latest `main` commit.
 - [x] Record the implementation plan and public/private boundary in-repository.
-- [ ] Open a Draft PR marked experimental, disabled by default, macOS-first, no release/publish action.
-- [ ] Capture baseline CI, unit-test, package-smoke, and current Ledger retrieval behavior.
-- [ ] Add a branch safety check covering private repository names, real local paths, credentials, private fixtures, and LAN files.
+- [x] Open a Draft PR marked experimental, disabled by default, macOS-first, no release/publish action.
+- [x] Capture baseline CI, unit-test, package-smoke, and current Ledger retrieval behavior.
+- [x] Add a branch safety check covering private repository names, real local paths, credentials, private fixtures, and LAN files.
 
 Acceptance:
 
@@ -69,8 +69,8 @@ Acceptance:
 
 ## Phase 1 — retrieval contracts and eligibility boundary
 
-- [-] Add the `ms8.memory.retrieval` package boundary.
-- [-] Define immutable contracts:
+- [x] Add the `ms8.memory.retrieval` package boundary.
+- [x] Define immutable contracts:
   - `Principal`;
   - `MemoryQuery`;
   - `RetrievalPlan`;
@@ -78,13 +78,13 @@ Acceptance:
   - `RankedClaim`;
   - `RetrievalTrace`;
   - time-coordinate and candidate-limit value objects.
-- [ ] Preserve separate `recorded_as_of`, `observed_as_of`, and `valid_at` fields; treat `as_of` only as a convenience expansion.
-- [ ] Define normalized retrieval purposes such as `recall`, `prepare_reply`, `inject`, `historical`, `review`, and `audit`.
-- [ ] Add authority normalization without rewriting historical Ledger data (`assistant_inferred` compatibility alias to `agent_inferred`).
-- [ ] Implement `EligibilityEvaluator` as the single pre-retrieval boundary.
-- [ ] Produce an immutable eligible-claim set and structured blocked-reason counts.
-- [ ] Ensure all candidate sources require the eligibility set rather than accepting an unrestricted store.
-- [ ] Add tests proving unauthorized realms, inactive lifecycles, non-injectable claims, and missing principal context fail closed.
+- [x] Preserve separate `recorded_as_of`, `observed_as_of`, and `valid_at` fields; treat `as_of` only as a convenience expansion.
+- [x] Define normalized retrieval purposes such as `recall`, `prepare_reply`, `inject`, `historical`, `review`, and `audit`.
+- [x] Add authority normalization without rewriting historical Ledger data (`assistant_inferred` compatibility alias to `agent_inferred`).
+- [x] Implement `EligibilityEvaluator` as the single pre-retrieval boundary.
+- [x] Produce an immutable eligible-claim set and structured blocked-reason counts.
+- [x] Ensure all candidate sources require the eligibility set rather than accepting an unrestricted store.
+- [x] Add tests proving unauthorized realms, inactive lifecycles, non-injectable claims, and missing principal context fail closed.
 
 Acceptance:
 
@@ -94,21 +94,21 @@ Acceptance:
 
 ## Phase 2 — query planner and analyzers
 
-- [ ] Implement rule-first `QueryPlanner` with optional classifier extension points.
-- [ ] Support intents:
+- [x] Implement rule-first `QueryPlanner` with optional classifier extension points.
+- [x] Support intents:
   - `current_state`;
   - `historical_reason`;
   - `project_rule`;
   - `personal_preference`;
   - `code_symbol`;
   - `open_recall`.
-- [ ] Implement explicit temporal parsing for relative and absolute expressions.
-- [ ] Implement unified Chinese, English, and code token analysis:
+- [x] Implement explicit temporal parsing for relative and absolute expressions.
+- [x] Implement unified Chinese, English, and code token analysis:
   - Jieba segmentation with CJK unigram/bigram fallback;
   - English case folding and conservative variants;
   - exact code/path/version/flag preservation;
   - identifier expansion for camelCase, PascalCase, snake_case, and kebab-case.
-- [ ] Add tests for commands, paths, versions, function calls, `C++`, and mixed Chinese/English/code queries.
+- [x] Add tests for commands, paths, versions, function calls, `C++`, and mixed Chinese/English/code queries.
 
 Acceptance:
 
@@ -118,13 +118,13 @@ Acceptance:
 
 ## Phase 3 — candidate source adapters
 
-- [ ] Define a common `CandidateSource` protocol returning `CandidateHit` only.
-- [ ] Wrap current Ledger Search/FTS projection as the lexical source.
-- [ ] Preserve legacy `engine_core/whoosh_search.py` as a compatibility adapter rather than a new authority path.
-- [ ] Preserve legacy `engine_core/semantic_search.py` as a candidate adapter only.
-- [ ] Preserve legacy knowledge graph as a candidate adapter only.
-- [ ] Ensure every hit maps to a Ledger `claim_id` and accessible `evidence_ids`.
-- [ ] Add component health and structured degradation reasons.
+- [x] Define a common `CandidateSource` protocol returning `CandidateHit` only.
+- [x] Wrap current Ledger Search/FTS projection as the lexical source.
+- [x] Preserve legacy `engine_core/whoosh_search.py` as a compatibility adapter rather than a new authority path.
+- [x] Preserve legacy `engine_core/semantic_search.py` as a candidate adapter only.
+- [x] Preserve legacy knowledge graph as a candidate adapter only.
+- [x] Ensure every hit maps to a Ledger `claim_id` and accessible `evidence_ids`.
+- [x] Add component health and structured degradation reasons.
 
 Acceptance:
 
@@ -132,28 +132,32 @@ Acceptance:
 - each source has deterministic limits and trace output;
 - source failure does not bypass eligibility.
 
+Validation evidence: exact Phase 3 head `18c0146d8519b7835b133bca23710c1acc853198` passed CI, Required check compatibility, CodeQL, Dependency Review, and Examples smoke.
+
 ## Phase 4 — lexical and embedding projections
 
-- [ ] Upgrade claim/evidence lexical indexing fields:
+- [x] Upgrade claim/evidence lexical indexing fields:
   - claim text;
   - subject/predicate/value;
   - aliases;
   - code symbols, paths, versions, commands;
   - compact evidence text;
   - realm, scope, lifecycle, and valid-time metadata.
-- [ ] Keep deterministic `vector_projection.v1` compatibility unchanged.
-- [ ] Add a separate versioned `embedding_projection` contract using `content_hash + model_id`.
-- [ ] Define `EmbeddingProvider` protocol independent of Ollama.
-- [ ] Provide optional Ollama adapter without making Ollama a core dependency.
-- [ ] Implement small-dataset exact cosine search after eligibility restriction.
-- [ ] Reserve an optional HNSW backend interface without requiring it in the core package.
-- [ ] Rebuild embedding projection on model/content-version mismatch.
+- [x] Keep deterministic `vector_projection.v1` compatibility unchanged.
+- [x] Add a separate versioned `embedding_projection` contract using `content_hash + model_id`.
+- [x] Define `EmbeddingProvider` protocol independent of Ollama.
+- [x] Provide optional Ollama adapter without making Ollama a core dependency.
+- [x] Implement small-dataset exact cosine search after eligibility restriction.
+- [x] Reserve an optional HNSW backend interface without requiring it in the core package.
+- [x] Rebuild embedding projection on model/content-version mismatch.
 
 Acceptance:
 
 - an embedding backend never scans unauthorized candidates;
 - missing embeddings degrade to lexical retrieval;
 - model changes are visible in projection state and explain trace.
+
+Validation evidence: exact Phase 4 head `f525f3a0c28fef4ab0ec6978b952c6394e261374` passed Python 3.10–3.13, Ruff, mypy, full pytest and coverage, package/profile/clean-room checks, macOS and Windows wheel smoke, CodeQL, Dependency Review, Examples smoke, and Required check compatibility.
 
 ## Phase 5 — entity, temporal, and graph retrieval
 
