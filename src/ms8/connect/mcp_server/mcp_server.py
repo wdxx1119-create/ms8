@@ -88,12 +88,22 @@ def _as_bool(value: Any) -> bool:
     return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
 
 
-def _ledger_query_options(params: dict[str, Any]) -> dict[str, str]:
-    options: dict[str, str] = {}
+def _ledger_query_options(
+    params: dict[str, Any],
+    *,
+    include_purpose: bool = False,
+) -> dict[str, Any]:
+    options: dict[str, Any] = {}
     for key in ("recorded_as_of", "observed_as_of", "valid_at", "realm_id", "scope"):
         value = str(params.get(key) or "").strip()
         if value:
             options[key] = value
+    if _as_bool(params.get("explain", False)):
+        options["explain"] = True
+    if include_purpose:
+        purpose = str(params.get("purpose") or "").strip()
+        if purpose:
+            options["purpose"] = purpose
     return options
 
 
@@ -382,7 +392,7 @@ def call_tool(name: str, params: dict[str, Any] | None = None, config: dict[str,
     if tool == "query":
         text = str(p.get("text") or p.get("query") or "").strip()
         top_k = int(p.get("top_k", p.get("limit", 5)) or 5)
-        options = _ledger_query_options(p)
+        options = _ledger_query_options(p, include_purpose=True)
         out = svc.query(text, top_k, **options) if options else svc.query(text, top_k)
         _audit("query", bool(out.get("ok", False)), {"client": _get_client_name(p)})
         return out

@@ -21,6 +21,7 @@ from .adapters import (
     LedgerLexicalCandidateSource,
     run_candidate_sources,
 )
+from .candidate_sources import CandidateSource
 from .context_assembly import MMRConfig, build_agent_context
 from .eligibility import EligibilityEvaluation, EligibilityEvaluator, EligibleClaims
 from .embedding_sources import (
@@ -36,6 +37,7 @@ from .models import (
     MemoryQuery,
     Principal,
     RankedClaim,
+    RetrievalPlan,
     RetrievalPurpose,
     TimeCoordinates,
 )
@@ -53,11 +55,17 @@ _ALLOWED_PURPOSES = frozenset(
 
 
 def _required_positive_int(value: object, field_name: str, default: int) -> int:
-    if value is None:
-        return default
-    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+    candidate = default if value is None else value
+    if isinstance(candidate, bool) or not isinstance(candidate, int) or candidate < 1:
         raise ValueError(f"{field_name} must be a positive integer")
-    return value
+    return candidate
+
+
+def _strict_bool(value: object, field_name: str, default: bool = False) -> bool:
+    candidate = default if value is None else value
+    if not isinstance(candidate, bool):
+        raise TypeError(f"{field_name} must be a boolean")
+    return candidate
 
 
 def _required_text(value: object, field_name: str, default: str) -> str:
@@ -197,7 +205,11 @@ class _UnavailableVectorSource:
     name = "embedding-unavailable"
     channel: CandidateChannel = "vector"
 
-    def retrieve(self, _plan: object, _eligible: EligibleClaims) -> tuple[CandidateHit, ...]:
+    def retrieve(
+        self,
+        _plan: RetrievalPlan,
+        _eligible: EligibleClaims,
+    ) -> tuple[CandidateHit, ...]:
         raise RuntimeError("embedding provider is not configured")
 
 
@@ -258,7 +270,7 @@ class HybridRetrievalRuntime:
             capabilities=("all",),
         )
 
-    def _vector_source(self) -> object:
+    def _vector_source(self) -> CandidateSource:
         embedding = self.config.embedding
         if not isinstance(embedding, Mapping) or embedding.get("enabled") is not True:
             return _UnavailableVectorSource()
@@ -276,7 +288,10 @@ class HybridRetrievalRuntime:
                 "http://127.0.0.1:11434",
             ),
             timeout_seconds=float(embedding.get("timeout_seconds", 10.0)),
-            allow_remote=bool(embedding.get("allow_remote", False)),
+            allow_remote=_strict_bool(
+                embedding.get("allow_remote"),
+                "hybrid.embedding.allow_remote",
+            ),
         )
         return EmbeddingProjectionCandidateSource(
             EmbeddingProjectionCandidateProvider(
@@ -286,7 +301,7 @@ class HybridRetrievalRuntime:
             )
         )
 
-    def _sources(self) -> tuple[object, ...]:
+    def _sources(self) -> tuple[CandidateSource, ...]:
         return (
             LedgerLexicalCandidateSource(
                 SearchProjectionCandidateProvider(
@@ -344,7 +359,7 @@ class HybridRetrievalRuntime:
         )
         eligibility = self._eligibility.evaluate(self.state, planning.plan)
         candidates = run_candidate_sources(
-            cast(Sequence[Any], self._sources()),
+            self._sources(),
             planning.plan,
             eligibility.eligible,
         )
@@ -474,6 +489,8 @@ class HybridRetrievalRuntime:
                 "config_schema": execution.fusion.config_schema,
                 "candidate_count": execution.fusion.candidate_count,
                 "source_names": list(execution.fusion.source_names),
+            },
+            "reranking": {
                 "ranked": [
                     self._ranked_dict(item) for item in execution.fusion.ranked_claims
                 ],
@@ -603,7 +620,7 @@ class HybridRetrievalRuntime:
             for item in execution.fusion.ranked_claims
             if item.claim_id in selected
         ]
-        skipped = Counter()
+        skipped: Counter[str] = Counter()
         for trace in assembly.mmr_traces:
             if not trace.selected:
                 skipped[trace.reason.split(":", 1)[0]] += 1
