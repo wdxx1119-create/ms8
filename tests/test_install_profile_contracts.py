@@ -53,11 +53,11 @@ def test_release_version_is_consistent_across_release_surfaces() -> None:
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     release_notes = (ROOT / "docs" / f"RELEASE_NOTES_{version}.md").read_text(encoding="utf-8")
 
-    assert version == "0.2.16"
+    assert version == "0.2.17"
     assert f'__version__ = "{version}"' in source
     assert f"version-{version}-blue" in readme
     assert f"dist/ms8-{version}-py3-none-any.whl" in readme
-    assert f"## [{version}] - 2026-07-11" in changelog
+    assert f"## [{version}] - 2026-07-13" in changelog
     assert f"MS8 {version} Release Notes" in release_notes
 
 

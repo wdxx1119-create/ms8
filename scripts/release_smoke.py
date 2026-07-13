@@ -7,9 +7,9 @@ import stat
 import subprocess
 import sys
 import tempfile
+from collections.abc import Sequence
 from importlib.resources import files
 from pathlib import Path
-from typing import Sequence
 
 
 def _configure_stdio() -> None:

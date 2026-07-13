@@ -15,9 +15,9 @@ import argparse
 import json
 import subprocess
 import sys
+from collections.abc import Iterable
 from importlib.metadata import Distribution, distributions
 from pathlib import Path
-from typing import Iterable
 
 from packaging.markers import default_environment
 from packaging.requirements import Requirement
