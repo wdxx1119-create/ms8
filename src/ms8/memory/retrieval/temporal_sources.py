@@ -67,7 +67,7 @@ class TemporalReplayCandidateProvider:
                 )
             status = view.current_status
             effective_end = effective_valid_until(self.state, view)
-            is_historical = status in _HISTORICAL_STATUSES or effective_end is not None
+            is_historical = status in _HISTORICAL_STATUSES
             if historical:
                 if not is_historical:
                     continue
