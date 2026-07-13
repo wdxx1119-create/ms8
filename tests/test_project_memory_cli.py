@@ -562,7 +562,7 @@ def test_project_memory_build_outputs_are_high_signal_and_truncated(tmp_path: Pa
     root = tmp_path / "bigproj"
     root.mkdir()
     for idx in range(30):
-        body = ("section %d " % idx) + ("x" * 1800)
+        body = f"section {idx} " + ("x" * 1800)
         (root / f"doc_{idx}.md").write_text(body, encoding="utf-8")
     (root / "README.md").write_text("# Big Project\n\noverview", encoding="utf-8")
 

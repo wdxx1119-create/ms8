@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ms8"
-version = "0.2.16"
+version = "0.2.17"
 description = "MS8 — local memory system. Memory belongs to you, not to tools."
 readme = "README.md"
 license = "GPL-3.0-or-later"
@@ -17,7 +17,6 @@ classifiers = [
     "Natural Language :: English",
     "Operating System :: MacOS",
     "Operating System :: Microsoft :: Windows",
-    "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.10",
@@ -102,6 +101,7 @@ full = [
 [project.scripts]
 ms8 = "ms8.cli:main"
 ms8-recovery = "ms8.recovery_cli:main"
+ms8-memory-ledger = "ms8.memory.operations_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -111,7 +111,8 @@ exclude = ["ms8.engine_core.tests*"]
 ms8 = [
   "connect/*.md",
   "connect/config/*.yaml",
-  "connect/adapter_registry/*.json"
+  "connect/adapter_registry/*.json",
+  "memory/schemas/*.json"
 ]
 
 [tool.pytest.ini_options]

@@ -15,6 +15,7 @@ from pathlib import Path
 from . import __version__
 from .absorb.health import absorb_health_summary
 from .engine_core.policy_engine_loader import get_policy_backend_status
+from .memory.doctor_integration import ledger_doctor_status
 from .paths import detect_install_mode, get_config_dir, get_data_dir, get_log_dir, get_ms8_home
 from .runtime import (
     backup_memories,
@@ -293,8 +294,21 @@ def run_doctor() -> int:
     print(f"Log dir: {get_log_dir()}")
     print(f"Install mode: {detect_install_mode()}")
     runtime_status = "healthy"
+    ledger_status = ledger_doctor_status(get_ms8_home())
+    if str(ledger_status.get("status", "inactive")) == "degraded":
+        runtime_status = "degraded"
     print("Status: collecting diagnostics\n")
     print("Checks:")
+    print(
+        " ✅ memory-ledger-v1: "
+        f"status={ledger_status.get('status', 'unknown')} "
+        f"format={ledger_status.get('active_format', 'unknown')} "
+        f"head={ledger_status.get('ledger_head', ledger_status.get('manifest_head', 'n/a'))} "
+        f"projection_ready={ledger_status.get('projection_ready', False)}"
+    )
+    ledger_reasons = ledger_status.get("reason_codes", [])
+    if isinstance(ledger_reasons, list) and ledger_reasons not in ([], ["legacy_runtime_active"]):
+        print(f" ⚠️ memory-ledger-v1 reasons: {', '.join(str(item) for item in ledger_reasons[:8])}")
     print(" ✅ runtime dir: OK")
     print(" ✅ data dir: OK")
     print(f" ✅ memories.jsonl: OK ({mem_count} entries)")

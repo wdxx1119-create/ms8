@@ -24,6 +24,7 @@ TOOL_NAMES = (
     "memory_catalog",
     "memory_list",
     "memory_get",
+    "memory_explain",
     "memory_search",
 )
 RESOURCE_KEYS = ("long-term", "profile", "recent", "catalog")
@@ -85,6 +86,15 @@ def _as_bool(value: Any) -> bool:
     if isinstance(value, bool):
         return value
     return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _ledger_query_options(params: dict[str, Any]) -> dict[str, str]:
+    options: dict[str, str] = {}
+    for key in ("recorded_as_of", "observed_as_of", "valid_at", "realm_id", "scope"):
+        value = str(params.get(key) or "").strip()
+        if value:
+            options[key] = value
+    return options
 
 
 def _audit_read_allowed(params: dict[str, Any]) -> bool:
@@ -244,7 +254,6 @@ def _guard_admission(payload: dict[str, Any]) -> tuple[bool, str]:
         except (TypeError, ValueError) as exc:
             logger.debug("Failed to parse previous submit timestamp: %s", exc)
     recent[digest] = _now_iso()
-    # keep last N
     if len(recent) > _MAX_RECENT_HASH:
         sorted_items = sorted(recent.items(), key=lambda kv: str(kv[1]), reverse=True)[:_MAX_RECENT_HASH]
         recent = dict(sorted_items)
@@ -286,7 +295,8 @@ def call_tool(name: str, params: dict[str, Any] | None = None, config: dict[str,
     if tool == "prepare_reply":
         text = str(p.get("text") or p.get("message") or p.get("query") or "").strip()
         limit = int(p.get("limit", 5) or 5)
-        out = svc.context(text, limit)
+        options = _ledger_query_options(p)
+        out = svc.context(text, limit, **options) if options else svc.context(text, limit)
         if isinstance(out, dict):
             out["must_call_before_answer"] = True
             out["workflow"] = {
@@ -367,57 +377,75 @@ def call_tool(name: str, params: dict[str, Any] | None = None, config: dict[str,
             memory_ids=[str(item) for item in raw_ids],
             explicit_user_confirmation=_as_bool(p.get("explicit_user_confirmation", False)),
         )
-        _audit(
-            "pre_action_check",
-            bool(out.get("ok", False)),
-            {
-                "client": _get_client_name(p),
-                "decision": out.get("decision"),
-                "allowed": out.get("allowed"),
-            },
-        )
+        _audit("pre_action_check", bool(out.get("ok", False)), {"client": _get_client_name(p)})
         return out
     if tool == "query":
-        out = svc.query(str(p.get("text") or p.get("query") or ""), int(p.get("top_k", 5) or 5))
+        text = str(p.get("text") or p.get("query") or "").strip()
+        top_k = int(p.get("top_k", p.get("limit", 5)) or 5)
+        options = _ledger_query_options(p)
+        out = svc.query(text, top_k, **options) if options else svc.query(text, top_k)
         _audit("query", bool(out.get("ok", False)), {"client": _get_client_name(p)})
         return out
     if tool == "context":
-        out = svc.context(str(p.get("text") or p.get("message") or ""), int(p.get("limit", 5) or 5))
+        text = str(p.get("text") or p.get("message") or p.get("query") or "").strip()
+        limit = int(p.get("limit", 5) or 5)
+        options = _ledger_query_options(p)
+        out = svc.context(text, limit, **options) if options else svc.context(text, limit)
         _audit("context", bool(out.get("ok", False)), {"client": _get_client_name(p)})
         return out
     if tool == "status":
-        out = svc.quick_status()
+        out = svc.status()
         _audit("status", bool(out.get("ok", False)), {"client": _get_client_name(p)})
         return out
     if tool == "profile":
-        out = svc.profile(str(p.get("key") or p.get("resource") or "profile"))
+        key = str(p.get("key") or "profile")
+        out = read_resource(key, params=p, config=cfg)
         _audit("profile", bool(out.get("ok", False)), {"client": _get_client_name(p)})
         return out
-    if tool.startswith("memory_"):
+    if tool == "memory_explain":
+        out = svc.ledger_explain(str(p.get("claim_id") or ""))
+        _audit("memory_explain", bool(out.get("ok", False)), {"client": _get_client_name(p)})
+        return out
+    if tool in {"memory_catalog", "memory_list", "memory_get", "memory_search"}:
         return _call_memory_tool(tool, p, svc)
-    return {"ok": False, "error": f"unknown_tool:{name}"}
+    out = {"ok": False, "error": f"unknown_tool:{tool}"}
+    _audit("unknown", False, {"client": _get_client_name(p), "tool": tool})
+    return out
 
 
 def read_resource(
     key: str,
-    config: dict[str, Any] | None = None,
     params: dict[str, Any] | None = None,
+    config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    cfg = _load_config(config)
+    svc = MemoryServiceInterface.from_config(cfg)
     p = params if isinstance(params, dict) else {}
     ok_token, token_err = _enforce_client_token(p)
     if not ok_token:
-        out = {"ok": False, "error": token_err, "resource": key, "client": _get_client_name(p)}
+        out = {"ok": False, "error": token_err, "client": _get_client_name(p)}
         _audit("resource_auth", False, out)
         return out
-    cfg = _load_config(config)
-    svc = MemoryServiceInterface.from_config(cfg)
-    if key == "catalog":
+    k = str(key or "").strip().lower()
+    legacy_resource_methods = {
+        "long-term": "resource_long_term",
+        "profile": "resource_profile",
+        "recent": "resource_recent",
+    }
+    method_name = legacy_resource_methods.get(k)
+    if method_name is not None:
+        handler = getattr(svc, method_name, None)
+        if callable(handler):
+            result = handler()
+            return result if isinstance(result, dict) else {"ok": False, "error": f"invalid_resource:{k}"}
+        if k == "profile":
+            legacy_profile = getattr(svc, "profile", None)
+            if callable(legacy_profile):
+                result = legacy_profile(k)
+                return result if isinstance(result, dict) else {"ok": False, "error": f"invalid_resource:{k}"}
+        return {"ok": False, "error": f"resource_unavailable:{k}"}
+    if k == "catalog":
         return svc.memory_catalog()
-    if key.startswith("memory/"):
-        return {
-            "ok": False,
-            "error": "dynamic_memory_resource_disabled",
-            "error_code": "E_MCP_RESOURCE_DISABLED",
-            "resource": key,
-        }
-    return svc.profile(key)
+    if k.startswith("memory/"):
+        return {"ok": False, "error": "dynamic_memory_resource_disabled"}
+    return {"ok": False, "error": f"unknown_resource:{k}"}

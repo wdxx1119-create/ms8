@@ -21,6 +21,7 @@
 - [README](../README.md)：项目概览、核心能力、状态和主要入口。
 - [Roadmap](../ROADMAP.md)：Alpha 重点、Beta 准入条件和后续方向。
 - [Changelog](../CHANGELOG.md)：版本变化和发布记录。
+- [0.2.17 Release Candidate Notes](RELEASE_NOTES_0.2.17.md)：Memory Ledger v1 补丁候选范围、兼容性和验收清单。
 - [0.2.16 Release Candidate Notes](RELEASE_NOTES_0.2.16.md)：候选范围、兼容性和验收清单。
 - [MCP Connect Guide](../src/ms8/connect/CONNECT_GUIDE.md)：连接 AI 工具的完整流程。
 - [Security Policy](../SECURITY.md)：支持版本、漏洞报告和协调披露流程。
