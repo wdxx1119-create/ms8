@@ -34,6 +34,15 @@ from .eligibility import (
     PolicyHook,
     normalize_authority,
 )
+from .embedding import (
+    ApproximateEmbeddingBackend,
+    EmbeddingMatch,
+    EmbeddingProvider,
+    EmbeddingSearchError,
+    exact_cosine_search,
+    normalize_embedding_vector,
+    validate_embedding_batch,
+)
 from .models import (
     CandidateChannel,
     CandidateHit,
@@ -62,6 +71,7 @@ from .query_planner import (
 )
 
 __all__ = [
+    "ApproximateEmbeddingBackend",
     "CandidateBatch",
     "CandidateChannel",
     "CandidateHit",
@@ -74,6 +84,9 @@ __all__ = [
     "EligibilityEvaluation",
     "EligibilityEvaluator",
     "EligibleClaims",
+    "EmbeddingMatch",
+    "EmbeddingProvider",
+    "EmbeddingSearchError",
     "EvidenceResolver",
     "LedgerLexicalCandidateSource",
     "LegacyCandidateMapper",
@@ -103,9 +116,12 @@ __all__ = [
     "TemporalResolution",
     "TimeCoordinates",
     "analyze_query",
+    "exact_cosine_search",
     "normalize_authority",
+    "normalize_embedding_vector",
     "resolve_temporal_expression",
     "run_candidate_source",
     "run_candidate_sources",
     "validate_candidate_hits",
+    "validate_embedding_batch",
 ]
