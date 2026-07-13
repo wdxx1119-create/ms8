@@ -292,7 +292,7 @@ def run_candidate_sources(
             hits = run_candidate_source(source, plan, eligible)
         except (CandidateSourceError, PermissionError):
             raise
-        except Exception as exc:  # component failure is isolated and explained
+        except (OSError, RuntimeError, TypeError, ValueError, LookupError, ArithmeticError) as exc:
             reason = f"{name}:{type(exc).__name__}"
             hits_by_source[name] = ()
             traces.append(
