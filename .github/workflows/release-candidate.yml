@@ -130,6 +130,38 @@ jobs:
           test -f "dist/ms8-${EXPECTED_VERSION}-py3-none-any.whl"
           test -f "dist/ms8-${EXPECTED_VERSION}.tar.gz"
           python -m twine check dist/*
+          EXPECTED_VERSION="$EXPECTED_VERSION" python - <<'PY'
+          import os
+          import tarfile
+          import zipfile
+          from pathlib import Path
+
+          expected = os.environ['EXPECTED_VERSION']
+          wheel = Path(f'dist/ms8-{expected}-py3-none-any.whl')
+          sdist = Path(f'dist/ms8-{expected}.tar.gz')
+          schema = 'ms8/memory/schemas/ms8-ledger-v1.schema.json'
+
+          with zipfile.ZipFile(wheel) as zf:
+              wheel_names = zf.namelist()
+          with tarfile.open(sdist, 'r:gz') as tf:
+              sdist_names = tf.getnames()
+
+          def has_lan(names):
+              return [
+                  name for name in names
+                  if '/ms8/lan/' in f'/{name.lower()}/'
+                  or name.lower().endswith('/ms8/lan')
+              ]
+
+          wheel_lan = has_lan(wheel_names)
+          sdist_lan = has_lan(sdist_names)
+          if wheel_lan or sdist_lan:
+              raise AssertionError(f'LAN files found: wheel={wheel_lan}, sdist={sdist_lan}')
+          if schema not in wheel_names:
+              raise AssertionError(f'missing Ledger schema in wheel: {schema}')
+          if f'ms8-{expected}/src/{schema}' not in sdist_names:
+              raise AssertionError(f'missing Ledger schema in sdist: {schema}')
+          PY
 
       - name: Verify wheel in a clean core environment
         shell: bash
@@ -150,6 +182,7 @@ jobs:
           root = files('ms8')
           assert root.joinpath('connect/config/mcp_config.yaml').is_file()
           assert root.joinpath('connect/adapter_registry/adapters.json').is_file()
+          assert root.joinpath('memory/schemas/ms8-ledger-v1.schema.json').is_file()
           try:
               version('ollama')
           except PackageNotFoundError:
@@ -160,6 +193,7 @@ jobs:
           "$ENV_DIR/bin/python" -m pip check
           "$ENV_DIR/bin/ms8" version
           "$ENV_DIR/bin/ms8-recovery" --help
+          "$ENV_DIR/bin/ms8-memory-ledger" --help
 
       - name: Audit installed wheel runtime dependency closure
         id: wheel_audit
