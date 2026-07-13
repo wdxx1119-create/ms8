@@ -11,7 +11,6 @@ from collections import Counter
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Any
 
 from ..application.replay import ClaimReplayView, ReplayState
 from ..application.temporal_query import claim_is_valid_at, claim_was_observed_as_of, effective_valid_until
