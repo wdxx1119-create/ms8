@@ -24,6 +24,11 @@ from ...engine_core.expression_preference_profile import (
 from ...engine_core.response_mode_router import choose_cognitive_phrase, route_response
 from ...engine_core.response_mode_types import RouterDecision
 from ...engine_core.sticky_prompt_templates import GUARDRAIL_PROMPT_EXTRA, build_profile_hint, get_prompt_extra
+from ...memory.compat import (
+    LedgerCompatibilityError,
+    LedgerMemoryCompatibilityAdapter,
+    build_ledger_memory_compatibility_adapter,
+)
 from ...paths import get_ms8_home
 from ..integration_hooks.service_models import MemoryCandidate
 from .memory_access_policy import memory_row_browsable, redact_memory_row
@@ -43,16 +48,25 @@ class MemoryServiceInterface:
     config: dict[str, Any]
     core: MemoryCore | None = None
     core_error: str = ""
+    ledger_adapter: LedgerMemoryCompatibilityAdapter | None = None
+    ledger_requested: bool = False
+    ledger_error: str = ""
 
     def __init__(
         self,
         config: dict[str, Any] | None = None,
         core: MemoryCore | None = None,
         core_error: str = "",
+        ledger_adapter: LedgerMemoryCompatibilityAdapter | None = None,
+        ledger_requested: bool = False,
+        ledger_error: str = "",
     ) -> None:
         self.config = config if isinstance(config, dict) else {}
         self.core = core
         self.core_error = str(core_error or "")
+        self.ledger_adapter = ledger_adapter
+        self.ledger_requested = bool(ledger_requested)
+        self.ledger_error = str(ledger_error or "")
 
     @classmethod
     def from_config(cls, cfg: dict[str, Any] | None) -> MemoryServiceInterface:
@@ -73,7 +87,32 @@ class MemoryServiceInterface:
             core = MemoryCore(llm_enabled=False)
         except (OSError, RuntimeError, TypeError, ValueError) as exc:  # pragma: no cover
             core_error = str(exc)
-        return cls(config=config, core=core, core_error=core_error)
+        ledger_cfg = config.get("memory_ledger_v1", {})
+        ledger_requested = isinstance(ledger_cfg, dict) and ledger_cfg.get("enabled") is True
+        ledger_adapter: LedgerMemoryCompatibilityAdapter | None = None
+        ledger_error = ""
+        if ledger_requested:
+            try:
+                workspace = cls._resolve_workspace(
+                    str(
+                        (
+                            config.get("memory_core", {})
+                            if isinstance(config.get("memory_core", {}), dict)
+                            else {}
+                        ).get("workspace", os.environ.get("MS8_HOME", str(get_ms8_home())))
+                    )
+                )
+                ledger_adapter = build_ledger_memory_compatibility_adapter(config, workspace)
+            except (LedgerCompatibilityError, OSError, RuntimeError, TypeError, ValueError) as exc:
+                ledger_error = str(exc)
+        return cls(
+            config=config,
+            core=core,
+            core_error=core_error,
+            ledger_adapter=ledger_adapter,
+            ledger_requested=ledger_requested,
+            ledger_error=ledger_error,
+        )
 
     @staticmethod
     def _expand(raw: str) -> Path:
@@ -107,7 +146,7 @@ class MemoryServiceInterface:
         return MemoryCoreEngine(self._workspace())
 
     def available(self) -> bool:
-        return self.core is not None
+        return self.core is not None or self.ledger_adapter is not None
 
     def _core_unavailable(self) -> dict[str, Any]:
         return {
@@ -116,7 +155,25 @@ class MemoryServiceInterface:
             "error_code": ERR_CORE_UNAVAILABLE,
         }
 
+    def _ledger_unavailable(self) -> dict[str, Any]:
+        return {
+            "ok": False,
+            "error": f"Ledger-v1 compatibility unavailable: {self.ledger_error}",
+            "error_code": "E_LEDGER_V1_UNAVAILABLE",
+        }
+
     def submit(self, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        if self.ledger_requested:
+            if self.ledger_adapter is None:
+                unavailable = self._ledger_unavailable()
+                unavailable["accepted"] = False
+                return unavailable
+            return {
+                "ok": False,
+                "accepted": False,
+                "error": "ledger_v1_write_not_enabled",
+                "error_code": "E_LEDGER_V1_WRITE_NOT_ENABLED",
+            }
         if not self.available():
             return self._core_unavailable()
         candidate = MemoryCandidate.from_payload(payload)
@@ -160,10 +217,40 @@ class MemoryServiceInterface:
             explicit_user_confirmation=explicit_user_confirmation,
         )
 
-    def query(self, text: str, top_k: int = 5) -> dict[str, Any]:
+    def query(
+        self,
+        text: str,
+        top_k: int = 5,
+        *,
+        recorded_as_of: str | None = None,
+        valid_at: str | None = None,
+        realm_id: str | None = None,
+        scope: str | None = None,
+    ) -> dict[str, Any]:
+        query = str(text or "").strip()
+        if self.ledger_requested:
+            if self.ledger_adapter is None:
+                return self._ledger_unavailable()
+            try:
+                return self.ledger_adapter.query(
+                    query,
+                    top_k,
+                    recorded_as_of=recorded_as_of,
+                    valid_at=valid_at,
+                    realm_id=realm_id,
+                    scope=scope,
+                )
+            except (OSError, RuntimeError, TypeError, ValueError) as exc:
+                logger.warning("ledger_v1_query_failed query=%s err=%s", query, exc)
+                return {
+                    "ok": False,
+                    "query": query,
+                    "error": str(exc),
+                    "error_code": "E_LEDGER_V1_QUERY_FAILED",
+                    "results": [],
+                }
         if not self.available():
             return self._core_unavailable()
-        query = str(text or "").strip()
         try:
             gateway = self._engine_adapter().retrieve_gateway(
                 query=query,
@@ -298,10 +385,42 @@ class MemoryServiceInterface:
             "retrieval_gateway": gateway.get("trace", {}),
         }
 
-    def context(self, text: str, limit: int = 5) -> dict[str, Any]:
+    def context(
+        self,
+        text: str,
+        limit: int = 5,
+        *,
+        recorded_as_of: str | None = None,
+        valid_at: str | None = None,
+        realm_id: str | None = None,
+        scope: str | None = None,
+    ) -> dict[str, Any]:
+        query = str(text or "").strip()
+        if self.ledger_requested:
+            if self.ledger_adapter is None:
+                return self._ledger_unavailable()
+            try:
+                out = self.ledger_adapter.context(
+                    query,
+                    limit,
+                    recorded_as_of=recorded_as_of,
+                    valid_at=valid_at,
+                    realm_id=realm_id,
+                    scope=scope,
+                )
+                out["recommended_actions"] = self._recommended_actions_from_query(query)
+                return out
+            except (OSError, RuntimeError, TypeError, ValueError) as exc:
+                logger.warning("ledger_v1_context_failed query=%s err=%s", query, exc)
+                return {
+                    "ok": False,
+                    "query": query,
+                    "error": str(exc),
+                    "error_code": "E_LEDGER_V1_CONTEXT_FAILED",
+                    "context": {},
+                }
         if not self.available():
             return self._core_unavailable()
-        query = str(text or "").strip()
         assert self.core is not None
         try:
             payload = self.core.get_response_memory_context(query)
@@ -368,6 +487,29 @@ class MemoryServiceInterface:
                 "error": str(exc),
                 "error_code": "E_MCP_CONTEXT_FAILED",
                 "context": {},
+            }
+
+    def ledger_explain(self, claim_id: str) -> dict[str, Any]:
+        normalized = str(claim_id or "").strip()
+        if not self.ledger_requested:
+            return {
+                "ok": False,
+                "status": "unsupported",
+                "reason": "ledger_v1_not_selected",
+                "error_code": "E_LEDGER_V1_NOT_SELECTED",
+            }
+        if self.ledger_adapter is None:
+            return self._ledger_unavailable()
+        try:
+            return self.ledger_adapter.explain(normalized)
+        except (OSError, RuntimeError, TypeError, ValueError) as exc:
+            logger.warning("ledger_v1_explain_failed claim_id=%s err=%s", normalized, exc)
+            return {
+                "ok": False,
+                "status": "error",
+                "reason": str(exc),
+                "error_code": "E_LEDGER_V1_EXPLAIN_FAILED",
+                "claim_id": normalized,
             }
 
     def _recommended_actions_from_query(self, query: str) -> list[dict[str, Any]]:

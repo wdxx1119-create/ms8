@@ -17,6 +17,7 @@ from .dashboard import run_dashboard
 from .demo import run_demo
 from .doctor import run_backup_and_cleanup, run_doctor_with_hint, run_set_risk_thresholds
 from .lifecycle import clean_runtime, render_lifecycle_result, reset_runtime, uninstall_runtime
+from .memory.compat.cli import run_memory_ledger_cli
 from .onboarding import onboarding_status, run_onboarding
 from .runtime import (
     advanced_insight_status_runtime,
@@ -479,6 +480,82 @@ def _build_parser() -> argparse.ArgumentParser:
     p_ask = sub.add_parser("ask", help="quick save/search")
     p_ask.add_argument("query", help='search text, or save using "记住 xxx"/"save xxx"')
     p_ask.add_argument("--limit", type=int, default=5, help="max search results")
+
+    p_memory_ledger = sub.add_parser(
+        "memory-ledger",
+        help="explicit ledger-v1 read, doctor, rebuild, mutation, and migration commands",
+    )
+    p_memory_ledger.add_argument("--workspace", required=True, help="explicit MS8 workspace path")
+    p_memory_ledger_sub = p_memory_ledger.add_subparsers(dest="memory_ledger_cmd")
+    p_memory_ledger_sub.add_parser("doctor", help="read-only ledger and projection health")
+    p_memory_ledger_sub.add_parser("status", help="show authorized ledger-v1 readiness")
+    for _ledger_read_command in ("query", "context"):
+        _ledger_parser = p_memory_ledger_sub.add_parser(_ledger_read_command)
+        _ledger_parser.add_argument("text")
+        _ledger_parser.add_argument("--limit", type=int, default=5)
+        _ledger_parser.add_argument("--recorded-as-of", dest="recorded_as_of", default="")
+        _ledger_parser.add_argument("--observed-as-of", dest="observed_as_of", default="")
+        _ledger_parser.add_argument("--valid-at", dest="valid_at", default="")
+        _ledger_parser.add_argument("--realm-id", dest="realm_id", default="")
+        _ledger_parser.add_argument("--scope", default="")
+    p_memory_ledger_explain = p_memory_ledger_sub.add_parser(
+        "explain", help="explain one recall-authorized ledger claim"
+    )
+    p_memory_ledger_explain.add_argument("claim_id")
+
+    p_memory_ledger_rebuild = p_memory_ledger_sub.add_parser(
+        "rebuild", help="preview, verify, or rebuild disposable projections"
+    )
+    p_memory_ledger_rebuild_sub = p_memory_ledger_rebuild.add_subparsers(dest="ledger_rebuild_cmd")
+    p_memory_ledger_rebuild_sub.add_parser("preview")
+    p_memory_ledger_rebuild_sub.add_parser("verify")
+    p_memory_ledger_rebuild_apply = p_memory_ledger_rebuild_sub.add_parser("apply")
+    p_memory_ledger_rebuild_apply.add_argument("--expected-head", required=True)
+    p_memory_ledger_rebuild_apply.add_argument("--apply", action="store_true")
+    p_memory_ledger_rebuild_apply.add_argument("--confirm", default="")
+
+    p_memory_ledger_mutate = p_memory_ledger_sub.add_parser(
+        "mutate", help="append an explicit lifecycle decision; dry-run by default"
+    )
+    p_memory_ledger_mutate.add_argument(
+        "action",
+        choices=["correct", "supersede", "revoke", "forget", "expire", "resolve-conflict"],
+    )
+    p_memory_ledger_mutate.add_argument("--claim-id", default="")
+    p_memory_ledger_mutate.add_argument("--replacement-json", default="")
+    p_memory_ledger_mutate.add_argument("--conflict-id", default="")
+    p_memory_ledger_mutate.add_argument("--winning-claim-id", default="")
+    p_memory_ledger_mutate.add_argument("--claim-ids", action="append", default=[])
+    p_memory_ledger_mutate.add_argument("--expected-head", required=True)
+    p_memory_ledger_mutate.add_argument("--recorded-at", required=True)
+    p_memory_ledger_mutate.add_argument("--reason", required=True)
+    p_memory_ledger_mutate.add_argument(
+        "--actor-kind", default="user", choices=["user", "reviewer", "mcp_client", "system"]
+    )
+    p_memory_ledger_mutate.add_argument("--actor-id", default="cli")
+    p_memory_ledger_mutate.add_argument("--apply", action="store_true")
+    p_memory_ledger_mutate.add_argument("--confirm", default="")
+
+    p_memory_ledger_migrate = p_memory_ledger_sub.add_parser(
+        "migrate", help="plan, apply, or rollback authority migration"
+    )
+    p_memory_ledger_migrate_sub = p_memory_ledger_migrate.add_subparsers(dest="ledger_migrate_cmd")
+    for _ledger_migrate_command in ("plan", "apply"):
+        _ledger_migrate_parser = p_memory_ledger_migrate_sub.add_parser(_ledger_migrate_command)
+        _ledger_migrate_parser.add_argument("--source-jsonl", required=True)
+        _ledger_migrate_parser.add_argument("--migration-id", required=True)
+        _ledger_migrate_parser.add_argument("--recorded-at", required=True)
+        if _ledger_migrate_command == "apply":
+            _ledger_migrate_parser.add_argument("--backup-id", required=True)
+            _ledger_migrate_parser.add_argument("--backup-target", action="append", default=[])
+            _ledger_migrate_parser.add_argument("--apply", action="store_true")
+            _ledger_migrate_parser.add_argument("--confirm", default="")
+    p_memory_ledger_rollback = p_memory_ledger_migrate_sub.add_parser("rollback")
+    p_memory_ledger_rollback.add_argument("--backup-path", required=True)
+    p_memory_ledger_rollback.add_argument("--backup-target", action="append", default=[])
+    p_memory_ledger_rollback.add_argument("--expected-head", required=True)
+    p_memory_ledger_rollback.add_argument("--apply", action="store_true")
+    p_memory_ledger_rollback.add_argument("--confirm", default="")
 
     p_absorb = sub.add_parser("absorb", help="authorized local document absorption")
     p_absorb_sub = p_absorb.add_subparsers(dest="absorb_cmd")
@@ -1160,6 +1237,8 @@ def main(argv: list[str] | None = None) -> int:
             return run_doctor_with_hint()
         if args.command == "ask":
             return run_ask(query=args.query, limit=args.limit)
+        if args.command == "memory-ledger":
+            return run_memory_ledger_cli(args)
         if args.command == "absorb":
             if args.absorb_cmd == "project-memory":
                 return run_project_memory_cli(args)

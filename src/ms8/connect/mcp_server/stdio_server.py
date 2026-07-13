@@ -20,6 +20,11 @@ TOOL_DEFINITIONS: dict[str, dict[str, Any]] = {
             "properties": {
                 "text": {"type": "string", "description": "Current user message/query."},
                 "limit": {"type": "integer", "minimum": 1, "maximum": 20, "default": 5},
+                "recorded_as_of": {"type": "string", "description": "Recorded-time cutoff."},
+                "observed_as_of": {"type": "string", "description": "Source observation-time cutoff."},
+                "valid_at": {"type": "string", "description": "Valid-time instant."},
+                "realm_id": {"type": "string"},
+                "scope": {"type": "string"},
             },
             "required": ["text"],
             "additionalProperties": True,
@@ -35,6 +40,11 @@ TOOL_DEFINITIONS: dict[str, dict[str, Any]] = {
             "properties": {
                 "text": {"type": "string", "description": "Current user message/query."},
                 "limit": {"type": "integer", "minimum": 1, "maximum": 20, "default": 5},
+                "recorded_as_of": {"type": "string", "description": "Recorded-time cutoff."},
+                "observed_as_of": {"type": "string", "description": "Source observation-time cutoff."},
+                "valid_at": {"type": "string", "description": "Valid-time instant."},
+                "realm_id": {"type": "string"},
+                "scope": {"type": "string"},
             },
             "required": ["text"],
             "additionalProperties": True,
@@ -123,6 +133,11 @@ TOOL_DEFINITIONS: dict[str, dict[str, Any]] = {
             "properties": {
                 "text": {"type": "string"},
                 "top_k": {"type": "integer", "minimum": 1, "maximum": 50, "default": 5},
+                "recorded_as_of": {"type": "string", "description": "Recorded-time cutoff."},
+                "observed_as_of": {"type": "string", "description": "Source observation-time cutoff."},
+                "valid_at": {"type": "string", "description": "Valid-time instant."},
+                "realm_id": {"type": "string"},
+                "scope": {"type": "string"},
             },
             "required": ["text"],
             "additionalProperties": True,
@@ -174,6 +189,18 @@ TOOL_DEFINITIONS: dict[str, dict[str, Any]] = {
                 "include_blocked": {"type": "boolean", "default": False},
             },
             "required": ["id"],
+            "additionalProperties": True,
+        },
+    },
+    "memory_explain": {
+        "description": (
+            "Explain one recall-authorized ledger-v1 claim with evidence, decisions, "
+            "conflicts, governance, and source provenance."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {"claim_id": {"type": "string"}},
+            "required": ["claim_id"],
             "additionalProperties": True,
         },
     },
@@ -322,7 +349,7 @@ def handle_request(req: dict[str, Any]) -> dict[str, Any] | None:
         uri = str(params.get("uri") or "")
         key = uri.split("ms8://", 1)[-1] if uri.startswith("ms8://") else uri
         try:
-            out = read_resource(key, params=params)
+            out = read_resource(key)
         except (OSError, TypeError, ValueError) as exc:
             out = {
                 "ok": False,

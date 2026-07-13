@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ms8.local/schemas/ms8-ledger-v1.schema.json",
+  "title": "MS8 Memory Ledger v1",
+  "$ref": "#/$defs/ledgerTransaction",
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": {
+          "enum": ["user", "reviewer", "mcp_client", "system", "migration"]
+        },
+        "id": {"type": "string", "minLength": 1}
+      }
+    },
+    "validTime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end", "basis"],
+      "properties": {
+        "start": {"type": ["string", "null"], "format": "date-time"},
+        "end": {"type": ["string", "null"], "format": "date-time"},
+        "basis": {
+          "enum": ["user_explicit", "source_metadata", "inferred", "legacy_inferred", "unknown"]
+        }
+      }
+    },
+    "memoryEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "kind",
+        "content",
+        "source",
+        "observed_at",
+        "observed_at_precision",
+        "trust_class"
+      ],
+      "properties": {
+        "event_id": {"type": "string", "minLength": 1},
+        "kind": {
+          "enum": [
+            "user_input",
+            "conversation_turn",
+            "document_fragment",
+            "tool_output",
+            "legacy_import",
+            "system_observation"
+          ]
+        },
+        "content": {"type": "object", "minProperties": 1},
+        "source": {"type": "object", "minProperties": 1},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "observed_at_precision": {"enum": ["exact", "legacy_inferred", "unknown"]},
+        "trust_class": {
+          "enum": [
+            "user_explicit",
+            "user_implicit",
+            "untrusted_document",
+            "tool_generated",
+            "system_observed"
+          ]
+        }
+      }
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim_id",
+        "kind",
+        "text",
+        "subject",
+        "predicate",
+        "value",
+        "scope",
+        "realm_id",
+        "authority",
+        "sensitivity",
+        "confidence",
+        "status",
+        "valid_time",
+        "created_from_event_id"
+      ],
+      "properties": {
+        "claim_id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["preference", "constraint", "decision", "fact", "task", "summary"]},
+        "text": {"type": "string", "minLength": 1},
+        "subject": {"type": "string", "minLength": 1},
+        "predicate": {"type": "string", "minLength": 1},
+        "value": {},
+        "scope": {"type": "string", "minLength": 1},
+        "realm_id": {"type": "string", "minLength": 1},
+        "authority": {"type": "string", "minLength": 1},
+        "sensitivity": {"type": "string", "minLength": 1},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "status": {
+          "enum": [
+            "proposed",
+            "pending_review",
+            "accepted",
+            "verified",
+            "disputed",
+            "superseded",
+            "revoked",
+            "expired"
+          ]
+        },
+        "valid_time": {"$ref": "#/$defs/validTime"},
+        "created_from_event_id": {"type": "string", "minLength": 1}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "claim_id",
+        "event_id",
+        "relation",
+        "fragment",
+        "quoted_text_hash",
+        "weight"
+      ],
+      "properties": {
+        "evidence_id": {"type": "string", "minLength": 1},
+        "claim_id": {"type": "string", "minLength": 1},
+        "event_id": {"type": "string", "minLength": 1},
+        "relation": {"enum": ["supports", "contradicts", "clarifies", "supersedes_basis"]},
+        "fragment": {"type": "object", "minProperties": 1},
+        "quoted_text_hash": {"type": "string", "minLength": 1},
+        "weight": {"type": "number", "minimum": 0}
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision_id",
+        "action",
+        "target_claim_ids",
+        "result_claim_id",
+        "result_status",
+        "policy",
+        "actor",
+        "reason",
+        "recorded_at"
+      ],
+      "properties": {
+        "decision_id": {"type": "string", "minLength": 1},
+        "action": {
+          "enum": [
+            "admit",
+            "review_accept",
+            "review_reject",
+            "correct",
+            "supersede",
+            "revoke",
+            "forget",
+            "resolve_conflict",
+            "expire"
+          ]
+        },
+        "target_claim_ids": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "uniqueItems": true
+        },
+        "result_claim_id": {"type": ["string", "null"]},
+        "result_status": {
+          "anyOf": [
+            {"type": "null"},
+            {
+              "enum": [
+                "proposed",
+                "pending_review",
+                "accepted",
+                "verified",
+                "disputed",
+                "superseded",
+                "revoked",
+                "expired"
+              ]
+            }
+          ]
+        },
+        "policy": {"type": "object"},
+        "actor": {"$ref": "#/$defs/actor"},
+        "reason": {"type": "string", "minLength": 1},
+        "recorded_at": {"type": "string", "format": "date-time"}
+      },
+      "anyOf": [
+        {"properties": {"target_claim_ids": {"minItems": 1}}},
+        {"properties": {"result_claim_id": {"type": "string", "minLength": 1}}}
+      ]
+    },
+    "ledgerEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "payload"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"
+        },
+        "payload": {"type": "object", "minProperties": 1}
+      }
+    },
+    "ledgerTransaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "transaction_id",
+        "sequence",
+        "recorded_at",
+        "actor",
+        "prev_hash",
+        "events",
+        "hash"
+      ],
+      "properties": {
+        "schema": {"const": "ms8.ledger.v1"},
+        "transaction_id": {"type": "string", "minLength": 1},
+        "sequence": {"type": "integer", "minimum": 1},
+        "recorded_at": {"type": "string", "format": "date-time"},
+        "actor": {"$ref": "#/$defs/actor"},
+        "prev_hash": {"$ref": "#/$defs/sha256"},
+        "events": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/ledgerEvent"}
+        },
+        "hash": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

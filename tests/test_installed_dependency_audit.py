@@ -36,7 +36,7 @@ def test_runtime_closure_excludes_project_and_unrelated_environment_tools(tmp_pa
     _write_distribution(
         site_packages,
         name="ms8",
-        version="0.2.16",
+        version="0.2.17",
         requires=("alpha>=1", "ignored; python_version < '0'"),
     )
     _write_distribution(site_packages, name="alpha", version="1.2.0", requires=("beta>=2",))
@@ -61,7 +61,7 @@ def test_runtime_closure_rejects_missing_declared_dependency(tmp_path: Path) -> 
     _write_distribution(
         site_packages,
         name="ms8",
-        version="0.2.16",
+        version="0.2.17",
         requires=("missing-package>=1",),
     )
 
@@ -96,17 +96,17 @@ def test_cyclonedx_root_is_bound_to_ms8_candidate(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    _augment_sbom_root(sbom=sbom, project_name="ms8", project_version="0.2.16")
+    _augment_sbom_root(sbom=sbom, project_name="ms8", project_version="0.2.17")
 
     payload = json.loads(sbom.read_text(encoding="utf-8"))
     root = payload["metadata"]["component"]
     assert root == {
         "type": "application",
-        "bom-ref": "pkg:pypi/ms8@0.2.16",
+        "bom-ref": "pkg:pypi/ms8@0.2.17",
         "name": "ms8",
-        "version": "0.2.16",
-        "purl": "pkg:pypi/ms8@0.2.16",
+        "version": "0.2.17",
+        "purl": "pkg:pypi/ms8@0.2.17",
     }
-    assert {"ref": "pkg:pypi/ms8@0.2.16", "dependsOn": ["pkg:pypi/alpha@1.2.0"]} in payload[
+    assert {"ref": "pkg:pypi/ms8@0.2.17", "dependsOn": ["pkg:pypi/alpha@1.2.0"]} in payload[
         "dependencies"
     ]
