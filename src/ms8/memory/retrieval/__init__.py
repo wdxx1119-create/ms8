@@ -48,6 +48,12 @@ from .embedding_sources import (
     EmbeddingProjectionCandidateSource,
     EmbeddingProjectionFormatError,
 )
+from .entity_sources import (
+    EntityProjectionCandidateProvider,
+    EntityProjectionCandidateSource,
+    EntityProjectionFormatError,
+    normalize_entity_label,
+)
 from .models import (
     CandidateChannel,
     CandidateHit,
@@ -96,6 +102,9 @@ __all__ = [
     "EmbeddingProjectionFormatError",
     "EmbeddingProvider",
     "EmbeddingSearchError",
+    "EntityProjectionCandidateProvider",
+    "EntityProjectionCandidateSource",
+    "EntityProjectionFormatError",
     "EvidenceResolver",
     "LedgerLexicalCandidateSource",
     "LegacyCandidateMapper",
@@ -130,6 +139,7 @@ __all__ = [
     "exact_cosine_search",
     "normalize_authority",
     "normalize_embedding_vector",
+    "normalize_entity_label",
     "resolve_temporal_expression",
     "run_candidate_source",
     "run_candidate_sources",
