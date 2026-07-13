@@ -8,8 +8,6 @@ opts in; the provider is never created or invoked by the default runtime path.
 from __future__ import annotations
 
 import json
-import socket
-import urllib.error
 import urllib.request
 from collections.abc import Sequence
 from urllib.parse import urlparse
@@ -85,14 +83,7 @@ class OllamaEmbeddingProvider:
         try:
             with urllib.request.urlopen(request, timeout=self._timeout_seconds) as response:
                 payload = json.loads(response.read().decode("utf-8"))
-        except (
-            OSError,
-            TimeoutError,
-            UnicodeDecodeError,
-            json.JSONDecodeError,
-            urllib.error.URLError,
-            socket.timeout,
-        ) as exc:
+        except (OSError, TimeoutError, UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise OllamaEmbeddingError(f"ollama embedding request failed: {type(exc).__name__}") from exc
         if not isinstance(payload, dict):
             raise OllamaEmbeddingError("ollama embedding response must be an object")
