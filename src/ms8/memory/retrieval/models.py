@@ -13,7 +13,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from types import MappingProxyType
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 RetrievalPurpose = Literal["recall", "prepare_reply", "inject", "historical", "review", "audit"]
 QueryIntent = Literal[
@@ -72,7 +72,7 @@ def _utc_iso(value: str | None, field_name: str) -> str | None:
 
 def _finite_score(value: object, field_name: str) -> float:
     try:
-        score = float(value)
+        score = float(cast(Any, value))
     except (TypeError, ValueError) as exc:
         raise ValueError(f"{field_name} must be numeric") from exc
     if not math.isfinite(score):
