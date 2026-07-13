@@ -16,6 +16,16 @@ def _optional_text(args: Namespace, name: str) -> str | None:
     return value or None
 
 
+def _read_options(args: Namespace) -> dict[str, Any]:
+    return {
+        "recorded_as_of": _optional_text(args, "recorded_as_of"),
+        "observed_as_of": _optional_text(args, "observed_as_of"),
+        "valid_at": _optional_text(args, "valid_at"),
+        "realm_id": _optional_text(args, "realm_id"),
+        "scope": _optional_text(args, "scope"),
+    }
+
+
 def run_memory_ledger_cli(args: Namespace) -> int:
     """Run explicit ledger-v1 read or guarded operational commands."""
 
@@ -45,27 +55,25 @@ def run_memory_ledger_cli(args: Namespace) -> int:
         if command == "status":
             out: dict[str, Any] = {"ok": True, **adapter.status()}
         elif command == "query":
+            options = _read_options(args)
+            purpose = str(getattr(args, "purpose", "recall") or "recall").strip()
+            if purpose != "recall":
+                options["purpose"] = purpose
+            if bool(getattr(args, "explain", False)):
+                options["explain"] = True
             out = adapter.query(
                 str(getattr(args, "text", "") or ""),
                 int(getattr(args, "limit", 5) or 5),
-                purpose=str(getattr(args, "purpose", "recall") or "recall"),
-                explain=bool(getattr(args, "explain", False)),
-                recorded_as_of=_optional_text(args, "recorded_as_of"),
-                observed_as_of=_optional_text(args, "observed_as_of"),
-                valid_at=_optional_text(args, "valid_at"),
-                realm_id=_optional_text(args, "realm_id"),
-                scope=_optional_text(args, "scope"),
+                **options,
             )
         elif command == "context":
+            options = _read_options(args)
+            if bool(getattr(args, "explain", False)):
+                options["explain"] = True
             out = adapter.context(
                 str(getattr(args, "text", "") or ""),
                 int(getattr(args, "limit", 5) or 5),
-                explain=bool(getattr(args, "explain", False)),
-                recorded_as_of=_optional_text(args, "recorded_as_of"),
-                observed_as_of=_optional_text(args, "observed_as_of"),
-                valid_at=_optional_text(args, "valid_at"),
-                realm_id=_optional_text(args, "realm_id"),
-                scope=_optional_text(args, "scope"),
+                **options,
             )
         elif command == "explain":
             out = adapter.explain(str(getattr(args, "claim_id", "") or ""))
