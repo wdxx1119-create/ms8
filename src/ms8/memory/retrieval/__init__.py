@@ -3,6 +3,22 @@
 The package is experimental and not wired into the default runtime path.
 """
 
+from .adapters import (
+    CandidateBatch,
+    CandidateRecord,
+    CandidateSourceTrace,
+    LedgerLexicalCandidateSource,
+    LegacyCandidateMapper,
+    LegacyCandidateProvider,
+    LegacyGraphCandidateSource,
+    LegacySemanticCandidateSource,
+    LegacyWhooshCandidateSource,
+    MappedLegacyCandidateSource,
+    ProjectionCandidateProvider,
+    ProjectionCandidateSource,
+    SourceStatus,
+    run_candidate_sources,
+)
 from .analyzer import QueryAnalysis, analyze_query
 from .candidate_sources import (
     CandidateSource,
@@ -41,20 +57,32 @@ from .query_planner import (
 )
 
 __all__ = [
+    "CandidateBatch",
     "CandidateChannel",
     "CandidateHit",
     "CandidateLimits",
+    "CandidateRecord",
     "CandidateSource",
     "CandidateSourceError",
+    "CandidateSourceTrace",
     "ClassifierHook",
     "EligibilityEvaluation",
     "EligibilityEvaluator",
     "EligibleClaims",
+    "LedgerLexicalCandidateSource",
+    "LegacyCandidateMapper",
+    "LegacyCandidateProvider",
+    "LegacyGraphCandidateSource",
+    "LegacySemanticCandidateSource",
+    "LegacyWhooshCandidateSource",
+    "MappedLegacyCandidateSource",
     "MemoryQuery",
     "PolicyDecision",
     "PolicyHook",
     "Principal",
     "PrincipalKind",
+    "ProjectionCandidateProvider",
+    "ProjectionCandidateSource",
     "QueryAnalysis",
     "QueryIntent",
     "QueryPlanner",
@@ -63,11 +91,13 @@ __all__ = [
     "RetrievalPlan",
     "RetrievalPurpose",
     "RetrievalTrace",
+    "SourceStatus",
     "TemporalResolution",
     "TimeCoordinates",
     "analyze_query",
     "normalize_authority",
     "resolve_temporal_expression",
     "run_candidate_source",
+    "run_candidate_sources",
     "validate_candidate_hits",
 ]
