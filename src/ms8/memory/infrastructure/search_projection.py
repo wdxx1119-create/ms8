@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -47,7 +47,7 @@ _COMMAND_PATTERN = re.compile(
 )
 
 
-def _unique(values: Sequence[object]) -> tuple[str, ...]:
+def _unique(values: Iterable[object]) -> tuple[str, ...]:
     seen: set[str] = set()
     result: list[str] = []
     for value in values:
