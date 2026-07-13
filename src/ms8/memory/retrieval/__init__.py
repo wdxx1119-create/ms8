@@ -1,6 +1,7 @@
 """Governed Hybrid Retrieval v1 package boundary.
 
-The package is experimental and not wired into the default runtime path.
+The package remains experimental and is wired only through an explicit Ledger-v1
+``hybrid-v1`` retrieval profile gate.
 """
 
 from .adapters import (
@@ -104,6 +105,14 @@ from .query_planner import (
     TemporalResolution,
     resolve_temporal_expression,
 )
+from .runtime import (
+    HYBRID_RETRIEVAL_ENV_FLAG,
+    HYBRID_RETRIEVAL_PROFILE,
+    HybridExecution,
+    HybridRetrievalRuntime,
+    HybridRuntimeConfig,
+    HybridRuntimePaths,
+)
 from .temporal_sources import (
     TemporalReplayCandidateProvider,
     TemporalReplayCandidateSource,
@@ -141,6 +150,12 @@ __all__ = [
     "GraphProjectionCandidateProvider",
     "GraphProjectionCandidateSource",
     "GraphProjectionFormatError",
+    "HYBRID_RETRIEVAL_ENV_FLAG",
+    "HYBRID_RETRIEVAL_PROFILE",
+    "HybridExecution",
+    "HybridRetrievalRuntime",
+    "HybridRuntimeConfig",
+    "HybridRuntimePaths",
     "LedgerLexicalCandidateSource",
     "LegacyCandidateMapper",
     "LegacyCandidateProvider",
