@@ -81,6 +81,10 @@ from .query_planner import (
     TemporalResolution,
     resolve_temporal_expression,
 )
+from .temporal_sources import (
+    TemporalReplayCandidateProvider,
+    TemporalReplayCandidateSource,
+)
 
 __all__ = [
     "ApproximateEmbeddingBackend",
@@ -133,6 +137,8 @@ __all__ = [
     "SearchProjectionCandidateProvider",
     "SearchProjectionFormatError",
     "SourceStatus",
+    "TemporalReplayCandidateProvider",
+    "TemporalReplayCandidateSource",
     "TemporalResolution",
     "TimeCoordinates",
     "analyze_query",
