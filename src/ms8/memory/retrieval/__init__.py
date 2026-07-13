@@ -43,6 +43,11 @@ from .embedding import (
     normalize_embedding_vector,
     validate_embedding_batch,
 )
+from .embedding_sources import (
+    EmbeddingProjectionCandidateProvider,
+    EmbeddingProjectionCandidateSource,
+    EmbeddingProjectionFormatError,
+)
 from .models import (
     CandidateChannel,
     CandidateHit,
@@ -57,6 +62,7 @@ from .models import (
     RetrievalTrace,
     TimeCoordinates,
 )
+from .ollama_embedding import OllamaEmbeddingError, OllamaEmbeddingProvider
 from .projection_sources import (
     EvidenceResolver,
     SearchProjectionCandidateProvider,
@@ -85,6 +91,9 @@ __all__ = [
     "EligibilityEvaluator",
     "EligibleClaims",
     "EmbeddingMatch",
+    "EmbeddingProjectionCandidateProvider",
+    "EmbeddingProjectionCandidateSource",
+    "EmbeddingProjectionFormatError",
     "EmbeddingProvider",
     "EmbeddingSearchError",
     "EvidenceResolver",
@@ -96,6 +105,8 @@ __all__ = [
     "LegacyWhooshCandidateSource",
     "MappedLegacyCandidateSource",
     "MemoryQuery",
+    "OllamaEmbeddingError",
+    "OllamaEmbeddingProvider",
     "PolicyDecision",
     "PolicyHook",
     "Principal",
