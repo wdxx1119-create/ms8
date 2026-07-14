@@ -1,6 +1,6 @@
 # MS8 0.2.18 Release Notes
 
-MS8 0.2.18 is a patch candidate that adds the opt-in Hybrid Retrieval v1 profile for Memory Ledger v1.
+MS8 0.2.18 is a patch release that adds the opt-in Hybrid Retrieval v1 profile for Memory Ledger v1.
 
 ## User-visible changes
 
@@ -40,7 +40,7 @@ An explicitly selected but invalid Ledger/Hybrid runtime fails closed rather tha
 
 ## Security boundary
 
-The candidate preserves the existing authorization model:
+The release preserves the existing authorization model:
 
 - realm, scope, sensitivity, lifecycle, governance, and time restrictions are applied before results are returned;
 - revoked, forgotten, quarantined, and expired-current claims cannot re-enter through optional retrieval components;
@@ -50,7 +50,7 @@ The candidate preserves the existing authorization model:
 
 ## Validation summary
 
-The candidate has been exercised on Python 3.10–3.13 and validated on macOS and Windows. Validation covers static checks, full tests and coverage, package/profile installation, clean wheel and source-distribution installation, dependency auditing, CodeQL, authorization isolation, current and historical queries, conflict presentation, optional-provider degradation, Unicode and space-containing Windows paths, SQLite safety, and deterministic cross-platform result ordering.
+The release was exercised on Python 3.10–3.13 and validated on macOS and Windows. Validation covers static checks, full tests and coverage, package/profile installation, clean wheel and source-distribution installation, dependency auditing, CodeQL, authorization isolation, current and historical queries, conflict presentation, optional-provider degradation, Unicode and space-containing Windows paths, SQLite safety, and deterministic cross-platform result ordering.
 
 The public reference fixtures are synthetic contract tests. They are not a production-scale corpus benchmark or a latency service-level objective.
 
@@ -58,10 +58,10 @@ The public reference fixtures are synthetic contract tests. They are not a produ
 
 - Hybrid Retrieval v1 remains experimental and disabled by default.
 - Automatic runtime migration is not included.
-- Linux remains best-effort rather than a formal reference platform for this candidate.
+- Linux remains best-effort rather than a formal reference platform for this release.
 - Optional local-model behavior depends on the installed provider and model.
 - Default enablement requires a separate maintainer decision.
 
 See [Hybrid Retrieval v1](HYBRID_RETRIEVAL_V1.md) for activation, CLI/MCP usage, security properties, and operational limitations.
 
-No tag, GitHub Release, PyPI publication, or automatic default enablement is authorized by these notes.
+MS8 0.2.18 was published as tag `v0.2.18`, a GitHub Release, and a PyPI release. This release does not automatically enable Hybrid Retrieval v1.
