@@ -1,0 +1,49 @@
+{
+  "schema": "ms8.hybrid_public_contract.v1",
+  "evaluation_schema": "ms8.hybrid_evaluation.v1",
+  "fixture_schema": "ms8.hybrid_evaluation_fixture.v1",
+  "reference_report_schema": "ms8.hybrid_reference_acceptance.v1",
+  "required_metrics": [
+    "ndcg_at_5",
+    "ndcg_at_10",
+    "mrr",
+    "recall_at_20",
+    "current_fact_accuracy",
+    "historical_fact_accuracy",
+    "evidence_citation_coverage",
+    "conflict_presentation_rate",
+    "unauthorized_inactive_error_recall_rate",
+    "degradation_correctness",
+    "latency_ms_p50",
+    "latency_ms_p95"
+  ],
+  "required_release_gates": [
+    "platform_is_macos",
+    "unauthorized_inactive_error_recall_is_zero",
+    "evidence_and_decision_coverage_is_complete",
+    "degradation_is_correct",
+    "ndcg_at_10_relative_improvement_at_least_5_percent",
+    "recall_at_20_has_no_regression",
+    "critical_slices_have_no_regression"
+  ],
+  "golden_ordering": {
+    "current_release_rule": [
+      "clm_legacy_3e8ad1a5fd97856e51a5826f"
+    ],
+    "historical_release_rule": [
+      "clm_legacy_d32850cdfbb07e70cd5728ab",
+      "clm_legacy_3e8ad1a5fd97856e51a5826f"
+    ],
+    "chinese_preference": [
+      "clm_legacy_20d7112a6006c33fd97eaf0e"
+    ],
+    "code_symbol": [
+      "clm_legacy_9e827f93c95992722be99860"
+    ],
+    "retention_conflict": [
+      "clm_legacy_09e38cfce8d8c6dc3e253f20",
+      "clm_legacy_da6b082dac7e11acbba1437e"
+    ],
+    "wrong_realm_probe": []
+  }
+}
