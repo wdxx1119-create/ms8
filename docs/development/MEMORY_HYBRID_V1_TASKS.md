@@ -269,19 +269,21 @@ Validation evidence: exact Phase 9 acceptance head `b3f92e200cd6ed56af00158956e1
 
 ## Phase 10 — Windows adaptation and parity
 
-- [ ] Port without forking ranking semantics.
-- [ ] Validate Unicode and space-containing paths.
-- [ ] Validate SQLite and projection handle release before atomic replacement.
-- [ ] Validate file locks, concurrent projection rebuild, and interrupted writes.
-- [ ] Validate optional embedding subprocess/provider behavior.
-- [ ] Add clean-wheel Windows smoke and installed-entry-point tests.
-- [ ] Compare macOS/Windows plans, eligibility sets, scores, tie-breaks, selected claims, and traces on frozen fixtures.
+- [x] Port without forking ranking semantics.
+- [x] Validate Unicode and space-containing paths.
+- [x] Validate SQLite and projection handle release before atomic replacement.
+- [x] Validate file locks, concurrent projection rebuild, and interrupted writes.
+- [x] Validate optional embedding subprocess/provider behavior.
+- [x] Add clean-wheel Windows smoke and installed-entry-point tests.
+- [x] Compare macOS/Windows plans, eligibility sets, scores, tie-breaks, selected claims, and traces on frozen fixtures.
 
 Acceptance:
 
 - platform-specific code is limited to IO/process/provider boundaries;
 - frozen ranking fixtures produce equivalent ordered claim identifiers;
 - all Windows release-boundary checks pass.
+
+Validation evidence: exact Phase 10 code head `d2042b42bf397919eb76b00ea97c25fa6c79a64d` passed CI `29306657800`, Required check compatibility `29306657821`, macOS reference acceptance `29306657818`, Windows frozen-contract parity `29306657909`, Examples smoke `29306657873`, Dependency Review `29306657860`, Python Dependency Audit `29306657831`, and CodeQL `29306657864`. Windows parity used the same retrieval implementation and matched the frozen macOS ordered claim identifiers plus exact full-trace fingerprints covering plans, eligibility sets, source hits, fusion scores, deterministic reranking, tie-break explanations, selected claims, policy traces, and degradation traces. It also passed Unicode/space path handling, SQLite quick-check and atomic replacement, cross-process locking, overlapping rebuild fail-safe validation, interrupted-write preservation, optional embedding degradation, clean-wheel installation, and the `ms8`, `ms8-recovery`, and `ms8-memory-ledger` entry points. The Windows IANA timezone dependency is conditional on `sys_platform == 'win32'`; no embedding or LTR dependency was added to the default install.
 
 ## Phase 11 — patch convergence
 
