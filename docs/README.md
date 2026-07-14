@@ -22,13 +22,12 @@
 - [README](../README.md)：项目概览、核心能力、状态和主要入口。
 - [Roadmap](../ROADMAP.md)：Alpha 重点、Beta 准入条件和后续方向。
 - [Changelog](../CHANGELOG.md)：版本变化和发布记录。
-- [0.2.18 Release Candidate Notes](RELEASE_NOTES_0.2.18.md)：Hybrid Retrieval v1 候选范围、显式启用边界、验收结果和剩余发布步骤。
+- [0.2.18 Release Notes](RELEASE_NOTES_0.2.18.md)：Hybrid Retrieval v1 发布范围、显式启用边界和验收结果。
 - [0.2.17 Release Candidate Notes](RELEASE_NOTES_0.2.17.md)：Memory Ledger v1 补丁候选范围、兼容性和验收清单。
 - [0.2.16 Release Candidate Notes](RELEASE_NOTES_0.2.16.md)：候选范围、兼容性和验收清单。
 - [MCP Connect Guide](../src/ms8/connect/CONNECT_GUIDE.md)：连接 AI 工具的完整流程和 Ledger/Hybrid 显式接入边界。
 - [Security Policy](../SECURITY.md)：支持版本、漏洞报告和协调披露流程。
 - [Release Security](RELEASE_SECURITY.md)：开发者发布与安全流程。
-- [Trusted Publishing Preparation](TRUSTED_PUBLISHING_SETUP.md)：未来 OIDC 发布的配置边界；当前不启用自动上传。
 
 ## 贡献与社区
 
