@@ -47,6 +47,30 @@ def run_memory_ledger_cli(args: Namespace) -> int:
             "retrieval_profile": retrieval_profile,
         }
     }
+    if retrieval_profile == "hybrid-v1":
+        principal_realm = _optional_text(args, "principal_realm_id")
+        if principal_realm is None:
+            print(
+                json.dumps(
+                    {"ok": False, "error": "hybrid_principal_realm_required"},
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+            return 2
+        hybrid: dict[str, Any] = {"principal_realm_ids": [principal_realm]}
+        principal_scope = _optional_text(args, "principal_scope")
+        if principal_scope is None:
+            print(
+                json.dumps(
+                    {"ok": False, "error": "hybrid_principal_scope_required"},
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+            return 2
+        hybrid["principal_scopes"] = [principal_scope]
+        config["memory_ledger_v1"]["hybrid"] = hybrid
     try:
         adapter = build_ledger_memory_compatibility_adapter(config, workspace)
         if adapter is None:

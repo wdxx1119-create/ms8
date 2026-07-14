@@ -5,9 +5,15 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
+from ..application.replay import ReplayState
 from ..infrastructure.embedding_projection import (
     EMBEDDING_PROJECTION_SCHEMA,
+    EmbeddingProjectionEntry,
+    EmbeddingProjectionSnapshot,
+    embedding_projection_rebuild_reasons,
+    embedding_source_content_hash,
     read_embedding_projection,
+    write_embedding_projection,
 )
 from .adapters import CandidateRecord, ProjectionCandidateSource
 from .eligibility import EligibleClaims
@@ -39,12 +45,64 @@ class EmbeddingProjectionCandidateProvider:
         embedding_provider: EmbeddingProvider,
         evidence_resolver: Callable[[str], Sequence[str]],
         *,
+        state: ReplayState,
         approximate_backend: ApproximateEmbeddingBackend | None = None,
     ) -> None:
         self.artifact_path = Path(artifact_path)
         self.embedding_provider = embedding_provider
         self.evidence_resolver = evidence_resolver
+        if not isinstance(state, ReplayState):
+            raise TypeError("state must be ReplayState")
+        self.state = state
         self.approximate_backend = approximate_backend
+
+    def _snapshot(self, eligible_claim_ids: tuple[str, ...]) -> EmbeddingProjectionSnapshot:
+        texts = tuple(self.state.claims[claim_id].claim.text for claim_id in eligible_claim_ids)
+        content_hashes = {
+            claim_id: embedding_source_content_hash(text)
+            for claim_id, text in zip(eligible_claim_ids, texts, strict=True)
+        }
+        snapshot = read_embedding_projection(self.artifact_path)
+        stale = (
+            snapshot is None
+            or snapshot.built_from_ledger_head != self.state.ledger_head
+            or snapshot.last_sequence != self.state.last_sequence
+            or snapshot.logical_state_hash != self.state.logical_state_hash
+        )
+        if snapshot is not None and not stale:
+            stale = bool(
+                embedding_projection_rebuild_reasons(
+                    snapshot,
+                    model_id=self.embedding_provider.model_id,
+                    dimensions=self.embedding_provider.dimensions,
+                    content_hashes=content_hashes,
+                )
+            )
+        if not stale and snapshot is not None:
+            return snapshot
+
+        vectors = validate_embedding_batch(
+            self.embedding_provider,
+            texts,
+            self.embedding_provider.embed(texts),
+        )
+        rebuilt = EmbeddingProjectionSnapshot(
+            model_id=self.embedding_provider.model_id,
+            dimensions=self.embedding_provider.dimensions,
+            built_from_ledger_head=self.state.ledger_head,
+            last_sequence=self.state.last_sequence,
+            logical_state_hash=self.state.logical_state_hash,
+            entries=tuple(
+                EmbeddingProjectionEntry(
+                    claim_id=claim_id,
+                    content_hash=content_hashes[claim_id],
+                    vector=vector,
+                )
+                for claim_id, vector in zip(eligible_claim_ids, vectors, strict=True)
+            ),
+        )
+        write_embedding_projection(self.artifact_path, rebuilt)
+        return rebuilt
 
     def __call__(
         self,
@@ -57,13 +115,11 @@ class EmbeddingProjectionCandidateProvider:
         if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1:
             raise ValueError("limit must be a positive integer")
 
-        snapshot = read_embedding_projection(self.artifact_path)
-        if snapshot is None:
-            raise EmbeddingProjectionFormatError("embedding projection is missing or invalid")
-        if snapshot.model_id != self.embedding_provider.model_id:
-            raise EmbeddingProjectionFormatError("embedding projection model_id mismatch")
-        if snapshot.dimensions != self.embedding_provider.dimensions:
-            raise EmbeddingProjectionFormatError("embedding projection dimensions mismatch")
+        if not eligible_claim_ids:
+            return ()
+        if any(claim_id not in self.state.claims for claim_id in eligible_claim_ids):
+            raise EmbeddingProjectionFormatError("embedding eligibility references a missing claim")
+        snapshot = self._snapshot(eligible_claim_ids)
 
         vectors = self.embedding_provider.embed((plan.query.text,))
         query_batch = validate_embedding_batch(

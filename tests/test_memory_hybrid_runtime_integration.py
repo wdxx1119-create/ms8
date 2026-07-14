@@ -115,6 +115,8 @@ def _config(profile: str = HYBRID_RETRIEVAL_PROFILE) -> dict[str, Any]:
             "retrieval_profile": profile,
             "context_token_budget": 500,
             "hybrid": {
+                "principal_realm_ids": ["project:ms8"],
+                "principal_scopes": ["project"],
                 "max_claims": 5,
                 "max_per_subject": 3,
                 "max_per_predicate": 3,
@@ -152,6 +154,54 @@ def test_hybrid_profile_requires_its_explicit_environment_gate(tmp_path: Path) -
     assert legacy is not None
     assert legacy.status()["retrieval_profile"] == "legacy"
     assert legacy.status()["hybrid_ready"] is False
+
+
+@pytest.mark.parametrize("field_name", ("principal_realm_ids", "principal_scopes"))
+def test_hybrid_profile_requires_explicit_principal_boundary(
+    tmp_path: Path,
+    field_name: str,
+) -> None:
+    workspace = _workspace(tmp_path)
+    config = _config()
+    del config["memory_ledger_v1"]["hybrid"][field_name]
+
+    with pytest.raises(LedgerCompatibilityError, match=field_name):
+        build_ledger_memory_compatibility_adapter(
+            config,
+            workspace,
+            environ={LEDGER_V1_ENV_FLAG: "1", HYBRID_RETRIEVAL_ENV_FLAG: "1"},
+        )
+
+
+def test_hybrid_query_rejects_realm_outside_configured_principal(tmp_path: Path) -> None:
+    _, adapter = _hybrid_adapter(tmp_path)
+
+    with pytest.raises(PermissionError, match="outside the principal boundary"):
+        adapter.query("concise release", realm_id="project:other", scope="project")
+
+
+def test_hybrid_runtime_does_not_grant_wildcard_capability(tmp_path: Path) -> None:
+    _, adapter = _hybrid_adapter(tmp_path)
+    assert adapter.hybrid_runtime is not None
+
+    principal = adapter.hybrid_runtime._principal("project:ms8", "project")
+
+    assert "all" not in principal.capabilities
+
+
+def test_hybrid_recorded_as_of_uses_the_authoritative_transaction_prefix(tmp_path: Path) -> None:
+    _, adapter = _hybrid_adapter(tmp_path)
+
+    result = adapter.query(
+        "concise release",
+        recorded_as_of="2026-01-01T00:00:00Z",
+        realm_id="project:ms8",
+        scope="project",
+    )
+
+    assert result["count"] == 0
+    assert result["results"] == []
+    assert result["retrieval_gateway"]["last_sequence"] == 0
 
 
 def test_hybrid_query_exposes_full_governed_trace_and_degrades_vector_only(tmp_path: Path) -> None:
@@ -206,6 +256,18 @@ def test_hybrid_context_is_budgeted_traceable_and_policy_bounded(tmp_path: Path)
     assert assembly["decision_ids"]
 
 
+def test_hybrid_diagnostics_are_omitted_without_explain(tmp_path: Path) -> None:
+    _, adapter = _hybrid_adapter(tmp_path)
+
+    query = adapter.query("concise release", realm_id="project:ms8", scope="project")
+    context = adapter.context("concise release", realm_id="project:ms8", scope="project")
+
+    assert "plan" not in query["ledger_v1"]["hybrid"]
+    assert "source_hits" not in query["ledger_v1"]["hybrid"]
+    assert "reranking" not in query["ledger_v1"]["hybrid"]
+    assert "assembly" not in context["ledger_v1"]["hybrid"]
+
+
 def test_cli_parser_exposes_profile_purpose_and_explain() -> None:
     args = _build_parser().parse_args(
         [
@@ -214,6 +276,10 @@ def test_cli_parser_exposes_profile_purpose_and_explain() -> None:
             "/tmp/ms8",
             "--retrieval-profile",
             "hybrid-v1",
+            "--principal-realm-id",
+            "project:ms8",
+            "--principal-scope",
+            "project",
             "query",
             "old release rule",
             "--purpose",
@@ -223,6 +289,8 @@ def test_cli_parser_exposes_profile_purpose_and_explain() -> None:
     )
 
     assert args.retrieval_profile == "hybrid-v1"
+    assert args.principal_realm_id == "project:ms8"
+    assert args.principal_scope == "project"
     assert args.purpose == "historical"
     assert args.explain is True
 

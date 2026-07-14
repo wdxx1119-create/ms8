@@ -7,18 +7,22 @@ from typing import Any
 
 import pytest
 
+from ms8.memory.application.replay import ClaimReplayView, ReplayState
+from ms8.memory.domain.models import Claim, ValidTime
 from ms8.memory.infrastructure.embedding_projection import (
     EmbeddingProjectionEntry,
     EmbeddingProjectionSnapshot,
+    embedding_source_content_hash,
+    read_embedding_projection,
     write_embedding_projection,
 )
 from ms8.memory.retrieval.adapters import run_candidate_sources
+from ms8.memory.retrieval.eligibility import EligibleClaims
 from ms8.memory.retrieval.embedding import EmbeddingMatch
 from ms8.memory.retrieval.embedding_sources import (
     EmbeddingProjectionCandidateProvider,
     EmbeddingProjectionCandidateSource,
 )
-from ms8.memory.retrieval.eligibility import EligibleClaims
 from ms8.memory.retrieval.models import MemoryQuery, Principal, RetrievalPlan
 from ms8.memory.retrieval.ollama_embedding import OllamaEmbeddingProvider
 
@@ -29,6 +33,12 @@ class _Provider:
 
     def embed(self, texts: tuple[str, ...]) -> tuple[tuple[float, ...], ...]:
         return tuple((1.0, 0.0) for _text in texts)
+
+
+class _FailingProvider(_Provider):
+    def embed(self, texts: tuple[str, ...]) -> tuple[tuple[float, ...], ...]:
+        del texts
+        raise RuntimeError("embedding provider unavailable")
 
 
 class _UnsafeBackend:
@@ -78,6 +88,43 @@ def _plan() -> RetrievalPlan:
     )
 
 
+def _state() -> ReplayState:
+    claims = {
+        claim_id: ClaimReplayView(
+            claim=Claim(
+                claim_id=claim_id,
+                kind="fact",
+                text=text,
+                subject="MS8",
+                predicate="retrieval",
+                value=text,
+                scope="project:test",
+                realm_id="realm:test",
+                authority="user_explicit",
+                sensitivity="internal",
+                confidence=1.0,
+                status="verified",
+                valid_time=ValidTime(start="2026-07-01T00:00:00Z", basis="user_explicit"),
+                created_from_event_id=f"event:{claim_id}",
+            ),
+            current_status="verified",
+            decision_ids=(),
+        )
+        for claim_id, text in (
+            ("claim:allowed", "hybrid retrieval"),
+            ("claim:blocked", "blocked retrieval"),
+        )
+    }
+    return ReplayState(
+        ledger_head="sha256:ledger",
+        last_sequence=2,
+        memory_events={},
+        claims=claims,
+        evidence={},
+        decisions={},
+        conflicts={},
+        logical_state_hash="sha256:state",
+    )
 def _write_snapshot(path: Path) -> None:
     write_embedding_projection(
         path,
@@ -112,7 +159,12 @@ def test_embedding_projection_source_scores_only_eligible_claims(tmp_path: Path)
         resolved.append(claim_id)
         return (f"evidence:{claim_id}",)
 
-    provider = EmbeddingProjectionCandidateProvider(path, _Provider(), resolve_evidence)
+    provider = EmbeddingProjectionCandidateProvider(
+        path,
+        _Provider(),
+        resolve_evidence,
+        state=_state(),
+    )
     source = EmbeddingProjectionCandidateSource(provider)
     eligible = EligibleClaims(claim_ids=("claim:allowed",), evaluated_count=2)
 
@@ -123,13 +175,19 @@ def test_embedding_projection_source_scores_only_eligible_claims(tmp_path: Path)
     assert resolved == ["claim:allowed"]
     assert hits[0].reason["backend"] == "exact-cosine"
     assert hits[0].reason["model_id"] == "local:test-v1"
+    snapshot = read_embedding_projection(path)
+    assert snapshot is not None
+    assert snapshot.source_content_hashes == {
+        "claim:allowed": embedding_source_content_hash("hybrid retrieval")
+    }
 
 
-def test_missing_embedding_projection_degrades_without_widening(tmp_path: Path) -> None:
+def test_failed_embedding_projection_rebuild_degrades_without_widening(tmp_path: Path) -> None:
     provider = EmbeddingProjectionCandidateProvider(
         tmp_path / "missing.json",
-        _Provider(),
+        _FailingProvider(),
         lambda claim_id: (f"evidence:{claim_id}",),
+        state=_state(),
     )
     source = EmbeddingProjectionCandidateSource(provider)
     eligible = EligibleClaims(claim_ids=("claim:allowed",), evaluated_count=1)
@@ -138,7 +196,7 @@ def test_missing_embedding_projection_degrades_without_widening(tmp_path: Path) 
 
     assert batch.hits_by_source["embedding-projection"] == ()
     assert batch.degradation_reasons == (
-        "embedding-projection:EmbeddingProjectionFormatError",
+        "embedding-projection:RuntimeError",
     )
 
 
@@ -149,6 +207,7 @@ def test_approximate_backend_cannot_return_unauthorized_claim(tmp_path: Path) ->
         path,
         _Provider(),
         lambda claim_id: (f"evidence:{claim_id}",),
+        state=_state(),
         approximate_backend=_UnsafeBackend(),
     )
     source = EmbeddingProjectionCandidateSource(provider)

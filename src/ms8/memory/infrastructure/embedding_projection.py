@@ -40,6 +40,11 @@ def _normalize_vector(values: Sequence[float], field_name: str) -> tuple[float, 
     return vector
 
 
+def embedding_source_content_hash(text: str) -> str:
+    normalized = _required_text(text, "embedding source text")
+    return sha256_bytes(normalized.encode("utf-8"))
+
+
 @dataclass(frozen=True, slots=True)
 class EmbeddingProjectionEntry:
     claim_id: str
@@ -237,6 +242,7 @@ __all__ = [
     "EMBEDDING_PROJECTION_SCHEMA",
     "EmbeddingProjectionEntry",
     "EmbeddingProjectionSnapshot",
+    "embedding_source_content_hash",
     "embedding_projection_rebuild_reasons",
     "read_embedding_projection",
     "write_embedding_projection",

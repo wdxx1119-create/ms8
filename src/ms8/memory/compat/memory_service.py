@@ -483,14 +483,16 @@ def build_ledger_memory_compatibility_adapter(
         hybrid_settings.setdefault("max_per_subject_predicate", diversity_raw)
         try:
             hybrid_config = HybridRuntimeConfig.from_mapping(hybrid_settings)
+            transactions = tuple(store.iterate())
             hybrid_runtime = HybridRetrievalRuntime(
-                replay_transactions(store.iterate()),
+                replay_transactions(transactions),
                 HybridRuntimePaths(
                     search_projection=paths.search_projection,
                     graph_projection=paths.graph_projection,
                     embedding_projection=paths.embedding_projection,
                 ),
                 config=hybrid_config,
+                transactions=transactions,
             )
         except (OSError, RuntimeError, TypeError, ValueError) as exc:
             raise LedgerCompatibilityError(

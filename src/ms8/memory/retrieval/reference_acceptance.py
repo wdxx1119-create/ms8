@@ -159,6 +159,8 @@ def _adapter(workspace: Path, profile: str):
     }
     if profile == HYBRID_RETRIEVAL_PROFILE:
         section["hybrid"] = {
+            "principal_realm_ids": ["project:demo"],
+            "principal_scopes": ["project"],
             "max_claims": 20,
             "max_per_subject": 5,
             "max_per_predicate": 5,

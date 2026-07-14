@@ -48,11 +48,11 @@
     "wrong_realm_probe": []
   },
   "trace_fingerprints": {
-    "chinese_preference": "0aad267a90c8eea7a8b068f72954e7d6d91ed86518f54b83836c98e5a6409ac2",
-    "code_symbol": "5a8623c671a5b4b3c52b9495d393dba96c007e39dad16f115bf4c6039f20a09e",
-    "current_release_rule": "537e7eac77dfd679e7ebe78d92ef077d0ec4a781940fd1872e1f78a00c0cca68",
-    "historical_release_rule": "1d445c78cf96ec0705ccf84532557315c4e9a56928fae71fe74423ad0bbfa0c1",
-    "retention_conflict": "0a493500a34d10cff7daafe25ebe8767973cc3c382b604faa342b2d8eae8f729",
-    "wrong_realm_probe": "b314069c89ebc94d20a58d979d35e2d4eb98e82cd768c4705d690e1442e71441"
+    "chinese_preference": "120e8bbab6e4d874e9b169d4e5c06d1684b2ca967b9b0481e18129fd73098223",
+    "code_symbol": "fd838cb1ecdc1e5f20fa604f69f356f8baa03934ac2a8abec851221de89c7b5c",
+    "current_release_rule": "0ebeccce379e4714c41189ff710dcc9a05f85277ce7fcf2f39bab2a03237e337",
+    "historical_release_rule": "4fc3f3de34257ee3794cbc5af76419d318e6be73c0a237ef7d8e87a8b88fdae9",
+    "retention_conflict": "b94d782eecc3460c59cff973313951c71d0a2bc64ac52d9aefbf9b5febdd32de",
+    "wrong_realm_probe": "6a44107f2fed6628bcf0ac55afa486932e63300356ece582b964b14a5131f577"
   }
 }

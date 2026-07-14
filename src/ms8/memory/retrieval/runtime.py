@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import Any, cast
 
 from ..application.replay import ReplayState
+from ..application.temporal_query import replay_recorded_as_of
+from ..domain.ledger import LedgerTransaction
 from ..infrastructure.embedding_projection import read_embedding_projection
 from .adapters import (
     CandidateBatch,
@@ -141,6 +143,8 @@ class HybridRuntimeConfig:
     graph_max_hops: int = 2
     principal_id: str = "local:ledger-v1"
     principal_kind: str = "user"
+    principal_realm_ids: tuple[str, ...] = ("local",)
+    principal_scopes: tuple[str, ...] = ()
     allowed_sensitivities: tuple[str, ...] = ("public", "internal", "private")
     embedding: Mapping[str, Any] | None = None
 
@@ -160,6 +164,12 @@ class HybridRuntimeConfig:
         embedding = section.get("embedding")
         if embedding is not None and not isinstance(embedding, Mapping):
             raise TypeError("hybrid.embedding must be an object")
+        principal_realm_ids = _text_tuple(section.get("principal_realm_ids"), ())
+        if not principal_realm_ids:
+            raise ValueError("hybrid.principal_realm_ids must contain at least one realm")
+        principal_scopes = _text_tuple(section.get("principal_scopes"), ())
+        if not principal_scopes:
+            raise ValueError("hybrid.principal_scopes must contain at least one scope")
         return cls(
             timezone_name=_required_text(
                 section.get("timezone"), "hybrid.timezone", "UTC"
@@ -193,6 +203,8 @@ class HybridRuntimeConfig:
                 "local:ledger-v1",
             ),
             principal_kind=principal_kind,
+            principal_realm_ids=principal_realm_ids,
+            principal_scopes=principal_scopes,
             allowed_sensitivities=_text_tuple(
                 section.get("allowed_sensitivities"),
                 ("public", "internal", "private"),
@@ -230,6 +242,7 @@ class HybridRetrievalRuntime:
         paths: HybridRuntimePaths,
         *,
         config: HybridRuntimeConfig | None = None,
+        transactions: Sequence[LedgerTransaction] | None = None,
     ) -> None:
         if not isinstance(state, ReplayState):
             raise TypeError("state must be ReplayState")
@@ -240,8 +253,22 @@ class HybridRetrievalRuntime:
         self.config = config or HybridRuntimeConfig()
         if not isinstance(self.config, HybridRuntimeConfig):
             raise TypeError("config must be HybridRuntimeConfig")
+        if transactions is not None and any(
+            not isinstance(transaction, LedgerTransaction) for transaction in transactions
+        ):
+            raise TypeError("transactions must contain LedgerTransaction values")
+        self._transactions = tuple(transactions) if transactions is not None else None
         self._planner = QueryPlanner(timezone_name=self.config.timezone_name)
         self._eligibility = EligibilityEvaluator()
+
+    def _recorded_runtime(self, recorded_as_of: str | None) -> HybridRetrievalRuntime:
+        if recorded_as_of is None or self._transactions is None:
+            return self
+        return HybridRetrievalRuntime(
+            replay_recorded_as_of(self._transactions, recorded_as_of),
+            self.paths,
+            config=self.config,
+        )
 
     def _evidence_ids(self, claim_id: str) -> tuple[str, ...]:
         return tuple(
@@ -253,21 +280,14 @@ class HybridRetrievalRuntime:
         )
 
     def _principal(self, realm_id: str | None, scope: str | None) -> Principal:
-        realms = {view.claim.realm_id for view in self.state.claims.values()}
-        scopes = {view.claim.scope for view in self.state.claims.values()}
-        if realm_id:
-            realms.add(realm_id)
-        if scope:
-            scopes.add(scope)
-        if not realms:
-            realms.add("local")
+        del realm_id, scope
         return Principal(
             principal_id=self.config.principal_id,
             kind=cast(Any, self.config.principal_kind),
-            realm_ids=tuple(sorted(realms)),
-            scopes=tuple(sorted(scopes)),
+            realm_ids=self.config.principal_realm_ids,
+            scopes=self.config.principal_scopes,
             allowed_sensitivities=self.config.allowed_sensitivities,
-            capabilities=("all",),
+            capabilities=tuple(sorted(_ALLOWED_PURPOSES)),
         )
 
     def _vector_source(self) -> CandidateSource:
@@ -298,6 +318,7 @@ class HybridRetrievalRuntime:
                 self.paths.embedding_projection,
                 provider,
                 self._evidence_ids,
+                state=self.state,
             )
         )
 
@@ -337,6 +358,17 @@ class HybridRetrievalRuntime:
         realm_id: str | None = None,
         scope: str | None = None,
     ) -> HybridExecution:
+        recorded_runtime = self._recorded_runtime(recorded_as_of)
+        if recorded_runtime is not self:
+            return recorded_runtime.execute(
+                text,
+                purpose=purpose,
+                recorded_as_of=recorded_as_of,
+                observed_as_of=observed_as_of,
+                valid_at=valid_at,
+                realm_id=realm_id,
+                scope=scope,
+            )
         normalized_purpose = str(purpose or "").strip()
         if normalized_purpose not in _ALLOWED_PURPOSES:
             raise ValueError(f"unsupported hybrid retrieval purpose: {normalized_purpose}")
@@ -477,7 +509,6 @@ class HybridRetrievalRuntime:
         ]
         payload: dict[str, object] = {
             "profile": HYBRID_RETRIEVAL_PROFILE,
-            "plan": execution.planning.to_dict(),
             "eligibility": {
                 "evaluated_count": eligible.evaluated_count,
                 "eligible_count": len(eligible.claim_ids),
@@ -490,13 +521,9 @@ class HybridRetrievalRuntime:
                 "candidate_count": execution.fusion.candidate_count,
                 "source_names": list(execution.fusion.source_names),
             },
-            "reranking": {
-                "ranked": [
-                    self._ranked_dict(item) for item in execution.fusion.ranked_claims
-                ],
-            },
         }
         if full:
+            payload["plan"] = execution.planning.to_dict()
             payload["eligibility"] = {
                 **cast(dict[str, object], payload["eligibility"]),
                 "eligible_claim_ids": list(eligible.claim_ids),
@@ -514,6 +541,11 @@ class HybridRetrievalRuntime:
                     for hit in hits
                 ]
                 for source, hits in execution.candidates.hits_by_source.items()
+            }
+            payload["reranking"] = {
+                "ranked": [
+                    self._ranked_dict(item) for item in execution.fusion.ranked_claims
+                ],
             }
         return payload
 
@@ -549,6 +581,19 @@ class HybridRetrievalRuntime:
         realm_id: str | None = None,
         scope: str | None = None,
     ) -> dict[str, Any]:
+        recorded_runtime = self._recorded_runtime(recorded_as_of)
+        if recorded_runtime is not self:
+            return recorded_runtime.query(
+                text,
+                top_k,
+                purpose=purpose,
+                explain=explain,
+                recorded_as_of=recorded_as_of,
+                observed_as_of=observed_as_of,
+                valid_at=valid_at,
+                realm_id=realm_id,
+                scope=scope,
+            )
         limit = _required_positive_int(top_k, "top_k", 5)
         execution = self.execute(
             text,
@@ -574,8 +619,18 @@ class HybridRetrievalRuntime:
         }
 
     def _dense_vectors(self) -> Mapping[str, Sequence[float]] | None:
+        embedding = self.config.embedding
+        if not isinstance(embedding, Mapping) or embedding.get("enabled") is not True:
+            return None
         snapshot = read_embedding_projection(self.paths.embedding_projection)
-        return snapshot.vectors if snapshot is not None else None
+        if (
+            snapshot is None
+            or snapshot.built_from_ledger_head != self.state.ledger_head
+            or snapshot.last_sequence != self.state.last_sequence
+            or snapshot.logical_state_hash != self.state.logical_state_hash
+        ):
+            return None
+        return snapshot.vectors
 
     def context(
         self,
@@ -589,6 +644,18 @@ class HybridRetrievalRuntime:
         realm_id: str | None = None,
         scope: str | None = None,
     ) -> dict[str, Any]:
+        recorded_runtime = self._recorded_runtime(recorded_as_of)
+        if recorded_runtime is not self:
+            return recorded_runtime.context(
+                text,
+                limit,
+                explain=explain,
+                recorded_as_of=recorded_as_of,
+                observed_as_of=observed_as_of,
+                valid_at=valid_at,
+                realm_id=realm_id,
+                scope=scope,
+            )
         requested_limit = _required_positive_int(limit, "limit", 5)
         execution = self.execute(
             text,
@@ -633,7 +700,8 @@ class HybridRetrievalRuntime:
         ]
         gateway = self.gateway_trace(execution)
         hybrid_trace = self._trace(execution, full=bool(explain))
-        hybrid_trace["assembly"] = assembly.to_dict()
+        if explain:
+            hybrid_trace["assembly"] = assembly.to_dict()
         context_payload = {
             "context": assembly.context,
             "memory_context": assembly.context,

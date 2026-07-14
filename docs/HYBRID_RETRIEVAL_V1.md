@@ -39,7 +39,11 @@ export MS8_MEMORY_HYBRID_V1=1
 ms8 memory-ledger \
   --workspace /path/to/ms8-workspace \
   --retrieval-profile hybrid-v1 \
+  --principal-realm-id project:ms8 \
+  --principal-scope project \
   query "release rule" \
+  --realm-id project:ms8 \
+  --scope project \
   --explain
 ```
 
@@ -49,7 +53,11 @@ Context assembly uses the same explicit profile:
 ms8 memory-ledger \
   --workspace /path/to/ms8-workspace \
   --retrieval-profile hybrid-v1 \
+  --principal-realm-id project:ms8 \
+  --principal-scope project \
   context "prepare the release summary" \
+  --realm-id project:ms8 \
+  --scope project \
   --explain
 ```
 
@@ -68,6 +76,9 @@ memory_ledger_v1:
   enabled: true
   retrieval_profile: hybrid-v1
   context_token_budget: 1200
+  hybrid:
+    principal_realm_ids: [project:ms8]
+    principal_scopes: [project]
 ```
 
 The MCP server process must also receive:
@@ -78,6 +89,8 @@ MS8_MEMORY_HYBRID_V1=1
 ```
 
 The existing `query`, `context`, and `prepare_reply` surfaces preserve their required primary fields. Hybrid-specific options and diagnostics are additive.
+
+`principal_realm_ids` and `principal_scopes` are required for Hybrid Retrieval. The CLI supplies the same boundary with `--principal-realm-id` and `--principal-scope`; `--realm-id` and `--scope` remain request filters. Requests outside the configured principal boundary fail closed.
 
 When Ledger v1 is explicitly selected, writes remain disabled through the compatibility read adapter. A connected client cannot use this interface to bypass the governed write path.
 

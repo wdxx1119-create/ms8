@@ -492,6 +492,8 @@ def _build_parser() -> argparse.ArgumentParser:
         default="legacy",
         help="explicit Ledger-v1 retrieval profile; hybrid-v1 also requires its environment gate",
     )
+    p_memory_ledger.add_argument("--principal-realm-id", default="")
+    p_memory_ledger.add_argument("--principal-scope", default="")
     p_memory_ledger_sub = p_memory_ledger.add_subparsers(dest="memory_ledger_cmd")
     p_memory_ledger_sub.add_parser("doctor", help="read-only ledger and projection health")
     p_memory_ledger_sub.add_parser("status", help="show authorized ledger-v1 readiness")

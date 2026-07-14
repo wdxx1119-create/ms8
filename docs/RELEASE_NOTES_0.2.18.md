@@ -20,6 +20,8 @@ Hybrid Retrieval v1 requires the normal Ledger-v1 configuration and runtime mani
 
 ```text
 memory_ledger_v1.retrieval_profile = hybrid-v1
+memory_ledger_v1.hybrid.principal_realm_ids = [project:ms8]
+memory_ledger_v1.hybrid.principal_scopes = [project]
 MS8_MEMORY_HYBRID_V1=1
 ```
 
