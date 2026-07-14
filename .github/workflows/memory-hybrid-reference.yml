@@ -49,7 +49,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          python -m pytest -q \
+          python -m pytest -q --no-cov \
             tests/test_memory_hybrid_evaluation.py \
             tests/test_memory_hybrid_reference_acceptance.py \
             2>&1 | tee artifacts/memory_hybrid_v1_macos_acceptance/contract-tests.log
