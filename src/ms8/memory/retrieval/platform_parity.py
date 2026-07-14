@@ -126,6 +126,54 @@ def _cross_process_lock_check(workspace: Path) -> bool:
             process.wait(timeout=2.0)
 
 
+def _concurrent_projection_rebuild_check(workspace: Path) -> bool:
+    """Run two real projection rebuilds against one workspace concurrently."""
+
+    code = (
+        "import sys\n"
+        "from pathlib import Path\n"
+        "from ms8.memory.application.projection_service import ProjectionCoordinator\n"
+        "from ms8.memory.infrastructure.fts_projection import FtsProjectionAdapter\n"
+        "from ms8.memory.infrastructure.graph_projection import GraphProjectionAdapter\n"
+        "from ms8.memory.infrastructure.jsonl_ledger import JsonlRecordStore\n"
+        "from ms8.memory.infrastructure.search_projection import SearchProjectionAdapter\n"
+        "from ms8.memory.infrastructure.sqlite_projection_adapter import SQLiteProjectionAdapter\n"
+        "from ms8.memory.infrastructure.vector_projection import VectorProjectionAdapter\n"
+        "workspace=Path(sys.argv[1]); root=workspace/'memory'/'projections'\n"
+        "coordinator=ProjectionCoordinator(JsonlRecordStore(workspace/'memory'/'ledger-v1'), (\n"
+        "    SQLiteProjectionAdapter(root/'memory.sqlite3'),\n"
+        "    SearchProjectionAdapter(root/'search.json'),\n"
+        "    FtsProjectionAdapter(root/'fts.json'),\n"
+        "    VectorProjectionAdapter(root/'vector.json'),\n"
+        "    GraphProjectionAdapter(root/'graph.json'),\n"
+        "))\n"
+        "coordinator.rebuild_all()\n"
+        "coordinator.require_ready_for_query()\n"
+    )
+    processes = [
+        subprocess.Popen(
+            [sys.executable, "-c", code, str(workspace)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        for _ in range(2)
+    ]
+    try:
+        for process in processes:
+            process.communicate(timeout=30.0)
+        return all(process.returncode == 0 for process in processes) and _sqlite_quick_check(
+            workspace
+        )
+    except subprocess.TimeoutExpired:
+        return False
+    finally:
+        for process in processes:
+            if process.poll() is None:
+                process.kill()
+                process.wait(timeout=2.0)
+
+
 def _interrupted_write_check(workspace: Path) -> bool:
     state_path = workspace / "memory" / "parity-state.json"
     expected = {"schema": "ms8.hybrid_parity_state.v1", "sequence": 1}
@@ -239,6 +287,7 @@ def run_windows_parity(
         "projection_replace_roundtrip": replacement_ok,
         "sqlite_quick_check": _sqlite_quick_check(workspace),
         "cross_process_file_lock": _cross_process_lock_check(workspace),
+        "concurrent_projection_rebuild": _concurrent_projection_rebuild_check(workspace),
         "interrupted_write_preserves_committed_state": _interrupted_write_check(workspace),
         "optional_embedding_degradation_is_safe": (
             float(metrics.get("degradation_correctness", 0.0)) == 1.0
