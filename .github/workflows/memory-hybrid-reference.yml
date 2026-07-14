@@ -40,11 +40,19 @@ jobs:
           python -m pip install --quiet --upgrade pip
           python -m pip install --quiet -e ".[dev]"
 
+      - name: Prepare artifact directory
+        run: mkdir -p artifacts/memory_hybrid_v1_macos_acceptance
+
       - name: Run evaluation contract tests
+        id: contract_tests
+        continue-on-error: true
+        shell: bash
         run: |
+          set -o pipefail
           python -m pytest -q \
             tests/test_memory_hybrid_evaluation.py \
-            tests/test_memory_hybrid_reference_acceptance.py
+            tests/test_memory_hybrid_reference_acceptance.py \
+            2>&1 | tee artifacts/memory_hybrid_v1_macos_acceptance/contract-tests.log
 
       - name: Run macOS reference acceptance
         id: acceptance
@@ -52,7 +60,6 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          mkdir -p artifacts/memory_hybrid_v1_macos_acceptance
           python scripts/run_memory_hybrid_v1_macos_acceptance.py \
             --output-dir artifacts/memory_hybrid_v1_macos_acceptance \
             2>&1 | tee artifacts/memory_hybrid_v1_macos_acceptance/console.log
@@ -70,4 +77,5 @@ jobs:
         if: always()
         shell: bash
         run: |
+          test "${{ steps.contract_tests.outcome }}" = "success"
           test "${{ steps.acceptance.outcome }}" = "success"
