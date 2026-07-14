@@ -11,6 +11,7 @@ on:
       - "tests/fixtures/memory_hybrid_v1/**"
       - "tests/test_memory_hybrid_evaluation.py"
       - "tests/test_memory_hybrid_reference_acceptance.py"
+      - "tests/test_memory_hybrid_trace_parity.py"
   workflow_dispatch:
 
 permissions:
@@ -53,6 +54,7 @@ jobs:
           python -m pytest -q --no-cov \
             tests/test_memory_hybrid_evaluation.py \
             tests/test_memory_hybrid_reference_acceptance.py \
+            tests/test_memory_hybrid_trace_parity.py \
             2>&1 | tee artifacts/memory_hybrid_v1_macos_acceptance/contract-tests.log
 
       - name: Run macOS reference acceptance
