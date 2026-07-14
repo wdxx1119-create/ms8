@@ -49,6 +49,7 @@ def _write_projection(path: Path, *, schema: str = SEARCH_PROJECTION_SCHEMA) -> 
             "retrievalplan": ["claim:allowed", "claim:blocked"],
             "retrieval": ["claim:allowed", "claim:blocked"],
             "plan": ["claim:allowed", "claim:blocked"],
+            "policy": ["claim:allowed"],
         },
     }
     path.write_text(json.dumps(payload), encoding="utf-8")
@@ -75,6 +76,51 @@ def test_search_projection_filters_before_candidate_mapping(tmp_path: Path) -> N
     assert hits[0].evidence_ids == ("evidence:claim:allowed",)
     assert hits[0].reason["projection_schema"] == SEARCH_PROJECTION_SCHEMA
     assert "retrievalplan" in hits[0].reason["matched_terms"]
+
+
+def test_search_projection_rejects_single_generic_match_in_broad_question(tmp_path: Path) -> None:
+    projection_path = tmp_path / "search.json"
+    payload = {
+        "manifest": {"schema": SEARCH_PROJECTION_SCHEMA},
+        "documents": [
+            {
+                "claim_id": "claim:retention",
+                "text": "Backup retention is 30 days",
+                "terms": ["backup", "retention", "day"],
+            },
+            {
+                "claim_id": "claim:release",
+                "text": "Current release policy requires all checks",
+                "terms": ["current", "release", "policy", "check"],
+            },
+        ],
+        "postings": {
+            "backup": ["claim:retention"],
+            "retention": ["claim:retention"],
+            "policy": ["claim:release"],
+        },
+    }
+    projection_path.write_text(json.dumps(payload), encoding="utf-8")
+    provider = SearchProjectionCandidateProvider(
+        projection_path,
+        lambda claim_id: (f"evidence:{claim_id}",),
+    )
+    source = LedgerLexicalCandidateSource(provider)
+    eligible = EligibleClaims(
+        claim_ids=("claim:release", "claim:retention"),
+        evaluated_count=2,
+    )
+
+    batch = run_candidate_sources(
+        (source,),
+        _plan("What is the backup retention policy?"),
+        eligible,
+    )
+
+    hits = batch.hits_by_source["ledger-search-fts"]
+    assert [hit.claim_id for hit in hits] == ["claim:retention"]
+    assert hits[0].reason["matched_terms"] == ("backup", "retention")
+    assert hits[0].reason["informative_query_term_count"] == 3
 
 
 def test_search_projection_skips_claim_without_accessible_evidence(tmp_path: Path) -> None:
