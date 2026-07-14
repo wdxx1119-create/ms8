@@ -14,7 +14,7 @@ All notable changes to this project are documented in this file.
 
 ### Changed
 - Preserved existing legacy CLI and MCP primary response fields while adding explicit `hybrid-v1`, historical-purpose, independent time-coordinate, realm/scope, and explain options.
-- Bumped the patch candidate version to 0.2.18.
+- Bumped the patch version to 0.2.18.
 - Kept Memory Ledger v1 and Hybrid Retrieval v1 disabled by default and read-only through the compatibility adapter.
 - Added Windows-only IANA timezone data without adding a mandatory model, embedding-index, cross-encoder, or LTR dependency.
 

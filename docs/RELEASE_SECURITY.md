@@ -21,7 +21,7 @@ export TWINE_PASSWORD="<your-pypi-token>"
 - `TWINE_PASSWORD` is a PyPI or TestPyPI API token.
 - Never place either value in repository files, command examples committed with real values, workflow YAML, or project-local environment files.
 
-No automatic PyPI upload workflow is enabled for 0.2.16.
+Trusted Publishing is not enabled. No automatic PyPI upload workflow is currently authorized.
 
 ## Verified candidate artifacts
 
