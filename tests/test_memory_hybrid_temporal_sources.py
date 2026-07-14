@@ -148,6 +148,66 @@ def test_current_temporal_retrieval_excludes_superseded_claims() -> None:
     assert hits[0].raw_score > hits[1].raw_score
 
 
+def test_temporal_retrieval_rejects_single_generic_match_in_broad_question() -> None:
+    retention = _claim(
+        "claim:retention",
+        text="Backup retention is 30 days",
+        status="accepted",
+        basis="user_explicit",
+        start="2026-07-01T00:00:00Z",
+    )
+    release = _claim(
+        "claim:release",
+        text="Current release policy requires all checks",
+        status="verified",
+        basis="user_explicit",
+        start="2026-07-01T00:00:00Z",
+    )
+    claims = {
+        claim.claim_id: ClaimReplayView(
+            claim=claim,
+            current_status=claim.status,
+            decision_ids=(),
+        )
+        for claim in (retention, release)
+    }
+    state = ReplayState(
+        ledger_head="sha256:ledger",
+        last_sequence=4,
+        memory_events={},
+        claims=claims,
+        evidence={
+            f"evidence:{claim_id}": Evidence(
+                evidence_id=f"evidence:{claim_id}",
+                claim_id=claim_id,
+                event_id=f"event:{claim_id}",
+                relation="supports",
+                fragment={"source": claim_id},
+                quoted_text_hash=f"sha256:{claim_id}",
+            )
+            for claim_id in claims
+        },
+        decisions={},
+        conflicts={},
+        logical_state_hash="sha256:state",
+    )
+    provider = TemporalReplayCandidateProvider(state)
+
+    records = provider(
+        _plan(
+            text="What is the backup retention policy?",
+            purpose="recall",
+            intent="project_rule",
+        ),
+        ("claim:release", "claim:retention"),
+        10,
+    )
+
+    assert [item.claim_id for item in records] == ["claim:retention"]
+    assert records[0].reason["matched_terms"] == ("backup", "retention")
+    assert records[0].reason["informative_query_term_count"] == 3
+
+
 def test_historical_temporal_retrieval_requires_explicit_historical_mode() -> None:
     state = _state()
     provider = TemporalReplayCandidateProvider(state)
