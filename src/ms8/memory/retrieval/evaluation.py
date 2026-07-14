@@ -32,7 +32,7 @@ def _unique_text(values: Sequence[object], field_name: str) -> tuple[str, ...]:
     return normalized
 
 
-def _finite_non_negative(value: object, field_name: str) -> float:
+def _finite_non_negative(value: Any, field_name: str) -> float:
     try:
         number = float(value)
     except (TypeError, ValueError) as exc:
