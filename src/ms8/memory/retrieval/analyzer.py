@@ -28,6 +28,67 @@ _PATH_PATTERN = re.compile(
     rf"[^\\\s{_PATH_STOP_CHARS}]+|(?:\.\.?/|/)[^\s{_PATH_STOP_CHARS}]+)"
 )
 _CAMEL_BOUNDARY_PATTERN = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
+_ENGLISH_RETRIEVAL_STOPWORDS = frozenset(
+    {
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "been",
+        "being",
+        "can",
+        "could",
+        "did",
+        "do",
+        "does",
+        "for",
+        "from",
+        "give",
+        "had",
+        "has",
+        "have",
+        "how",
+        "i",
+        "in",
+        "is",
+        "it",
+        "me",
+        "my",
+        "of",
+        "on",
+        "or",
+        "our",
+        "please",
+        "show",
+        "tell",
+        "that",
+        "the",
+        "their",
+        "them",
+        "these",
+        "this",
+        "those",
+        "to",
+        "was",
+        "we",
+        "were",
+        "what",
+        "when",
+        "where",
+        "which",
+        "who",
+        "whom",
+        "whose",
+        "why",
+        "with",
+        "would",
+        "you",
+        "your",
+    }
+)
 
 
 def _unique(values: list[str] | tuple[str, ...]) -> tuple[str, ...]:
@@ -147,6 +208,49 @@ class QueryAnalysis:
         }
 
 
+def informative_query_terms(analysis: QueryAnalysis) -> frozenset[str]:
+    """Return retrieval terms after removing English question/function noise.
+
+    Exact code/path/version tokens are always retained. This prevents common words
+    such as ``what``, ``is``, and ``the`` from creating weak candidates that later
+    outrank strongly matched facts only because they have higher authority.
+    """
+
+    if not isinstance(analysis, QueryAnalysis):
+        raise TypeError("analysis must be QueryAnalysis")
+    exact = {str(value).casefold() for value in analysis.exact_tokens if str(value).strip()}
+    terms = {
+        str(value).casefold()
+        for value in analysis.tokens
+        if str(value).strip()
+        and (
+            str(value).casefold() not in _ENGLISH_RETRIEVAL_STOPWORDS
+            or str(value).casefold() in exact
+        )
+    }
+    return frozenset(terms)
+
+
+def sufficient_query_overlap(
+    analysis: QueryAnalysis,
+    matched_terms: Sequence[str],
+) -> bool:
+    """Require two informative matches for broad queries, or one exact token.
+
+    One- and two-term queries retain normal single-term recall. Queries with three
+    or more informative terms must match at least two, unless an exact code/path/
+    version token matched. This is a candidate-admission rule, not a ranking signal.
+    """
+
+    query_terms = informative_query_terms(analysis)
+    matched = {str(value).casefold() for value in matched_terms if str(value).strip()}
+    exact = {str(value).casefold() for value in analysis.exact_tokens if str(value).strip()}
+    if matched.intersection(exact):
+        return True
+    required = 1 if len(query_terms) <= 2 else 2
+    return len(query_terms.intersection(matched)) >= required
+
+
 def analyze_query(text: str) -> QueryAnalysis:
     original = str(text or "").strip()
     if not original:
@@ -216,4 +320,9 @@ def analyze_query(text: str) -> QueryAnalysis:
     )
 
 
-__all__ = ["QueryAnalysis", "analyze_query"]
+__all__ = [
+    "QueryAnalysis",
+    "analyze_query",
+    "informative_query_terms",
+    "sufficient_query_overlap",
+]
