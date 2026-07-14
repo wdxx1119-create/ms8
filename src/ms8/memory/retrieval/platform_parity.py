@@ -126,10 +126,9 @@ def _cross_process_lock_check(workspace: Path) -> bool:
             process.wait(timeout=2.0)
 
 
-def _concurrent_projection_rebuild_check(workspace: Path) -> bool:
-    """Run two real projection rebuilds against one workspace concurrently."""
-
-    code = (
+def _projection_coordinator_code(*, rebuild: bool) -> str:
+    action = "coordinator.rebuild_all()\n" if rebuild else ""
+    return (
         "import sys\n"
         "from pathlib import Path\n"
         "from ms8.memory.application.projection_service import ProjectionCoordinator\n"
@@ -147,9 +146,31 @@ def _concurrent_projection_rebuild_check(workspace: Path) -> bool:
         "    VectorProjectionAdapter(root/'vector.json'),\n"
         "    GraphProjectionAdapter(root/'graph.json'),\n"
         "))\n"
-        "coordinator.rebuild_all()\n"
-        "coordinator.require_ready_for_query()\n"
+        + action
+        + "coordinator.require_ready_for_query()\n"
     )
+
+
+def _process_summary(process: subprocess.Popen[str], stdout: str, stderr: str) -> dict[str, Any]:
+    return {
+        "returncode": process.returncode,
+        "stdout_tail": stdout[-500:],
+        "stderr_tail": stderr[-500:],
+    }
+
+
+def _concurrent_projection_rebuild_check(
+    workspace: Path,
+) -> tuple[bool, tuple[dict[str, Any], ...]]:
+    """Overlap two real rebuild attempts and require a valid final projection set.
+
+    The adapters use unique temporary artifacts and atomic replacement. Overlapping
+    rebuild requests are therefore allowed to make one contender fail closed, but
+    at least one rebuild must complete and the final full projection set must remain
+    query-ready and SQLite-valid.
+    """
+
+    code = _projection_coordinator_code(rebuild=True)
     processes = [
         subprocess.Popen(
             [sys.executable, "-c", code, str(workspace)],
@@ -159,14 +180,46 @@ def _concurrent_projection_rebuild_check(workspace: Path) -> bool:
         )
         for _ in range(2)
     ]
+    summaries: list[dict[str, Any]] = []
+    timed_out = False
     try:
         for process in processes:
-            process.communicate(timeout=30.0)
-        return all(process.returncode == 0 for process in processes) and _sqlite_quick_check(
-            workspace
+            try:
+                stdout, stderr = process.communicate(timeout=30.0)
+            except subprocess.TimeoutExpired:
+                timed_out = True
+                process.kill()
+                stdout, stderr = process.communicate(timeout=2.0)
+            summaries.append(_process_summary(process, stdout, stderr))
+
+        validation = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                _projection_coordinator_code(rebuild=False),
+                str(workspace),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=15.0,
+            check=False,
         )
-    except subprocess.TimeoutExpired:
-        return False
+        summaries.append(
+            {
+                "role": "final_readiness",
+                "returncode": validation.returncode,
+                "stdout_tail": validation.stdout[-500:],
+                "stderr_tail": validation.stderr[-500:],
+            }
+        )
+        successful_rebuilds = sum(process.returncode == 0 for process in processes)
+        safe = (
+            not timed_out
+            and successful_rebuilds >= 1
+            and validation.returncode == 0
+            and _sqlite_quick_check(workspace)
+        )
+        return safe, tuple(summaries)
     finally:
         for process in processes:
             if process.poll() is None:
@@ -257,6 +310,7 @@ def run_windows_parity(
         raise TypeError("reference acceptance metrics are incomplete")
 
     replacement_ok, replaced = _projection_replace_roundtrip(workspace)
+    concurrent_ok, concurrent_results = _concurrent_projection_rebuild_check(workspace)
     non_platform_gates = {
         key: bool(value)
         for key, value in release_gates.items()
@@ -287,7 +341,7 @@ def run_windows_parity(
         "projection_replace_roundtrip": replacement_ok,
         "sqlite_quick_check": _sqlite_quick_check(workspace),
         "cross_process_file_lock": _cross_process_lock_check(workspace),
-        "concurrent_projection_rebuild": _concurrent_projection_rebuild_check(workspace),
+        "concurrent_projection_rebuild": concurrent_ok,
         "interrupted_write_preserves_committed_state": _interrupted_write_check(workspace),
         "optional_embedding_degradation_is_safe": (
             float(metrics.get("degradation_correctness", 0.0)) == 1.0
@@ -305,6 +359,7 @@ def run_windows_parity(
         "golden_ordering": reference_report.get("golden_ordering", {}),
         "trace_fingerprints": trace_report.get("fingerprints", {}),
         "replaced_projection_files": replaced,
+        "concurrent_projection_rebuild_results": list(concurrent_results),
         "reference_release_gates": dict(release_gates),
         "reference_metrics": dict(metrics),
     }
