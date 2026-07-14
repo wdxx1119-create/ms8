@@ -4,6 +4,31 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.2.18] - 2026-07-14
+
+### Added
+- Added the opt-in Hybrid Retrieval v1 pipeline for Memory Ledger v1 with rule-first planning, eligibility-first lexical, optional embedding, entity, temporal, and governed graph candidate sources.
+- Added weighted reciprocal-rank fusion, deterministic authority/evidence/time/conflict reranking, conflict-aware MMR, compact cited context assembly, and full explain traces.
+- Added public synthetic evaluation fixtures, macOS reference acceptance, Windows frozen-contract parity, and exact full-trace fingerprint comparison.
+- Added an artifact-boundary report that rejects excluded LAN/private material and unconditional optional embedding or LTR dependencies.
+
+### Changed
+- Preserved existing legacy CLI and MCP primary response fields while adding explicit `hybrid-v1`, historical-purpose, independent time-coordinate, realm/scope, and explain options.
+- Bumped the patch candidate version to 0.2.18.
+- Kept Memory Ledger v1 and Hybrid Retrieval v1 disabled by default and read-only through the compatibility adapter.
+- Added Windows-only IANA timezone data without adding a mandatory model, embedding-index, cross-encoder, or LTR dependency.
+
+### Fixed
+- Kept historical claims out of current-state answers unless historical retrieval is explicitly requested.
+- Prevented graph traversal, vector retrieval, entity aliases, and deterministic rankers from widening the pre-authorized claim set.
+- Hardened Windows Unicode/space paths, projection replacement, cross-process locks, overlapping rebuild handling, interrupted-write preservation, and installed-wheel entry points.
+
+### Security
+- Required policy and eligibility filtering before every Hybrid candidate source.
+- Required accessible Evidence and Decision traces for final injectable claims and retained unresolved conflict warnings.
+- Preserved fail-closed behavior for invalid Ledger, runtime-format, manifest-head, or projection state.
+- Kept LAN work, private evaluation data, private model artifacts, local user data, and automatic publication outside the patch.
+
 ## [0.2.17] - 2026-07-13
 
 ### Added
@@ -156,7 +181,6 @@ Its changes are included in 0.2.17.
 - Memory admission path now prefers policy-engine decisions with safe local fallback.
 - Doctor/dashboard now expose policy engine and policy-attack sample health signals.
 - Governance report now includes policy attack sample status in layered health.
-- CI workflow now enforces mypy, ruff, pytest coverage reporting, and doctor smoke checks.
 
 ### Security
 - Closed backend contract validation and strict policy backend loading paths.
