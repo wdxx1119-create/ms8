@@ -287,13 +287,15 @@ Validation evidence: exact Phase 10 code head `d2042b42bf397919eb76b00ea97c25fa6
 
 ## Phase 11 — patch convergence
 
-- [ ] Run Ruff, mypy, full pytest, coverage, package build, Twine check, dependency audit, CodeQL, and clean-room profiles.
-- [ ] Verify no LAN files or private assets enter artifacts.
-- [ ] Verify default install remains free of optional embedding/LTR dependencies.
-- [ ] Update architecture, security, data-model, CLI/MCP, and release documentation.
-- [ ] Generate exact-commit candidate evidence after final merge preparation.
-- [ ] Keep PR as Draft until macOS and Windows acceptance reports are complete.
-- [ ] Do not tag, publish PyPI, or create a final Release without explicit maintainer approval.
+- [x] Run Ruff, mypy, full pytest, coverage, package build, Twine check, dependency audit, CodeQL, and clean-room profiles.
+- [x] Verify no LAN files or private assets enter artifacts.
+- [x] Verify default install remains free of optional embedding/LTR dependencies.
+- [x] Update architecture, security, data-model, CLI/MCP, and release documentation.
+- [x] Generate exact-commit pre-merge candidate evidence after final patch preparation.
+- [x] Keep PR as Draft until macOS and Windows acceptance reports are complete.
+- [x] Do not tag, publish PyPI, or create a final Release without explicit maintainer approval.
+
+Acceptance evidence: exact pre-merge candidate head `ce6bee89a0187cb2e45de4ddd50d3b470dd0d6b1` passed CI `29313365784`, Required check compatibility `29313365713`, Memory Hybrid Reference Acceptance `29313365768`, Memory Hybrid Windows Parity `29313365731`, Examples smoke `29313365814`, Dependency Review `29313365711`, Python Dependency Audit `29313365728`, and CodeQL `29313365761`. Candidate branch `candidate/v0.2.18` passed Release candidate validation `29313751035`, including Ruff, mypy, macOS canonical tests, clean wheel/sdist verification, Twine and metadata checks, installed-runtime dependency audit, CycloneDX SBOM validation, SHA-256 checksums, provenance attestations, SBOM attestation, and `release-candidate/aggregate=success`. Retained artifact: `ms8-v0.2.18-ce6bee89a0187cb2e45de4ddd50d3b470dd0d6b1` (`8303199789`). The PR remained Draft through macOS/Windows acceptance, and no merge, tag, GitHub Release, default enablement, or PyPI publication was performed. An authoritative Release Candidate rerun remains mandatory from the exact post-merge `main` commit intended for the tag.
 
 ## LTR v1 preparation — non-blocking
 
