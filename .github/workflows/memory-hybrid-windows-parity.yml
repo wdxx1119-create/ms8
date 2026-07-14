@@ -66,12 +66,14 @@ jobs:
           $pip = Join-Path $venv "Scripts/pip.exe"
           $ms8 = Join-Path $venv "Scripts/ms8.exe"
           $recovery = Join-Path $venv "Scripts/ms8-recovery.exe"
+          $ledger = Join-Path $venv "Scripts/ms8-memory-ledger.exe"
           & $python -m pip install --quiet --upgrade pip setuptools wheel
           $wheel = Get-ChildItem dist/ms8-*-py3-none-any.whl | Select-Object -First 1
           & $pip install --quiet $wheel.FullName
           & $python -m pip check
           & $ms8 version
           & $recovery --help
+          & $ledger --help
           "MS8_PARITY_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Run installed-wheel Windows parity
