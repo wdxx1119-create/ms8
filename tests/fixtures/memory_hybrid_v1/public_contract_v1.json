@@ -1,0 +1,58 @@
+{
+  "schema": "ms8.hybrid_public_contract.v1",
+  "evaluation_schema": "ms8.hybrid_evaluation.v1",
+  "fixture_schema": "ms8.hybrid_evaluation_fixture.v1",
+  "reference_report_schema": "ms8.hybrid_reference_acceptance.v1",
+  "trace_parity_schema": "ms8.hybrid_trace_parity.v1",
+  "required_metrics": [
+    "ndcg_at_5",
+    "ndcg_at_10",
+    "mrr",
+    "recall_at_20",
+    "current_fact_accuracy",
+    "historical_fact_accuracy",
+    "evidence_citation_coverage",
+    "conflict_presentation_rate",
+    "unauthorized_inactive_error_recall_rate",
+    "degradation_correctness",
+    "latency_ms_p50",
+    "latency_ms_p95"
+  ],
+  "required_release_gates": [
+    "platform_is_macos",
+    "unauthorized_inactive_error_recall_is_zero",
+    "evidence_and_decision_coverage_is_complete",
+    "degradation_is_correct",
+    "ndcg_at_10_relative_improvement_at_least_5_percent",
+    "recall_at_20_has_no_regression",
+    "critical_slices_have_no_regression"
+  ],
+  "golden_ordering": {
+    "current_release_rule": [
+      "clm_legacy_3e8ad1a5fd97856e51a5826f"
+    ],
+    "historical_release_rule": [
+      "clm_legacy_d32850cdfbb07e70cd5728ab",
+      "clm_legacy_3e8ad1a5fd97856e51a5826f"
+    ],
+    "chinese_preference": [
+      "clm_legacy_20d7112a6006c33fd97eaf0e"
+    ],
+    "code_symbol": [
+      "clm_legacy_9e827f93c95992722be99860"
+    ],
+    "retention_conflict": [
+      "clm_legacy_09e38cfce8d8c6dc3e253f20",
+      "clm_legacy_da6b082dac7e11acbba1437e"
+    ],
+    "wrong_realm_probe": []
+  },
+  "trace_fingerprints": {
+    "chinese_preference": "0aad267a90c8eea7a8b068f72954e7d6d91ed86518f54b83836c98e5a6409ac2",
+    "code_symbol": "5a8623c671a5b4b3c52b9495d393dba96c007e39dad16f115bf4c6039f20a09e",
+    "current_release_rule": "537e7eac77dfd679e7ebe78d92ef077d0ec4a781940fd1872e1f78a00c0cca68",
+    "historical_release_rule": "1d445c78cf96ec0705ccf84532557315c4e9a56928fae71fe74423ad0bbfa0c1",
+    "retention_conflict": "0a493500a34d10cff7daafe25ebe8767973cc3c382b604faa342b2d8eae8f729",
+    "wrong_realm_probe": "b314069c89ebc94d20a58d979d35e2d4eb98e82cd768c4705d690e1442e71441"
+  }
+}
