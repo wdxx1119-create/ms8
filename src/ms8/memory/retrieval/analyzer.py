@@ -10,6 +10,7 @@ from __future__ import annotations
 import importlib
 import re
 import unicodedata
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 _CJK_RUN_PATTERN = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]+")
