@@ -38,7 +38,8 @@ dependencies = [
   "jieba>=0.42.1",
   "cryptography>=44.0.0",
   "argon2-cffi>=25.0.0",
-  "tomli>=2.0.0; python_version < '3.11'"
+  "tomli>=2.0.0; python_version < '3.11'",
+  "tzdata>=2024.1; sys_platform == 'win32'"
 ]
 
 [project.urls]
@@ -101,52 +102,58 @@ full = [
 [project.scripts]
 ms8 = "ms8.cli:main"
 ms8-recovery = "ms8.recovery_cli:main"
-ms8-memory-ledger = "ms8.memory.operations_cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
-exclude = ["ms8.engine_core.tests*"]
 
 [tool.setuptools.package-data]
 ms8 = [
-  "connect/*.md",
-  "connect/config/*.yaml",
-  "connect/adapter_registry/*.json",
-  "memory/schemas/*.json"
+  "resources/*.md",
+  "resources/*.json",
+  "resources/*.yaml",
+  "resources/*.yml",
+  "agent_native/*.md",
+  "agent_native/*.task",
+  "connect/mcp_server/instruction.md",
+  "../templates/*.json",
 ]
-
-[tool.pytest.ini_options]
-testpaths = ["tests", "src/ms8/engine_core/tests"]
-addopts = "--strict-markers"
 
 [tool.ruff]
 line-length = 120
 target-version = "py310"
-exclude = ["repo_public"]
+extend-exclude = ["src/ms8/engine_core/private_*.py"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP"]
-ignore = ["E501"]
-
-[tool.ruff.lint.per-file-ignores]
-"src/ms8/engine_core/tests/*.py" = ["E402"]
-# These modules intentionally use conditional/optional import layouts.
-"src/ms8/absorb/project_memory/parser.py" = ["I001"]
-"src/ms8/absorb/project_memory/watch.py" = ["I001"]
-"src/ms8/ask.py" = ["I001"]
-"src/ms8/engine_core/local_llm.py" = ["I001"]
-"src/ms8/service.py" = ["I001"]
-# The two compatibility snapshots are retained for release diagnostics.
-"src/ms8/doctor.py" = ["F841"]
+select = ["E", "F", "I", "UP", "B"]
 
 [tool.mypy]
 python_version = "3.10"
-ignore_missing_imports = true
-strict = false
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+check_untyped_defs = true
+exclude = "src/ms8/engine_core/private_.*\\.py"
 
-[[tool.mypy.overrides]]
-module = [
-  "ms8.engine_core.auto_memory",
-  "ms8.engine_core.maintenance.self_repair.repair_policies",
+[tool.pytest.ini_options]
+addopts = "--cov=src/ms8 --cov-report=term-missing --cov-report=xml:coverage.xml"
+testpaths = ["tests"]
+markers = [
+  "live_provider: opt-in test that may call a real configured model provider",
 ]
-disable_error_code = ["attr-defined"]
+
+[tool.coverage.run]
+branch = true
+source = ["src/ms8"]
+omit = [
+  "src/ms8/engine_core/private_*.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+fail_under = 80
