@@ -1,0 +1,103 @@
+name: Memory Hybrid Windows Parity
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/memory-hybrid-windows-parity.yml"
+      - "src/ms8/memory/**"
+      - "scripts/run_memory_hybrid_v1_windows_parity.py"
+      - "tests/fixtures/memory_hybrid_v1/**"
+      - "tests/test_memory_hybrid_windows_parity.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: memory-hybrid-windows-parity-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-parity:
+    name: Windows frozen-contract parity
+    runs-on: windows-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install test and build dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --quiet --upgrade pip
+          python -m pip install --quiet -e ".[dev]" build twine
+
+      - name: Run focused parity tests
+        id: parity_tests
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifacts/memory_hybrid_v1_windows_parity | Out-Null
+          python -m pytest -q --no-cov tests/test_memory_hybrid_windows_parity.py 2>&1 |
+            Tee-Object -FilePath artifacts/memory_hybrid_v1_windows_parity/parity-tests.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build and inspect wheel
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force build, dist -ErrorAction SilentlyContinue
+          python -m build
+          python -m twine check dist/*
+
+      - name: Install wheel into Unicode and space path
+        shell: pwsh
+        run: |
+          $venv = Join-Path $env:RUNNER_TEMP "MS8 Hybrid 中文 venv"
+          python -m venv $venv
+          $python = Join-Path $venv "Scripts/python.exe"
+          $pip = Join-Path $venv "Scripts/pip.exe"
+          $ms8 = Join-Path $venv "Scripts/ms8.exe"
+          $recovery = Join-Path $venv "Scripts/ms8-recovery.exe"
+          & $python -m pip install --quiet --upgrade pip setuptools wheel
+          $wheel = Get-ChildItem dist/ms8-*-py3-none-any.whl | Select-Object -First 1
+          & $pip install --quiet $wheel.FullName
+          & $python -m pip check
+          & $ms8 version
+          & $recovery --help
+          "MS8_PARITY_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Run installed-wheel Windows parity
+        id: installed_parity
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $workspace = Join-Path $env:RUNNER_TEMP "MS8 Hybrid 中文 workspace"
+          & $env:MS8_PARITY_PYTHON scripts/run_memory_hybrid_v1_windows_parity.py `
+            --workspace $workspace `
+            --output-dir artifacts/memory_hybrid_v1_windows_parity 2>&1 |
+            Tee-Object -FilePath artifacts/memory_hybrid_v1_windows_parity/console.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload Windows parity artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: memory-hybrid-v1-windows-parity
+          path: artifacts/memory_hybrid_v1_windows_parity
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Enforce Windows parity gates
+        if: always()
+        shell: pwsh
+        run: |
+          if ("${{ steps.parity_tests.outcome }}" -ne "success") { exit 1 }
+          if ("${{ steps.installed_parity.outcome }}" -ne "success") { exit 1 }
