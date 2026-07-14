@@ -8,7 +8,9 @@ from ms8.memory.retrieval.reference_acceptance import (
     run_reference_acceptance,
 )
 
-FIXTURE_PATH = Path(__file__).parent / "fixtures" / "memory_hybrid_v1" / "public_evaluation_v1.json"
+FIXTURE_ROOT = Path(__file__).parent / "fixtures" / "memory_hybrid_v1"
+FIXTURE_PATH = FIXTURE_ROOT / "public_evaluation_v1.json"
+CONTRACT_PATH = FIXTURE_ROOT / "public_contract_v1.json"
 
 
 def test_reference_acceptance_builds_isolated_comparison_report(tmp_path: Path) -> None:
@@ -28,8 +30,19 @@ def test_reference_acceptance_builds_isolated_comparison_report(tmp_path: Path) 
     assert artifacts.report_markdown.is_file()
 
     persisted = json.loads(artifacts.report_json.read_text(encoding="utf-8"))
+    contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
+    assert contract["schema"] == "ms8.hybrid_public_contract.v1"
+    assert persisted["schema"] == contract["reference_report_schema"]
+    assert persisted["fixture_schema"] == contract["fixture_schema"]
+    assert persisted["comparison"]["schema"] == contract["evaluation_schema"]
     assert persisted["comparison"]["baseline"]["case_count"] == 6
     assert persisted["comparison"]["hybrid"]["case_count"] == 6
+    assert set(persisted["comparison"]["hybrid"]["metrics"]) == set(
+        contract["required_metrics"]
+    )
+    assert set(persisted["release_gates"]) == set(contract["required_release_gates"])
+    assert persisted["golden_ordering"] == contract["golden_ordering"]
+    assert persisted["accepted"] is True
     assert persisted["comparison"]["hybrid"]["metrics"][
         "unauthorized_inactive_error_recall_rate"
     ] == 0.0
@@ -37,14 +50,6 @@ def test_reference_acceptance_builds_isolated_comparison_report(tmp_path: Path) 
         "evidence_citation_coverage"
     ] == 1.0
     assert persisted["comparison"]["hybrid"]["metrics"]["degradation_correctness"] == 1.0
-    assert set(persisted["golden_ordering"]) == {
-        "current_release_rule",
-        "historical_release_rule",
-        "chinese_preference",
-        "code_symbol",
-        "retention_conflict",
-        "wrong_realm_probe",
-    }
 
 
 def test_non_macos_label_cannot_pass_reference_acceptance(tmp_path: Path) -> None:
