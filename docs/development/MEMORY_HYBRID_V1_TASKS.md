@@ -224,12 +224,12 @@ Validation evidence: exact Phase 7 head `2046cfaa8381b9287f144d7870cb379be457c4c
 
 ## Phase 8 — integration and explain surfaces
 
-- [ ] Integrate hybrid retrieval behind an explicit Ledger v1 feature/profile gate.
-- [ ] Connect CLI query/context/explain routes.
-- [ ] Connect MCP query/context/prepare-reply routes while preserving response compatibility.
-- [ ] Add `--explain` output with plan, eligibility, source hits, fusion, reranking, MMR, assembly, and degradation reasons.
-- [ ] Preserve fail-closed behavior when Ledger v1 is explicitly selected but invalid.
-- [ ] Preserve legacy behavior when Ledger v1/hybrid mode is not selected.
+- [x] Integrate hybrid retrieval behind an explicit Ledger v1 feature/profile gate.
+- [x] Connect CLI query/context/explain routes.
+- [x] Connect MCP query/context/prepare-reply routes while preserving response compatibility.
+- [x] Add `--explain` output with plan, eligibility, source hits, fusion, reranking, MMR, assembly, and degradation reasons.
+- [x] Preserve fail-closed behavior when Ledger v1 is explicitly selected but invalid.
+- [x] Preserve legacy behavior when Ledger v1/hybrid mode is not selected.
 
 Acceptance:
 
@@ -237,10 +237,12 @@ Acceptance:
 - no automatic feature enablement;
 - old clients retain their required primary fields.
 
+Validation evidence: exact Phase 8 integration head `50d33e8cbf74007acac4dcf03c1fb48331a1ed8b` passed Python 3.10–3.13, Ruff, mypy, full pytest and coverage, package/profile/clean-room checks, macOS and Windows wheel smoke, CodeQL, Dependency Review, Examples smoke, and Required check compatibility. Hybrid retrieval remained behind the explicit Ledger-v1 profile plus `MS8_MEMORY_HYBRID_V1` environment gate.
+
 ## Phase 9 — evaluation and macOS reference acceptance
 
-- [ ] Add public, synthetic, reproducible evaluation fixtures.
-- [ ] Add metrics:
+- [x] Add public, synthetic, reproducible evaluation fixtures.
+- [x] Add metrics:
   - nDCG@5 and nDCG@10;
   - MRR;
   - Recall@20;
@@ -251,9 +253,9 @@ Acceptance:
   - language/code slices;
   - P50/P95 latency;
   - degradation correctness.
-- [ ] Add baseline comparison: legacy versus `hybrid-v1`.
-- [ ] Add macOS acceptance script and artifact report.
-- [ ] Freeze public contracts and golden ordering after macOS acceptance.
+- [x] Add baseline comparison: legacy versus `hybrid-v1`.
+- [x] Add macOS acceptance script and artifact report.
+- [x] Freeze public contracts and golden ordering after macOS acceptance.
 
 Release gates for macOS reference implementation:
 
@@ -262,6 +264,8 @@ Release gates for macOS reference implementation:
 - any dense/entity/graph source may fail while safe lexical retrieval remains available;
 - locked-set nDCG@10 improves by at least 5% relative to legacy without Recall@20 regression;
 - no critical current, historical, conflict, or code-symbol regression.
+
+Validation evidence: exact Phase 9 acceptance head `b3f92e200cd6ed56af00158956e1d75b6eea6ed6` passed CI run `29305121457`, Required check compatibility `29305121481`, macOS reference acceptance `29305121531`, Examples smoke `29305121504`, Dependency Review `29305121432`, and CodeQL `29305121446`. On the frozen synthetic set, hybrid nDCG@10 improved by approximately 21.03% relative to legacy, Recall@20 improved by `0.08333333333333337`, unauthorized/inactive error recall remained `0`, Evidence/Decision trace coverage remained `1.0`, degradation correctness remained `1.0`, and the critical current, historical, conflict, and code-symbol slices had no regression.
 
 ## Phase 10 — Windows adaptation and parity
 
