@@ -3,6 +3,7 @@
   "evaluation_schema": "ms8.hybrid_evaluation.v1",
   "fixture_schema": "ms8.hybrid_evaluation_fixture.v1",
   "reference_report_schema": "ms8.hybrid_reference_acceptance.v1",
+  "trace_parity_schema": "ms8.hybrid_trace_parity.v1",
   "required_metrics": [
     "ndcg_at_5",
     "ndcg_at_10",
@@ -45,5 +46,13 @@
       "clm_legacy_da6b082dac7e11acbba1437e"
     ],
     "wrong_realm_probe": []
+  },
+  "trace_fingerprints": {
+    "chinese_preference": "0aad267a90c8eea7a8b068f72954e7d6d91ed86518f54b83836c98e5a6409ac2",
+    "code_symbol": "5a8623c671a5b4b3c52b9495d393dba96c007e39dad16f115bf4c6039f20a09e",
+    "current_release_rule": "537e7eac77dfd679e7ebe78d92ef077d0ec4a781940fd1872e1f78a00c0cca68",
+    "historical_release_rule": "1d445c78cf96ec0705ccf84532557315c4e9a56928fae71fe74423ad0bbfa0c1",
+    "retention_conflict": "0a493500a34d10cff7daafe25ebe8767973cc3c382b604faa342b2d8eae8f729",
+    "wrong_realm_probe": "b314069c89ebc94d20a58d979d35e2d4eb98e82cd768c4705d690e1442e71441"
   }
 }
