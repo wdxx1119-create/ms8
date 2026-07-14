@@ -7,7 +7,11 @@ from collections.abc import Sequence
 from ..application.replay import ReplayState
 from ..application.temporal_query import effective_valid_until
 from .adapters import CandidateRecord, ProjectionCandidateSource
-from .analyzer import analyze_query
+from .analyzer import (
+    analyze_query,
+    informative_query_terms,
+    sufficient_query_overlap,
+)
 from .candidate_sources import CandidateSourceError
 from .models import RetrievalPlan
 
@@ -42,7 +46,7 @@ _HISTORICAL_CJK_CUES = (
 
 def _claim_terms(text: str) -> frozenset[str]:
     try:
-        return frozenset(analyze_query(text).tokens)
+        return informative_query_terms(analyze_query(text))
     except ValueError:
         return frozenset()
 
@@ -101,7 +105,8 @@ class TemporalReplayCandidateProvider:
         if not historical and _text_requests_historical(plan):
             return ()
 
-        query_terms = _claim_terms(plan.query.text)
+        analysis = analyze_query(plan.query.text)
+        query_terms = informative_query_terms(analysis)
         records: list[CandidateRecord] = []
         for claim_id in eligible_claim_ids:
             view = self.state.claims.get(claim_id)
@@ -126,7 +131,9 @@ class TemporalReplayCandidateProvider:
                 " ".join((claim.text, claim.subject, claim.predicate, str(claim.value)))
             )
             matched_terms = tuple(sorted(query_terms.intersection(claim_terms)))
-            if query_terms and not matched_terms:
+            if query_terms and (
+                not matched_terms or not sufficient_query_overlap(analysis, matched_terms)
+            ):
                 continue
 
             evidence_ids = _evidence_ids(self.state, claim_id)
@@ -151,6 +158,8 @@ class TemporalReplayCandidateProvider:
                         "time_basis": basis or "unknown",
                         "supplementary": supplementary,
                         "matched_terms": matched_terms,
+                        "informative_query_term_count": len(query_terms),
+                        "match_coverage": round(relevance, 12),
                     },
                 )
             )
