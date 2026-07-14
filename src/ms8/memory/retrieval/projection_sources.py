@@ -9,7 +9,7 @@ from typing import Any, Protocol, runtime_checkable
 from ..infrastructure.projection_io import read_json_object
 from ..infrastructure.search_projection import SEARCH_PROJECTION_SCHEMA
 from .adapters import CandidateRecord
-from .analyzer import analyze_query
+from .analyzer import analyze_query, informative_query_terms, sufficient_query_overlap
 from .models import RetrievalPlan
 
 
@@ -39,7 +39,7 @@ def _required_sequence(value: object, message: str) -> Sequence[object]:
 class SearchProjectionCandidateProvider:
     """Read the current JSON Search/FTS projection inside an eligibility whitelist.
 
-    The projection remains disposable and non-authoritative.  Evidence identifiers
+    The projection remains disposable and non-authoritative. Evidence identifiers
     are resolved separately from the verified replay state supplied by the caller.
     """
 
@@ -81,7 +81,7 @@ class SearchProjectionCandidateProvider:
                 document_by_id[claim_id] = document
 
         analysis = analyze_query(plan.query.text)
-        query_terms = frozenset(str(term).casefold() for term in analysis.tokens if str(term).strip())
+        query_terms = informative_query_terms(analysis)
         if not query_terms:
             return ()
 
@@ -106,7 +106,7 @@ class SearchProjectionCandidateProvider:
             )
             document_terms = frozenset(str(term).casefold() for term in raw_terms if str(term).strip())
             matched_terms = tuple(sorted(query_terms.intersection(document_terms)))
-            if not matched_terms:
+            if not matched_terms or not sufficient_query_overlap(analysis, matched_terms):
                 continue
             evidence_ids = tuple(
                 sorted(
@@ -131,6 +131,11 @@ class SearchProjectionCandidateProvider:
                     reason={
                         "projection_schema": SEARCH_PROJECTION_SCHEMA,
                         "matched_terms": matched_terms,
+                        "informative_query_term_count": len(query_terms),
+                        "match_coverage": round(
+                            len(matched_terms) / max(1, len(query_terms)),
+                            12,
+                        ),
                     },
                 )
             )
