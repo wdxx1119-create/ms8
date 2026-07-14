@@ -63,7 +63,7 @@ def _load_fixture(path: Path) -> dict[str, Any]:
     return payload
 
 
-def _projection_adapters(root: Path) -> tuple[object, ...]:
+def _projection_adapters(root: Path) -> tuple[Any, ...]:
     return (
         SQLiteProjectionAdapter(root / "memory.sqlite3"),
         SearchProjectionAdapter(root / "search.json"),
