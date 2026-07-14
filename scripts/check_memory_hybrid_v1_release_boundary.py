@@ -32,6 +32,7 @@ _FORBIDDEN_COMPONENTS = frozenset(
         "secrets",
     }
 )
+_REQUIREMENT_NAME_BOUNDARY = re.compile(r"[<>=!~\s;(\[]")
 
 
 def _normalized_members(names: list[str]) -> tuple[str, ...]:
@@ -76,7 +77,7 @@ def _metadata_text(wheel: Path) -> str:
 
 
 def _requirement_name(raw: str) -> str:
-    token = re.split(r"[\s;(\[]", raw.strip(), maxsplit=1)[0]
+    token = _REQUIREMENT_NAME_BOUNDARY.split(raw.strip(), maxsplit=1)[0]
     return token.replace("_", "-").casefold()
 
 
