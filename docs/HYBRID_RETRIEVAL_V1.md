@@ -121,7 +121,7 @@ When an optional provider is unavailable or invalid, the request degrades to an 
 
 ## Compatibility and validation
 
-The `0.2.18` candidate was validated on macOS and Windows with the same public retrieval contracts. Validation covers authorization isolation, current and historical queries, conflict presentation, code-symbol queries, optional-provider degradation, package installation, Unicode and space-containing paths, and deterministic cross-platform result ordering.
+The `0.2.18` release was validated on macOS and Windows with the same public retrieval contracts. Validation covers authorization isolation, current and historical queries, conflict presentation, code-symbol queries, optional-provider degradation, package installation, Unicode and space-containing paths, and deterministic cross-platform result ordering.
 
 The reference fixtures are synthetic contract tests. They do not constitute a production-scale corpus benchmark or a latency service-level objective.
 
@@ -129,14 +129,14 @@ The reference fixtures are synthetic contract tests. They do not constitute a pr
 
 - the feature is disabled by default;
 - automatic runtime migration is not provided;
-- Linux remains best-effort rather than a formal reference platform for this candidate;
+- Linux remains best-effort rather than a formal reference platform for this release;
 - explain output is diagnostic and may expose sensitive metadata;
 - optional local-model behavior depends on the installed provider and model;
 - default enablement requires a separate release decision.
 
 ## Release boundary
 
-The public candidate must continue to satisfy:
+The public release line must continue to satisfy:
 
 - clean wheel and source-distribution metadata;
 - no private fixtures, credentials, local user data, or LAN package material in release artifacts;
@@ -144,4 +144,4 @@ The public candidate must continue to satisfy:
 - clean installation and `pip check` validation;
 - exact-commit macOS and Windows acceptance evidence.
 
-No tag, GitHub Release, PyPI publication, or automatic default enablement is authorized by this document.
+MS8 0.2.18 was published as tag `v0.2.18`, a GitHub Release, and a PyPI release. This document does not authorize automatic default enablement.
