@@ -25,6 +25,7 @@ from ..infrastructure.durable_io import (
 )
 from ..infrastructure.projection_io import atomic_write_json, read_json_object
 from .reference_acceptance import run_reference_acceptance
+from .trace_parity import capture_trace_parity
 
 WINDOWS_PARITY_SCHEMA = "ms8.hybrid_windows_parity.v1"
 
@@ -190,6 +191,11 @@ def run_windows_parity(
         workspace=workspace,
         platform_name=platform_name,
     )
+    trace_workspace = workspace.with_name(f"{workspace.name} trace parity")
+    trace_report = capture_trace_parity(
+        fixture_path,
+        workspace=trace_workspace,
+    )
     reference_report = reference.report
     comparison = reference_report.get("comparison")
     release_gates = reference_report.get("release_gates")
@@ -214,6 +220,7 @@ def run_windows_parity(
             reference_report.get("schema") == contract.get("reference_report_schema")
             and reference_report.get("fixture_schema") == contract.get("fixture_schema")
             and comparison.get("schema") == contract.get("evaluation_schema")
+            and trace_report.get("schema") == contract.get("trace_parity_schema")
         ),
         "required_metrics_match": _required_keys(
             metrics,
@@ -221,6 +228,9 @@ def run_windows_parity(
         ),
         "frozen_ordering_matches": (
             reference_report.get("golden_ordering") == contract.get("golden_ordering")
+        ),
+        "frozen_trace_fingerprints_match": (
+            trace_report.get("fingerprints") == contract.get("trace_fingerprints")
         ),
         "reference_non_platform_gates_pass": all(non_platform_gates.values()),
         "unicode_and_space_path": (
@@ -240,9 +250,11 @@ def run_windows_parity(
         "platform": platform_name,
         "contract_schema": contract.get("schema"),
         "reference_report_schema": reference_report.get("schema"),
+        "trace_parity_schema": trace_report.get("schema"),
         "gates": gates,
         "accepted": all(gates.values()),
         "golden_ordering": reference_report.get("golden_ordering", {}),
+        "trace_fingerprints": trace_report.get("fingerprints", {}),
         "replaced_projection_files": replaced,
         "reference_release_gates": dict(release_gates),
         "reference_metrics": dict(metrics),
