@@ -57,6 +57,54 @@ ms8 connect verify --target all
 
 ---
 
+## Ledger v1 and Hybrid Retrieval v1
+
+Normal MCP connection does not enable Memory Ledger v1 or Hybrid Retrieval v1. Existing clients remain on the legacy-compatible path unless the runtime has been migrated and all explicit gates are configured.
+
+A representative MCP configuration section is:
+
+```yaml
+memory_core:
+  workspace: /path/to/ms8-workspace
+memory_ledger_v1:
+  enabled: true
+  retrieval_profile: hybrid-v1
+  context_token_budget: 1200
+  max_per_subject_predicate: 2
+  hybrid:
+    timezone: UTC
+    max_claims: 12
+    max_per_subject: 3
+    max_per_predicate: 3
+    graph_max_hops: 2
+```
+
+The MCP server process must also receive:
+
+```text
+MS8_MEMORY_LEDGER_V1=1
+MS8_MEMORY_HYBRID_V1=1
+```
+
+The workspace must already contain:
+
+- an authoritative runtime-format manifest selecting `ledger-v1`;
+- a valid Ledger whose head matches the manifest;
+- fresh SQLite, Search, FTS, Vector, and Graph projections for the same Ledger head.
+
+The `query`, `context`, and `prepare_reply` tools preserve their existing required primary fields. Hybrid Retrieval adds optional, additive inputs:
+
+- `purpose` on `query`;
+- `explain` on `query`, `context`, and `prepare_reply`;
+- `recorded_as_of`, `observed_as_of`, and `valid_at`;
+- `realm_id` and `scope`.
+
+An explicitly requested Ledger/Hybrid route fails closed when the Ledger, manifest, environment, or projections are invalid. It does not silently fall back to legacy retrieval. The compatibility adapter is read-only; `submit` and `batch_submit` do not gain Ledger-v1 write authority.
+
+Full implementation and security boundaries are documented in [Hybrid Retrieval v1](../../../docs/HYBRID_RETRIEVAL_V1.md).
+
+---
+
 ## Helpful Commands
 
 - List supported targets:
@@ -84,3 +132,4 @@ ms8 connect rollback --target <target>
 - Default rollback is selective: it removes only `ms8-memory` entry.
 - It does not delete unrelated MCP servers.
 - Use full-file delete only when explicitly intended.
+- Treat full Hybrid explain traces as sensitive diagnostics because they may include claim, Evidence, Decision, realm, scope, conflict, and provider-health metadata.
