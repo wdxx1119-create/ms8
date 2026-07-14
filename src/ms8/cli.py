@@ -486,6 +486,14 @@ def _build_parser() -> argparse.ArgumentParser:
         help="explicit ledger-v1 read, doctor, rebuild, mutation, and migration commands",
     )
     p_memory_ledger.add_argument("--workspace", required=True, help="explicit MS8 workspace path")
+    p_memory_ledger.add_argument(
+        "--retrieval-profile",
+        choices=["legacy", "hybrid-v1"],
+        default="legacy",
+        help="explicit Ledger-v1 retrieval profile; hybrid-v1 also requires its environment gate",
+    )
+    p_memory_ledger.add_argument("--principal-realm-id", default="")
+    p_memory_ledger.add_argument("--principal-scope", default="")
     p_memory_ledger_sub = p_memory_ledger.add_subparsers(dest="memory_ledger_cmd")
     p_memory_ledger_sub.add_parser("doctor", help="read-only ledger and projection health")
     p_memory_ledger_sub.add_parser("status", help="show authorized ledger-v1 readiness")
@@ -498,6 +506,17 @@ def _build_parser() -> argparse.ArgumentParser:
         _ledger_parser.add_argument("--valid-at", dest="valid_at", default="")
         _ledger_parser.add_argument("--realm-id", dest="realm_id", default="")
         _ledger_parser.add_argument("--scope", default="")
+        _ledger_parser.add_argument(
+            "--explain",
+            action="store_true",
+            help="include the governed retrieval pipeline trace",
+        )
+        if _ledger_read_command == "query":
+            _ledger_parser.add_argument(
+                "--purpose",
+                choices=["recall", "historical", "review", "audit"],
+                default="recall",
+            )
     p_memory_ledger_explain = p_memory_ledger_sub.add_parser(
         "explain", help="explain one recall-authorized ledger claim"
     )

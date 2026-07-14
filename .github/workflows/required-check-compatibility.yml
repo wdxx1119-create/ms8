@@ -60,12 +60,40 @@ jobs:
           python-version: "3.11"
           cache: pip
 
-      - name: Run static quality gates
+      - name: Install static quality dependencies
         run: |
           python -m pip install --quiet --upgrade pip
           python -m pip install --quiet -e ".[dev]"
-          python -m ruff check src/ms8
-          python -m mypy src/ms8
+
+      - name: Ruff
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m ruff check src/ms8 2>&1 | tee ruff-compat.log
+
+      - name: Upload Ruff diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ruff-compat-diagnostics
+          path: ruff-compat.log
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Mypy
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m mypy src/ms8 2>&1 | tee mypy-compat.log
+
+      - name: Upload Mypy diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mypy-compat-diagnostics
+          path: mypy-compat.log
+          if-no-files-found: warn
+          retention-days: 7
 
   legacy-release-artifacts:
     name: Build and verify release artifacts
@@ -100,6 +128,10 @@ jobs:
           )"
           test -f "dist/ms8-${VERSION}-py3-none-any.whl"
           test -f "dist/ms8-${VERSION}.tar.gz"
+          python scripts/check_memory_hybrid_v1_release_boundary.py \
+            --wheel "dist/ms8-${VERSION}-py3-none-any.whl" \
+            --sdist "dist/ms8-${VERSION}.tar.gz" \
+            --output memory-hybrid-release-boundary.json
           ENV_DIR="$RUNNER_TEMP/ms8-required-check-venv"
           python -m venv "$ENV_DIR"
           "$ENV_DIR/bin/python" -m pip install --quiet --upgrade pip setuptools wheel
@@ -107,3 +139,12 @@ jobs:
           "$ENV_DIR/bin/python" -m pip check
           "$ENV_DIR/bin/ms8" version
           "$ENV_DIR/bin/ms8-recovery" --help
+
+      - name: Upload Hybrid Retrieval release-boundary report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: memory-hybrid-v1-release-boundary
+          path: memory-hybrid-release-boundary.json
+          if-no-files-found: warn
+          retention-days: 14
