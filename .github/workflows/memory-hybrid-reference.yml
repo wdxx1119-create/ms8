@@ -7,6 +7,7 @@ on:
       - ".github/workflows/memory-hybrid-reference.yml"
       - "src/ms8/memory/**"
       - "scripts/run_memory_hybrid_v1_macos_acceptance.py"
+      - "scripts/run_memory_hybrid_v1_trace_parity.py"
       - "tests/fixtures/memory_hybrid_v1/**"
       - "tests/test_memory_hybrid_evaluation.py"
       - "tests/test_memory_hybrid_reference_acceptance.py"
@@ -64,6 +65,16 @@ jobs:
             --output-dir artifacts/memory_hybrid_v1_macos_acceptance \
             2>&1 | tee artifacts/memory_hybrid_v1_macos_acceptance/console.log
 
+      - name: Capture deterministic trace fingerprints
+        id: trace_parity
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          python scripts/run_memory_hybrid_v1_trace_parity.py \
+            --output artifacts/memory_hybrid_v1_macos_acceptance/trace-parity.json \
+            2>&1 | tee artifacts/memory_hybrid_v1_macos_acceptance/trace-parity.log
+
       - name: Upload acceptance artifacts
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -79,3 +90,4 @@ jobs:
         run: |
           test "${{ steps.contract_tests.outcome }}" = "success"
           test "${{ steps.acceptance.outcome }}" = "success"
+          test "${{ steps.trace_parity.outcome }}" = "success"
