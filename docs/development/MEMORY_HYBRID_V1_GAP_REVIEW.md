@@ -38,8 +38,8 @@ The target is **not** a new default retrieval engine, hosted service, automatic 
 | MCP integration | Preserve primary fields while adding Hybrid options and traces | Implemented for query, context, and prepare-reply; compatibility adapter remains read-only | Normal MCP bootstrap does not enable Hybrid automatically, by design |
 | macOS reference | Frozen public acceptance and report | Passed | Public fixture is synthetic and small |
 | Windows parity | Same ranking implementation and frozen semantic output | Passed exact ordered-claim and full-trace fingerprints, installed wheel, Unicode/space paths, SQLite, locks, replacement, interruption, and degradation gates | No Windows semantic fork remains in the target scope |
-| Packaging | Core install free of mandatory embedding/LTR stack; no LAN/private material | Exact wheel/sdist boundary report passes | Final authoritative post-merge candidate bundle is still required |
-| Version convergence | Candidate identity is `0.2.18` | `pyproject.toml`, source fallback, Changelog, and release notes are `0.2.18` | Root README still contains `0.2.17` badge/example text and must be aligned before final candidate evidence |
+| Packaging | Core install free of mandatory embedding/LTR stack; no LAN/private material | Exact wheel/sdist boundary report and pre-merge release-candidate artifact audit pass | Final authoritative post-merge candidate bundle is still required |
+| Version convergence | Candidate identity is `0.2.18` | `pyproject.toml`, source fallback, root README, Changelog, release notes, and release-contract tests are aligned to `0.2.18` | No known target gap |
 | Publication | No automatic publish | No tag, Release, merge, default enablement, or PyPI action performed | Maintainer approval remains mandatory |
 
 ## Evidence-backed functional result
@@ -68,16 +68,31 @@ Observed acceptance results:
 
 These results are strong evidence for deterministic contracts, policy isolation, critical retrieval slices, and cross-platform semantic parity. They are not evidence of production-scale retrieval quality across a large heterogeneous personal corpus.
 
+## Pre-merge convergence evidence
+
+Exact pre-merge candidate head `ce6bee89a0187cb2e45de4ddd50d3b470dd0d6b1` passed:
+
+- CI `29313365784`;
+- Required check compatibility `29313365713`;
+- Memory Hybrid Reference Acceptance `29313365768`;
+- Memory Hybrid Windows Parity `29313365731`;
+- Examples smoke `29313365814`;
+- Dependency Review `29313365711`;
+- Python Dependency Audit `29313365728`;
+- CodeQL `29313365761`;
+- Release candidate validation `29313751035`, including static quality, macOS package boundary, clean wheel/sdist verification, installed-runtime dependency audit, CycloneDX SBOM validation, checksums, provenance attestations, SBOM attestation, and aggregate status success.
+
+The retained pre-merge evidence artifact is `ms8-v0.2.18-ce6bee89a0187cb2e45de4ddd50d3b470dd0d6b1`.
+
 ## Remaining patch-candidate work
 
-The remaining work is convergence rather than missing core retrieval functionality:
+The remaining work is release control rather than missing Hybrid retrieval functionality:
 
-1. align the root README badge, wheel example, and validation-matrix version with `0.2.18`;
-2. complete exact-head CI after the final documentation/package-boundary commits;
-3. inspect and retain the exact-head Hybrid artifact-boundary report;
-4. update the staged task checklist and PR progress evidence from that exact head;
-5. after review and merge preparation, generate authoritative release-candidate evidence from the exact post-merge commit intended for the tag;
-6. keep tag, GitHub Release, and PyPI publication behind explicit maintainer approval.
+1. record final staged-checklist and PR acceptance evidence;
+2. obtain the maintainer merge decision;
+3. after merge, run authoritative release-candidate validation from the exact final `main` commit intended for the tag;
+4. verify the post-merge artifact bundle, checksums, SBOM, and attestations;
+5. keep tag, GitHub Release, and PyPI publication behind explicit maintainer approval.
 
 ## Deliberate non-goals and residual validation gaps
 
@@ -103,7 +118,7 @@ The current synthetic P95 includes cold-start cost and must not be presented as 
 
 **Cross-platform acceptance: complete.**
 
-**Release convergence: in progress.** The remaining blockers are version/document alignment, exact-final-head evidence, and the post-merge candidate run—not missing Hybrid retrieval architecture.
+**Pre-merge release convergence: complete.** The exact candidate passed all normal and release-candidate gates. The remaining release gate is the authoritative post-merge rerun from the exact final `main` commit—not additional Hybrid retrieval architecture.
 
 ### Against a broader "turn it on by default for all users" expectation
 
