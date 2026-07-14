@@ -1,0 +1,58 @@
+{
+  "schema": "ms8.hybrid_public_contract.v1",
+  "evaluation_schema": "ms8.hybrid_evaluation.v1",
+  "fixture_schema": "ms8.hybrid_evaluation_fixture.v1",
+  "reference_report_schema": "ms8.hybrid_reference_acceptance.v1",
+  "trace_parity_schema": "ms8.hybrid_trace_parity.v1",
+  "required_metrics": [
+    "ndcg_at_5",
+    "ndcg_at_10",
+    "mrr",
+    "recall_at_20",
+    "current_fact_accuracy",
+    "historical_fact_accuracy",
+    "evidence_citation_coverage",
+    "conflict_presentation_rate",
+    "unauthorized_inactive_error_recall_rate",
+    "degradation_correctness",
+    "latency_ms_p50",
+    "latency_ms_p95"
+  ],
+  "required_release_gates": [
+    "platform_is_macos",
+    "unauthorized_inactive_error_recall_is_zero",
+    "evidence_and_decision_coverage_is_complete",
+    "degradation_is_correct",
+    "ndcg_at_10_relative_improvement_at_least_5_percent",
+    "recall_at_20_has_no_regression",
+    "critical_slices_have_no_regression"
+  ],
+  "golden_ordering": {
+    "current_release_rule": [
+      "clm_legacy_3e8ad1a5fd97856e51a5826f"
+    ],
+    "historical_release_rule": [
+      "clm_legacy_d32850cdfbb07e70cd5728ab",
+      "clm_legacy_3e8ad1a5fd97856e51a5826f"
+    ],
+    "chinese_preference": [
+      "clm_legacy_20d7112a6006c33fd97eaf0e"
+    ],
+    "code_symbol": [
+      "clm_legacy_9e827f93c95992722be99860"
+    ],
+    "retention_conflict": [
+      "clm_legacy_09e38cfce8d8c6dc3e253f20",
+      "clm_legacy_da6b082dac7e11acbba1437e"
+    ],
+    "wrong_realm_probe": []
+  },
+  "trace_fingerprints": {
+    "chinese_preference": "120e8bbab6e4d874e9b169d4e5c06d1684b2ca967b9b0481e18129fd73098223",
+    "code_symbol": "fd838cb1ecdc1e5f20fa604f69f356f8baa03934ac2a8abec851221de89c7b5c",
+    "current_release_rule": "0ebeccce379e4714c41189ff710dcc9a05f85277ce7fcf2f39bab2a03237e337",
+    "historical_release_rule": "4fc3f3de34257ee3794cbc5af76419d318e6be73c0a237ef7d8e87a8b88fdae9",
+    "retention_conflict": "b94d782eecc3460c59cff973313951c71d0a2bc64ac52d9aefbf9b5febdd32de",
+    "wrong_realm_probe": "6a44107f2fed6628bcf0ac55afa486932e63300356ece582b964b14a5131f577"
+  }
+}

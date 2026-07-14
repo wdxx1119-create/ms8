@@ -12,6 +12,7 @@ reads or writes. Existing legacy routes remain unchanged when the adapter is abs
 
 from __future__ import annotations
 
+import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -27,6 +28,13 @@ from ..infrastructure.jsonl_ledger import JsonlRecordStore
 from ..infrastructure.search_projection import SearchProjectionAdapter
 from ..infrastructure.sqlite_projection_adapter import SQLiteProjectionAdapter
 from ..infrastructure.vector_projection import VectorProjectionAdapter
+from ..retrieval import (
+    HYBRID_RETRIEVAL_ENV_FLAG,
+    HYBRID_RETRIEVAL_PROFILE,
+    HybridRetrievalRuntime,
+    HybridRuntimeConfig,
+    HybridRuntimePaths,
+)
 from ..runtime_format import (
     LEDGER_V1_RUNTIME_FORMAT,
     evaluate_runtime_format,
@@ -47,6 +55,7 @@ class LedgerCompatibilityPaths:
     graph_projection: Path
     fts_projection: Path | None = None
     vector_projection: Path | None = None
+    embedding_projection: Path | None = None
 
 
 @dataclass(slots=True)
@@ -59,6 +68,8 @@ class LedgerMemoryCompatibilityAdapter:
     manifest_generation: int
     migration_id: str
     ledger_head: str
+    hybrid_runtime: HybridRetrievalRuntime | None = None
+    retrieval_profile: str = "legacy"
 
     @staticmethod
     def _legacy_row(hit: RetrievalHit) -> dict[str, object]:
@@ -115,6 +126,7 @@ class LedgerMemoryCompatibilityAdapter:
         return {
             "provider": "ledger-v1",
             "candidate_source": result.candidate_source,
+            "retrieval_profile": self.retrieval_profile,
             "ledger_head": result.ledger_head,
             "last_sequence": result.last_sequence,
             "manifest_generation": self.manifest_generation,
@@ -122,11 +134,20 @@ class LedgerMemoryCompatibilityAdapter:
             "policy_filter": dict(result.policy_trace),
         }
 
+    def _decorate_hybrid(self, out: dict[str, Any]) -> dict[str, Any]:
+        gateway = out.get("retrieval_gateway")
+        if isinstance(gateway, dict):
+            gateway["manifest_generation"] = self.manifest_generation
+            gateway["migration_id"] = self.migration_id
+        return out
+
     def query(
         self,
         text: str,
         top_k: int = 5,
         *,
+        purpose: str = "recall",
+        explain: bool = False,
         recorded_as_of: str | None = None,
         observed_as_of: str | None = None,
         valid_at: str | None = None,
@@ -134,6 +155,22 @@ class LedgerMemoryCompatibilityAdapter:
         scope: str | None = None,
     ) -> dict[str, Any]:
         query = str(text or "").strip()
+        if self.retrieval_profile == HYBRID_RETRIEVAL_PROFILE:
+            if self.hybrid_runtime is None:
+                raise LedgerCompatibilityError("hybrid-v1 runtime is not available")
+            return self._decorate_hybrid(
+                self.hybrid_runtime.query(
+                    query,
+                    top_k,
+                    purpose=purpose,
+                    explain=explain,
+                    recorded_as_of=recorded_as_of,
+                    observed_as_of=observed_as_of,
+                    valid_at=valid_at,
+                    realm_id=realm_id,
+                    scope=scope,
+                )
+            )
         result = self.retrieval_engine.retrieve(
             self._request(
                 query,
@@ -160,6 +197,7 @@ class LedgerMemoryCompatibilityAdapter:
         text: str,
         limit: int = 5,
         *,
+        explain: bool = False,
         recorded_as_of: str | None = None,
         observed_as_of: str | None = None,
         valid_at: str | None = None,
@@ -167,6 +205,21 @@ class LedgerMemoryCompatibilityAdapter:
         scope: str | None = None,
     ) -> dict[str, Any]:
         query = str(text or "").strip()
+        if self.retrieval_profile == HYBRID_RETRIEVAL_PROFILE:
+            if self.hybrid_runtime is None:
+                raise LedgerCompatibilityError("hybrid-v1 runtime is not available")
+            return self._decorate_hybrid(
+                self.hybrid_runtime.context(
+                    query,
+                    limit,
+                    explain=explain,
+                    recorded_as_of=recorded_as_of,
+                    observed_as_of=observed_as_of,
+                    valid_at=valid_at,
+                    realm_id=realm_id,
+                    scope=scope,
+                )
+            )
         retrieval = self.retrieval_engine.retrieve(
             self._request(
                 query,
@@ -274,6 +327,8 @@ class LedgerMemoryCompatibilityAdapter:
         return {
             "provider": "ledger-v1",
             "read_only": True,
+            "retrieval_profile": self.retrieval_profile,
+            "hybrid_ready": self.hybrid_runtime is not None,
             "manifest_generation": self.manifest_generation,
             "migration_id": self.migration_id,
             "ledger_head": self.ledger_head,
@@ -291,6 +346,10 @@ def _configured_path(workspace: Path, config: Mapping[str, Any], key: str, defau
     return candidate.resolve()
 
 
+def _enabled_flag(value: object) -> bool:
+    return str(value or "").strip().casefold() in {"1", "true", "yes", "on"}
+
+
 def build_ledger_memory_compatibility_adapter(
     config: Mapping[str, Any] | None,
     workspace: Path,
@@ -304,6 +363,19 @@ def build_ledger_memory_compatibility_adapter(
     section = raw_section if isinstance(raw_section, Mapping) else {}
     if section.get("enabled") is not True:
         return None
+
+    retrieval_profile = str(section.get("retrieval_profile") or "legacy").strip().casefold()
+    if retrieval_profile not in {"legacy", HYBRID_RETRIEVAL_PROFILE}:
+        raise LedgerCompatibilityError(
+            f"unsupported ledger-v1 retrieval profile: {retrieval_profile or '<empty>'}"
+        )
+    environment = environ if environ is not None else os.environ
+    if retrieval_profile == HYBRID_RETRIEVAL_PROFILE and not _enabled_flag(
+        environment.get(HYBRID_RETRIEVAL_ENV_FLAG)
+    ):
+        raise LedgerCompatibilityError(
+            f"hybrid-v1 retrieval profile requires {HYBRID_RETRIEVAL_ENV_FLAG}"
+        )
 
     resolved_workspace = Path(workspace).expanduser().resolve()
     paths = LedgerCompatibilityPaths(
@@ -349,10 +421,16 @@ def build_ledger_memory_compatibility_adapter(
             "vector_projection",
             "memory/projections/vector.json",
         ),
+        embedding_projection=_configured_path(
+            resolved_workspace,
+            section,
+            "embedding_projection",
+            "memory/projections/embedding.json",
+        ),
     )
 
     manifest = load_runtime_format_manifest(paths.runtime_manifest)
-    decision = evaluate_runtime_format(manifest, environ)
+    decision = evaluate_runtime_format(manifest, environment)
     if decision.selected_format != LEDGER_V1_RUNTIME_FORMAT or not decision.allowed:
         raise LedgerCompatibilityError(f"ledger-v1 compatibility route is not authorized: {decision.reason}")
 
@@ -393,6 +471,33 @@ def build_ledger_memory_compatibility_adapter(
         projection_coordinator=coordinator,
         search_projection_path=paths.search_projection,
     )
+    hybrid_runtime: HybridRetrievalRuntime | None = None
+    if retrieval_profile == HYBRID_RETRIEVAL_PROFILE:
+        if paths.embedding_projection is None:
+            raise LedgerCompatibilityError("hybrid-v1 embedding projection path is not configured")
+        raw_hybrid = section.get("hybrid", {})
+        if not isinstance(raw_hybrid, Mapping):
+            raise LedgerCompatibilityError("memory_ledger_v1.hybrid must be an object")
+        hybrid_settings = dict(raw_hybrid)
+        hybrid_settings.setdefault("context_budget_tokens", token_budget_raw)
+        hybrid_settings.setdefault("max_per_subject_predicate", diversity_raw)
+        try:
+            hybrid_config = HybridRuntimeConfig.from_mapping(hybrid_settings)
+            transactions = tuple(store.iterate())
+            hybrid_runtime = HybridRetrievalRuntime(
+                replay_transactions(transactions),
+                HybridRuntimePaths(
+                    search_projection=paths.search_projection,
+                    graph_projection=paths.graph_projection,
+                    embedding_projection=paths.embedding_projection,
+                ),
+                config=hybrid_config,
+                transactions=transactions,
+            )
+        except (OSError, RuntimeError, TypeError, ValueError) as exc:
+            raise LedgerCompatibilityError(
+                f"hybrid-v1 retrieval profile configuration is invalid: {exc}"
+            ) from exc
     return LedgerMemoryCompatibilityAdapter(
         retrieval_engine=engine,
         context_assembler=ContextAssembler(
@@ -403,6 +508,8 @@ def build_ledger_memory_compatibility_adapter(
         manifest_generation=manifest.generation,
         migration_id=str(manifest.migration_id or ""),
         ledger_head=str(manifest.ledger_head or ""),
+        hybrid_runtime=hybrid_runtime,
+        retrieval_profile=retrieval_profile,
     )
 
 

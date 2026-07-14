@@ -1,0 +1,248 @@
+{
+  "schema": "ms8.hybrid_evaluation_fixture.v1",
+  "description": "Synthetic, public, reproducible acceptance fixture with no user or private repository data.",
+  "recorded_at": "2026-07-12T10:00:00+00:00",
+  "claims": [
+    {
+      "key": "release_rule_current",
+      "record": {
+        "id": "release_policy",
+        "text": "The current release rule requires all CI checks to pass before publishing.",
+        "normalized_text": "The current release rule requires all CI checks to pass before publishing.",
+        "category": "product_decision",
+        "status": "verified",
+        "source": "manual",
+        "created_at": "2026-07-10T08:00:00+00:00",
+        "meta": {"confidence": 0.99, "workspace_realm_id": "project:demo"},
+        "scope": "project",
+        "authority": "user_explicit",
+        "sensitivity": "private",
+        "can_recall": true,
+        "can_inject": true,
+        "can_act_on": false
+      }
+    },
+    {
+      "key": "release_rule_old",
+      "record": {
+        "id": "release_policy",
+        "text": "The previous release rule allowed publishing after unit tests only.",
+        "normalized_text": "The previous release rule allowed publishing after unit tests only.",
+        "category": "product_decision",
+        "status": "superseded",
+        "source": "manual",
+        "created_at": "2026-05-01T08:00:00+00:00",
+        "meta": {"confidence": 0.95, "workspace_realm_id": "project:demo"},
+        "scope": "project",
+        "authority": "user_explicit",
+        "sensitivity": "private",
+        "can_recall": true,
+        "can_inject": false,
+        "can_act_on": false
+      }
+    },
+    {
+      "key": "summary_preference",
+      "record": {
+        "id": "summary_preference",
+        "text": "用户偏好简洁、结构化的发布摘要。",
+        "normalized_text": "用户偏好简洁、结构化的发布摘要。",
+        "category": "user_preference",
+        "status": "verified",
+        "source": "user",
+        "created_at": "2026-07-09T08:00:00+00:00",
+        "meta": {"confidence": 0.98, "workspace_realm_id": "project:demo"},
+        "scope": "project",
+        "authority": "user_explicit",
+        "sensitivity": "private",
+        "can_recall": true,
+        "can_inject": true,
+        "can_act_on": false
+      }
+    },
+    {
+      "key": "atomic_write_symbol",
+      "record": {
+        "id": "atomic_write_symbol",
+        "text": "Use atomic_write_json() for durable JSON state updates.",
+        "normalized_text": "Use atomic_write_json() for durable JSON state updates.",
+        "category": "product_decision",
+        "status": "verified",
+        "source": "manual",
+        "created_at": "2026-07-08T08:00:00+00:00",
+        "meta": {"confidence": 0.97, "workspace_realm_id": "project:demo"},
+        "scope": "project",
+        "authority": "user_explicit",
+        "sensitivity": "private",
+        "can_recall": true,
+        "can_inject": true,
+        "can_act_on": false
+      }
+    },
+    {
+      "key": "backup_retention_7",
+      "record": {
+        "id": "backup_retention",
+        "text": "Backup retention is 7 days.",
+        "normalized_text": "Backup retention is 7 days.",
+        "category": "product_decision",
+        "status": "accepted",
+        "source": "manual",
+        "created_at": "2026-07-07T08:00:00+00:00",
+        "meta": {"confidence": 0.8, "workspace_realm_id": "project:demo"},
+        "scope": "project",
+        "authority": "system_observed",
+        "sensitivity": "private",
+        "can_recall": true,
+        "can_inject": false,
+        "can_act_on": false
+      }
+    },
+    {
+      "key": "backup_retention_30",
+      "record": {
+        "id": "backup_retention",
+        "text": "Backup retention is 30 days.",
+        "normalized_text": "Backup retention is 30 days.",
+        "category": "product_decision",
+        "status": "accepted",
+        "source": "manual",
+        "created_at": "2026-07-07T08:00:00+00:00",
+        "meta": {"confidence": 0.82, "workspace_realm_id": "project:demo"},
+        "scope": "project",
+        "authority": "system_observed",
+        "sensitivity": "private",
+        "can_recall": true,
+        "can_inject": false,
+        "can_act_on": false
+      }
+    },
+    {
+      "key": "wrong_realm_secret",
+      "record": {
+        "id": "other_realm_secret",
+        "text": "Other realm secret deployment token rotation rule.",
+        "normalized_text": "Other realm secret deployment token rotation rule.",
+        "category": "product_decision",
+        "status": "verified",
+        "source": "manual",
+        "created_at": "2026-07-06T08:00:00+00:00",
+        "meta": {"confidence": 0.99, "workspace_realm_id": "project:other"},
+        "scope": "project",
+        "authority": "user_explicit",
+        "sensitivity": "private",
+        "can_recall": true,
+        "can_inject": true,
+        "can_act_on": false
+      }
+    },
+    {
+      "key": "revoked_diagnostic",
+      "record": {
+        "id": "revoked_diagnostic",
+        "text": "Revoked diagnostic says publishing may bypass CI.",
+        "normalized_text": "Revoked diagnostic says publishing may bypass CI.",
+        "category": "system_diagnostic",
+        "status": "revoked",
+        "source": "system",
+        "created_at": "2026-07-05T08:00:00+00:00",
+        "meta": {"confidence": 0.9, "workspace_realm_id": "project:demo"},
+        "scope": "project",
+        "authority": "system_observed",
+        "sensitivity": "private",
+        "can_recall": true,
+        "can_inject": false,
+        "can_act_on": false
+      }
+    },
+    {
+      "key": "non_recallable_note",
+      "record": {
+        "id": "non_recallable_note",
+        "text": "Internal hidden note about release publishing.",
+        "normalized_text": "Internal hidden note about release publishing.",
+        "category": "experimental_note",
+        "status": "accepted",
+        "source": "system",
+        "created_at": "2026-07-04T08:00:00+00:00",
+        "meta": {"confidence": 0.7, "workspace_realm_id": "project:demo"},
+        "scope": "project",
+        "authority": "system_observed",
+        "sensitivity": "private",
+        "can_recall": false,
+        "can_inject": false,
+        "can_act_on": false
+      }
+    }
+  ],
+  "queries": [
+    {
+      "id": "current_release_rule",
+      "text": "What is the current release publishing rule?",
+      "purpose": "recall",
+      "slice": "english",
+      "realm_id": "project:demo",
+      "scope": "project",
+      "relevance": {"release_rule_current": 3},
+      "expected_current": ["release_rule_current"],
+      "forbidden_claims": ["release_rule_old", "revoked_diagnostic", "non_recallable_note"],
+      "expected_degraded_sources": ["embedding-unavailable"]
+    },
+    {
+      "id": "historical_release_rule",
+      "text": "What was the previous release rule before the current policy?",
+      "purpose": "historical",
+      "slice": "historical",
+      "realm_id": "project:demo",
+      "scope": "project",
+      "relevance": {"release_rule_old": 3, "release_rule_current": 1},
+      "expected_historical": ["release_rule_old"],
+      "forbidden_claims": ["revoked_diagnostic", "non_recallable_note"],
+      "expected_degraded_sources": ["embedding-unavailable"]
+    },
+    {
+      "id": "chinese_preference",
+      "text": "用户偏好什么样的发布摘要？",
+      "purpose": "recall",
+      "slice": "chinese",
+      "realm_id": "project:demo",
+      "scope": "project",
+      "relevance": {"summary_preference": 3},
+      "expected_current": ["summary_preference"],
+      "expected_degraded_sources": ["embedding-unavailable"]
+    },
+    {
+      "id": "code_symbol",
+      "text": "atomic_write_json() durable state",
+      "purpose": "recall",
+      "slice": "code",
+      "realm_id": "project:demo",
+      "scope": "project",
+      "relevance": {"atomic_write_symbol": 3},
+      "expected_current": ["atomic_write_symbol"],
+      "expected_degraded_sources": ["embedding-unavailable"]
+    },
+    {
+      "id": "retention_conflict",
+      "text": "What is the backup retention policy?",
+      "purpose": "review",
+      "slice": "conflict",
+      "realm_id": "project:demo",
+      "scope": "project",
+      "relevance": {"backup_retention_7": 3, "backup_retention_30": 3},
+      "expected_conflicts": ["backup_retention_7", "backup_retention_30"],
+      "expected_degraded_sources": ["embedding-unavailable"]
+    },
+    {
+      "id": "wrong_realm_probe",
+      "text": "secret deployment token rotation rule",
+      "purpose": "recall",
+      "slice": "policy",
+      "realm_id": "project:demo",
+      "scope": "project",
+      "relevance": {},
+      "forbidden_claims": ["wrong_realm_secret"],
+      "expected_degraded_sources": ["embedding-unavailable"]
+    }
+  ]
+}
