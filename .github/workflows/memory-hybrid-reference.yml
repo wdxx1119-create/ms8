@@ -52,6 +52,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
+          mkdir -p artifacts/memory_hybrid_v1_macos_acceptance
           python scripts/run_memory_hybrid_v1_macos_acceptance.py \
             --output-dir artifacts/memory_hybrid_v1_macos_acceptance \
             2>&1 | tee artifacts/memory_hybrid_v1_macos_acceptance/console.log
