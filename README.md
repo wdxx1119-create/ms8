@@ -10,7 +10,7 @@
   <a href="https://github.com/wdxx1119-create/ms8/actions/workflows/ci.yml"><img src="https://github.com/wdxx1119-create/ms8/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://pypi.org/project/ms8/"><img src="https://img.shields.io/pypi/v/ms8" alt="PyPI version"></a>
   <img src="https://img.shields.io/badge/status-alpha-orange" alt="alpha status">
-  <img src="https://img.shields.io/badge/version-0.2.17-blue" alt="version">
+  <img src="https://img.shields.io/badge/version-0.2.18-blue" alt="version">
   <img src="https://img.shields.io/badge/python-3.10--3.13-green" alt="python">
   <img src="https://img.shields.io/badge/license-GPL--3.0--or--later-orange" alt="license">
   <img src="https://img.shields.io/badge/tests-unit%20%2B%20integration-brightgreen" alt="tests">
@@ -126,7 +126,7 @@ ms8 agent run install --profile DEFAULT_SAFE
 >
 > ```bash
 > python -m build --wheel --outdir dist
-> pip install --force-reinstall dist/ms8-0.2.17-py3-none-any.whl
+> pip install --force-reinstall dist/ms8-0.2.18-py3-none-any.whl
 > ```
 
 ### Agent 权限模式（差异对比）
@@ -516,7 +516,7 @@ python scripts/release_checklist.py
 
 - Python 3.10–3.13
 - Validated platforms: macOS / Windows
-- Linux: best-effort compatibility, not part of the 0.2.17 formal validation matrix
+- Linux: best-effort compatibility, not part of the 0.2.18 formal validation matrix
 - 磁盘空间：约 50MB（引擎）+ 记忆数据
 
 ---
