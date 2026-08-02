@@ -55,7 +55,7 @@ def _write_toml_server_upsert(path: Path, server_payload: dict) -> None:
 
     block = [
         server_header,
-        f'command = "{cmd}"',
+        f"command = {json.dumps(cmd, ensure_ascii=False)}",
         "args = [" + ", ".join(json.dumps(str(a), ensure_ascii=False) for a in args) + "]",
     ]
     if env:

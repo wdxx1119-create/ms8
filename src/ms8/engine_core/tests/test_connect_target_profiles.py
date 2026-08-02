@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from ms8.connect.scripts.apply_client_configs import _read_toml
 from ms8.connect.scripts.apply_client_configs import run as apply_client_configs
 from ms8.connect.scripts.client_config import (
     expected_command_signature,
@@ -189,6 +190,19 @@ def test_apply_then_verify_codex_toml(monkeypatch, tmp_path: Path):
     assert out_apply["ok"] is True
     out_verify = verify_client_configs(target="codex")
     assert out_verify["ok"] is True
+
+
+def test_codex_toml_escapes_windows_command(monkeypatch, tmp_path: Path):
+    root = tmp_path / ".ms8_runtime" / "connect"
+    command = r"C:\Program Files\Python\python.exe"
+    monkeypatch.setenv("OPENCLAW_MEMORY_AUTO_ROOT", str(root))
+    monkeypatch.setenv("MS8_MCP_COMMAND", command)
+
+    out = generate_client_configs(target="codex")
+
+    assert out["ok"] is True
+    payload = _read_toml(root / "runtime" / "client_snippets" / "codex_mcp.toml")
+    assert payload["mcp_servers"]["ms8-memory"]["command"] == command
 
 
 def test_apply_then_verify_claude_code_json(monkeypatch, tmp_path: Path):
