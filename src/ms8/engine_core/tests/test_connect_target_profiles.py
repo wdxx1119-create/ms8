@@ -67,7 +67,7 @@ def test_generate_specific_target(monkeypatch, tmp_path: Path):
 def test_target_paths_specific():
     mapping = target_paths("openclaw")
     assert list(mapping.keys()) == ["openclaw"]
-    assert str(mapping["openclaw"]).endswith(".openclaw/mcp.json")
+    assert mapping["openclaw"].parts[-2:] == (".openclaw", "mcp.json")
     snippets = snippet_paths("openclaw")
     assert snippets["openclaw"] == "openclaw_mcp.json"
 
@@ -180,6 +180,7 @@ def test_apply_cherry_returns_hint(monkeypatch, tmp_path: Path):
 
 def test_apply_then_verify_codex_toml(monkeypatch, tmp_path: Path):
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
     monkeypatch.setenv("OPENCLAW_MEMORY_AUTO_ROOT", str(tmp_path / ".ms8_runtime" / "connect"))
     out_gen = generate_client_configs(target="codex")
     assert out_gen["ok"] is True

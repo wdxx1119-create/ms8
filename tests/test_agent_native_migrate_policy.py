@@ -10,6 +10,7 @@ def test_migrate_policy_path_from_legacy(tmp_path: Path, monkeypatch) -> None:
     home_dir = tmp_path / "home"
     runtime_home = tmp_path / "runtime"
     monkeypatch.setenv("HOME", str(home_dir))
+    monkeypatch.setenv("USERPROFILE", str(home_dir))
     monkeypatch.setenv("MS8_HOME", str(runtime_home))
     home_dir.mkdir(parents=True, exist_ok=True)
     (home_dir / ".ms8_runtime" / "agent_native").mkdir(parents=True, exist_ok=True)
@@ -29,6 +30,7 @@ def test_migrate_policy_path_cleanup_legacy(tmp_path: Path, monkeypatch) -> None
     home_dir = tmp_path / "home"
     runtime_home = tmp_path / "runtime"
     monkeypatch.setenv("HOME", str(home_dir))
+    monkeypatch.setenv("USERPROFILE", str(home_dir))
     monkeypatch.setenv("MS8_HOME", str(runtime_home))
     home_dir.mkdir(parents=True, exist_ok=True)
     (home_dir / ".ms8_runtime" / "agent_native").mkdir(parents=True, exist_ok=True)

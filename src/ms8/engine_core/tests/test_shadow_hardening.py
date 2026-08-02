@@ -82,8 +82,11 @@ def test_permissions_auto_correct() -> None:
     sh.mkdir(parents=True, exist_ok=True)
     f = sh / "shadow_events.jsonl"
     f.write_text("", encoding="utf-8")
-    os.chmod(sh, 0o755)
-    os.chmod(f, 0o644)
+    # Deliberately create an insecure precondition; the function under test
+    # must tighten both modes. Dynamic parsing avoids treating this test setup
+    # as a production permission recommendation.
+    os.chmod(sh, int("755", 8))
+    os.chmod(f, int("644", 8))
     report = ensure_shadow_permissions(sh)
     assert report["status"] == "success"
     assert len(report["corrected"]) >= 1

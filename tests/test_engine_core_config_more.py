@@ -92,9 +92,8 @@ def test_prefer_migrated_path_and_get_config_rewrites(tmp_path: Path, monkeypatc
 
     conf = cfg_mod.get_config()
     settings = conf["settings"]["memory"]
-    assert settings["long_term"]["path"].endswith("memory/db/memory.db")
-    assert settings["keyword"]["index_dir"].endswith("memory/index/whoosh_index")
-    assert settings["knowledge_graph"]["db_path"].endswith("memory/db/knowledge_graph.db")
-    assert settings["security"]["shadow"]["backup_dir"].endswith("memory/security/shadow_backup")
+    assert Path(settings["long_term"]["path"]) == workspace / "memory" / "db" / "memory.db"
+    assert Path(settings["keyword"]["index_dir"]) == workspace / "memory" / "index" / "whoosh_index"
+    assert Path(settings["knowledge_graph"]["db_path"]) == workspace / "memory" / "db" / "knowledge_graph.db"
+    assert Path(settings["security"]["shadow"]["backup_dir"]) == workspace / "memory" / "security" / "shadow_backup"
     assert settings["auto_memory"]["session_ingestion"]["enabled"] is True
-

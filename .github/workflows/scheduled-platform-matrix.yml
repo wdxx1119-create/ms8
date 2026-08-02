@@ -2,6 +2,8 @@ name: Scheduled platform boundary matrix
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: ["main"]
   schedule:
     - cron: "17 3 * * 0"
 
@@ -46,7 +48,6 @@ jobs:
         env:
           PYTHONPATH: src
           OPENCLAW_MEMORY_SESSION_INGEST_ENABLED: "0"
-          MS8_DOCTOR_ALLOW_DEGRADED: "1"
         run: python -m pytest -q
 
       - name: Doctor smoke

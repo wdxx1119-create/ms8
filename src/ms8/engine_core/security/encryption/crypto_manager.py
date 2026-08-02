@@ -74,22 +74,27 @@ class CryptoManager:
         ]
 
     def should_protect_path(self, path: Path) -> bool:
-        target_abs = str(path.resolve())
-        rel = target_abs.replace(str(self.workspace_dir.resolve()) + "/", "")
+        target = path.resolve()
+        workspace = self.workspace_dir.resolve()
+        try:
+            rel = target.relative_to(workspace).as_posix()
+        except ValueError:
+            rel = target.as_posix()
         for pattern in self._target_patterns():
-            pattern = str(pattern).strip()
+            pattern = str(pattern).strip().replace("\\", "/")
             if not pattern:
                 continue
             p_obj = Path(pattern).expanduser()
             if p_obj.is_absolute():
-                if target_abs == str(p_obj.resolve()):
+                if target == p_obj.resolve():
                     return True
                 continue
             if pattern.endswith("/"):
-                if rel.startswith(pattern):
+                prefix = pattern.rstrip("/")
+                if rel == prefix or rel.startswith(prefix + "/"):
                     return True
                 continue
-            if rel == pattern or rel.endswith(pattern):
+            if rel == pattern or rel.endswith("/" + pattern):
                 return True
         return False
 

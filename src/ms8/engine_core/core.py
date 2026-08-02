@@ -568,7 +568,7 @@ class MemoryCore:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(key)
         try:
-            os.chmod(path, 0o400)
+            os.chmod(path, 0o600)
         except (TypeError, ValueError) as exc:
             logger.debug("threshold_key_file_chmod_failed: %s", exc)
         self._threshold_pending_key_source = "file"

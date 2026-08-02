@@ -9,6 +9,7 @@ import shutil
 import sqlite3
 import tempfile
 import zipfile
+from contextlib import closing
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
@@ -112,8 +113,8 @@ def _is_sqlite(path: Path) -> bool:
 def _sqlite_snapshot(source: Path, destination: Path) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     source_uri = f"{source.resolve().as_uri()}?mode=ro"
-    with sqlite3.connect(source_uri, uri=True) as source_db:
-        with sqlite3.connect(destination) as destination_db:
+    with closing(sqlite3.connect(source_uri, uri=True)) as source_db:
+        with closing(sqlite3.connect(destination)) as destination_db:
             source_db.backup(destination_db)
 
 

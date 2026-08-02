@@ -24,7 +24,7 @@ def test_c15_agent_template_semantics_warn_when_missing_file(monkeypatch) -> Non
     original_exists = cs.Path.exists
 
     def _fake_exists(self: Path) -> bool:
-        if str(self).endswith("agent_native/task_templates.py"):
+        if self.name == "task_templates.py" and self.parent.name == "agent_native":
             return False
         return original_exists(self)
 
@@ -38,7 +38,7 @@ def test_c15_agent_template_semantics_warn_when_tokens_missing(monkeypatch) -> N
     original_read_text = cs.Path.read_text
 
     def _fake_read_text(self: Path, encoding: str = "utf-8", errors: str = "ignore") -> str:
-        if str(self).endswith("agent_native/task_templates.py"):
+        if self.name == "task_templates.py" and self.parent.name == "agent_native":
             return "ASK_USER:\nALLOWED_COMMANDS\n"
         return original_read_text(self, encoding=encoding, errors=errors)
 
@@ -53,7 +53,7 @@ def test_c15_agent_template_semantics_pass_when_tokens_present(monkeypatch) -> N
     original_read_text = cs.Path.read_text
 
     def _fake_read_text(self: Path, encoding: str = "utf-8", errors: str = "ignore") -> str:
-        if str(self).endswith("agent_native/task_templates.py"):
+        if self.name == "task_templates.py" and self.parent.name == "agent_native":
             return (
                 "ASK_USER:\n"
                 "STOP NEEDS_CONFIRM\n"
@@ -75,7 +75,7 @@ def test_m10_product_decision_policy_warn_when_engine_missing(monkeypatch) -> No
     original_exists = cs.Path.exists
 
     def _fake_exists(self: Path) -> bool:
-        if str(self).endswith("/engine.py"):
+        if self.name == "engine.py" and self.parent.name == "ms8":
             return False
         return original_exists(self)
 
@@ -88,7 +88,7 @@ def test_m10_product_decision_policy_warn_when_tokens_missing(monkeypatch) -> No
     original_read_text = cs.Path.read_text
 
     def _fake_read_text(self: Path, encoding: str = "utf-8", errors: str = "ignore") -> str:
-        if str(self).endswith("/engine.py"):
+        if self.name == "engine.py" and self.parent.name == "ms8":
             return "def x():\n    return 1\n"
         return original_read_text(self, encoding=encoding, errors=errors)
 
@@ -102,7 +102,7 @@ def test_m10_product_decision_policy_pass_when_tokens_present(monkeypatch) -> No
     original_read_text = cs.Path.read_text
 
     def _fake_read_text(self: Path, encoding: str = "utf-8", errors: str = "ignore") -> str:
-        if str(self).endswith("/engine.py"):
+        if self.name == "engine.py" and self.parent.name == "ms8":
             return (
                 'if category == "product_decision":\n'
                 "    decision_hints = ['choose']\n"
