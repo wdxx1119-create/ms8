@@ -1186,7 +1186,17 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _configure_standard_streams() -> None:
+    if sys.platform != "win32":
+        return
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(encoding="utf-8", errors="backslashreplace")
+
+
 def main(argv: list[str] | None = None) -> int:
+    _configure_standard_streams()
     parser = _build_parser()
     args = parser.parse_args(argv)
 

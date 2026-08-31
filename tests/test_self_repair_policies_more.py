@@ -124,6 +124,13 @@ def test_launchd_and_dry_launchd(monkeypatch) -> None:
         stderr = ""
 
     monkeypatch.setattr(rp.subprocess, "run", lambda *a, **k: _CP())
+    monkeypatch.setattr(rp.sys, "platform", "win32")
+    unsupported = rp._restart_launchd("com.openclaw.memory.mcp")(None, {})
+    assert unsupported["status"] == "error"
+    assert unsupported["error"] == "launchd_unsupported_platform"
+
+    monkeypatch.setattr(rp.sys, "platform", "darwin")
+    monkeypatch.setattr(rp.os, "getuid", lambda: 501, raising=False)
     ok = rp._restart_launchd("com.openclaw.memory.mcp")(None, {})
     assert ok["status"] == "ok"
     assert ok["returncode"] == 0

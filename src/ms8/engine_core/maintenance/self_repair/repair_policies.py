@@ -56,6 +56,8 @@ def _restart_launchd(label: str) -> Callable[[Any, dict[str, Any]], dict[str, An
     def _f(_core: Any, _ctx: dict[str, Any]) -> dict[str, Any]:
         if str(label or "") not in allowed:
             return {"status": "error", "error": "label_not_allowed", "label": str(label)}
+        if sys.platform != "darwin" or not hasattr(os, "getuid"):
+            return {"status": "error", "error": "launchd_unsupported_platform", "label": str(label)}
         target = f"gui/{os.getuid()}/{label}"
         try:
             cp = subprocess.run(

@@ -1289,7 +1289,7 @@ def export_support_bundle_runtime(
         else (root / "health" / f"support_bundle_{stamp}.zip")
     )
     files = _support_bundle_candidates(root)
-    rel_files = [str(p.relative_to(root)) for p in files]
+    rel_files = [p.relative_to(root).as_posix() for p in files]
     if dry_run:
         return {
             "ok": True,

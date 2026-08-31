@@ -10,6 +10,7 @@ def test_migrate_policy_canonical_exists_without_force(tmp_path: Path, monkeypat
     runtime_home = tmp_path / "runtime"
     home_dir = tmp_path / "home"
     monkeypatch.setenv("HOME", str(home_dir))
+    monkeypatch.setenv("USERPROFILE", str(home_dir))
     monkeypatch.setenv("MS8_HOME", str(runtime_home))
     (runtime_home / "agent_native").mkdir(parents=True, exist_ok=True)
     (home_dir / ".ms8_runtime" / "agent_native").mkdir(parents=True, exist_ok=True)
@@ -76,4 +77,3 @@ def test_remove_agent_native_missing_dir_is_pass(tmp_path: Path) -> None:
     out = onboarding.remove_agent_native(tmp_path)
     assert out["status"] == "PASS"
     assert out["removed_or_archived"] == ""
-

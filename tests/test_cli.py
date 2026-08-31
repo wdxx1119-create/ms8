@@ -16,6 +16,8 @@ def _run(args: list[str], env: dict[str, str] | None = None) -> subprocess.Compl
         [sys.executable, "-m", "ms8", *args],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         env=env,
     )
 

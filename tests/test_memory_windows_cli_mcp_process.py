@@ -13,8 +13,12 @@ pytestmark = pytest.mark.skipif(os.name != "nt", reason="requires a real Windows
 
 
 def _venv_executable(name: str) -> Path:
-    suffix = ".exe"
-    candidate = Path(sys.executable).resolve().parent / f"{name}{suffix}"
+    discovered = shutil.which(name)
+    if discovered:
+        return Path(discovered)
+    executable_dir = Path(sys.executable).resolve().parent
+    candidates = [executable_dir / f"{name}.exe", executable_dir / "Scripts" / f"{name}.exe"]
+    candidate = next((path for path in candidates if path.is_file()), candidates[0])
     assert candidate.is_file(), f"installed entry point is missing: {candidate}"
     return candidate
 

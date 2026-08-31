@@ -23,7 +23,7 @@ def run(target: str = "all") -> dict:
             env = server.get("env", {}) if isinstance(server.get("env", {}), dict) else {}
             lines = [
                 "[mcp_servers.ms8-memory]",
-                f'command = "{command}"',
+                f"command = {json.dumps(command, ensure_ascii=False)}",
                 "args = [" + ", ".join(json.dumps(str(a), ensure_ascii=False) for a in args) + "]",
             ]
             if env:

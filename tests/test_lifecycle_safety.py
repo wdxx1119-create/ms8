@@ -45,7 +45,7 @@ def test_clean_reports_failed_removal(monkeypatch, tmp_path: Path) -> None:
     out = lifecycle.clean_runtime(dry_run=False)
     assert out["ok"] is False
     assert out["failed_count"] >= 1
-    assert any(item.get("path", "").endswith("/health") for item in out["failed"])
+    assert any(Path(item.get("path", "")).name == "health" for item in out["failed"])
 
 
 def test_reset_runtime_no_backup_dry_run(monkeypatch, tmp_path: Path) -> None:

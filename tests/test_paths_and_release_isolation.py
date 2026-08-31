@@ -49,7 +49,14 @@ def test_doctor_prints_current_dirs(tmp_path: Path) -> None:
     env["MS8_DATA_DIR"] = str(tmp_path / "d")
     env["MS8_CONFIG_DIR"] = str(tmp_path / "c")
     env["MS8_LOG_DIR"] = str(tmp_path / "l")
-    cp = subprocess.run([sys.executable, "-m", "ms8", "doctor"], env=env, capture_output=True, text=True)
+    cp = subprocess.run(
+        [sys.executable, "-m", "ms8", "doctor"],
+        env=env,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     assert cp.returncode == 0
     assert f"MS8 home: {env['MS8_HOME']}" in cp.stdout
     assert f"Data dir: {env['MS8_DATA_DIR']}" in cp.stdout
@@ -64,6 +71,8 @@ def test_dry_run_does_not_delete_data(tmp_path: Path) -> None:
         env=env,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     assert cp.returncode == 0
     records = Path(env["MS8_HOME"]) / "memory" / "auto_memory_records.jsonl"
@@ -72,9 +81,15 @@ def test_dry_run_does_not_delete_data(tmp_path: Path) -> None:
     assert before.strip()
 
     for cmd in (["clean", "--dry-run"], ["reset", "--dry-run"], ["uninstall", "--dry-run"]):
-        cp2 = subprocess.run([sys.executable, "-m", "ms8", *cmd], env=env, capture_output=True, text=True)
+        cp2 = subprocess.run(
+            [sys.executable, "-m", "ms8", *cmd],
+            env=env,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
         assert cp2.returncode == 0
 
     after = records.read_text(encoding="utf-8")
     assert after == before
-
